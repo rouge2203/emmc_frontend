@@ -6,6 +6,10 @@
   --font-roboto: Roboto, Arial, sans-serif, system-ui;
 }
 
+@theme {
+  --color-primary: #155c95;
+}
+
 /* :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;

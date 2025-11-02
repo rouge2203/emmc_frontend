@@ -4,6 +4,8 @@ import Index from "./pages/Index";
 import NotFound404 from "./pages/NotFound404";
 import Other from "./pages/Other";
 import Login from "./pages/Login";
+import RecoverPassword from "./pages/RecoverPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Unauthorized from "./pages/Unauthorized";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
 import TeacherDashboard from "./pages/dashboards/TeacherDashboard";
@@ -23,6 +25,14 @@ export const router = createBrowserRouter([
       {
         path: "/login",
         element: <Login />,
+      },
+      {
+        path: "/recuperar-contrasena",
+        element: <RecoverPassword />,
+      },
+      {
+        path: "/restablecer-contrasena",
+        element: <ResetPassword />,
       },
       {
         path: "/unauthorized",
