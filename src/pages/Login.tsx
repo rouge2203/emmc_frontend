@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import axios from "../api/axios";
 import useAuth from "../hooks/useAuth";
-import { FaRegNewspaper } from "react-icons/fa";
+import { FaRegNewspaper, FaEye, FaEyeSlash } from "react-icons/fa";
 import { TbPasswordUser } from "react-icons/tb";
 import { ImCancelCircle } from "react-icons/im";
 import { CgPiano } from "react-icons/cg";
@@ -30,6 +30,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [errMsg, setErrMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [heroImage] = useState(
     () =>
@@ -175,16 +176,34 @@ const Login = () => {
                   >
                     Contraseña
                   </label>
-                  <input
-                    type="password"
-                    id="password"
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-                    placeholder="Ingresa tu contraseña"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      id="password"
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                      placeholder="Ingresa tu contraseña"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute inset-y-0 right-3 flex items-center text-gray-500"
+                      aria-label={
+                        showPassword
+                          ? "Ocultar contraseña"
+                          : "Mostrar contraseña"
+                      }
+                    >
+                      {showPassword ? (
+                        <FaEyeSlash className="w-5 h-5" />
+                      ) : (
+                        <FaEye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-end">
@@ -213,7 +232,7 @@ const Login = () => {
                   <div className="relative flex justify-center text-sm">
                     <span className="px-4 bg-white text-gray-500">
                       {" "}
-                      <CgPiano className="h-4 w-4 sm:h-5 sm:w-5 text-black" />{" "}
+                      <CgPiano className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900" />{" "}
                     </span>
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import axios from "../api/axios";
-import { FaRegNewspaper } from "react-icons/fa";
+import { FaRegNewspaper, FaEye, FaEyeSlash } from "react-icons/fa";
 import { TbPasswordUser } from "react-icons/tb";
 import { ImCancelCircle } from "react-icons/im";
 import { CgPiano } from "react-icons/cg";
@@ -54,6 +54,7 @@ const ResetPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [heroImage] = useState(
     () =>
       instrumentsImages[Math.floor(Math.random() * instrumentsImages.length)]
@@ -235,18 +236,36 @@ const ResetPassword = () => {
                     >
                       Nueva contraseña
                     </label>
-                    <input
-                      type="password"
-                      id="password"
-                      ref={passwordRef}
-                      autoComplete="new-password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-                      placeholder="Ingresa tu nueva contraseña"
-                      disabled={isLinkInvalid}
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        id="password"
+                        ref={passwordRef}
+                        autoComplete="new-password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        required
+                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                        placeholder="Ingresa tu nueva contraseña"
+                        disabled={isLinkInvalid}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute inset-y-0 right-3 flex items-center text-gray-500"
+                        aria-label={
+                          showPassword
+                            ? "Ocultar contraseñas"
+                            : "Mostrar contraseñas"
+                        }
+                      >
+                        {showPassword ? (
+                          <FaEyeSlash className="w-5 h-5" />
+                        ) : (
+                          <FaEye className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
                     {formErrors.password && (
                       <p className="mt-2 text-sm text-red-600">
                         {formErrors.password}
@@ -262,7 +281,7 @@ const ResetPassword = () => {
                       Confirmar contraseña
                     </label>
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       id="confirm-password"
                       autoComplete="new-password"
                       value={confirmPassword}
@@ -368,7 +387,7 @@ const ResetPassword = () => {
                   type="button"
                   data-autofocus
                   onClick={() => navigate("/login", { replace: true })}
-                  className="inline-flex w-full justify-center rounded-md bg-black px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-black/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="inline-flex w-full justify-center rounded-md bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                   Ir a iniciar sesión
                 </button>

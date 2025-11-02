@@ -175,7 +175,7 @@ const RecoverPassword = () => {
                     </div>
                     <div className="relative flex justify-center text-sm">
                       <span className="px-4 bg-white text-gray-500">
-                        <CgPiano className="h-4 w-4 sm:h-5 sm:w-5 text-black" />
+                        <CgPiano className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900" />
                       </span>
                     </div>
                   </div>
@@ -237,7 +237,7 @@ const RecoverPassword = () => {
                   type="button"
                   data-autofocus
                   onClick={() => setIsDialogOpen(false)}
-                  className="inline-flex w-full justify-center rounded-md bg-black px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-black/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="inline-flex w-full justify-center rounded-md bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                   De acuerdo
                 </button>
