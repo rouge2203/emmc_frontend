@@ -109,7 +109,7 @@ const Login = () => {
           {/* Left Section with Piano Image */}
           <div className="lg:w-1/2 relative">
             <img
-              alt="Piano keyboard"
+              alt="Instrumento musical"
               src={`${heroImage}`}
               className="w-full h-48 lg:h-full object-cover"
             />
@@ -126,8 +126,8 @@ const Login = () => {
           </div>
 
           {/* Right Section with Login Form */}
-          <div className="lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center">
-            <div className="w-full max-w-md mx-auto">
+          <div className="lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center overflow-y-auto">
+            <div className="w-full max-w-md mx-auto h-full">
               <img
                 src="/emmc_logo.png"
                 alt="Logo"
@@ -237,13 +237,13 @@ const Login = () => {
                   </div>
                 </div>
 
-                <div className="mt-6 space-y-3">
+                <div className="mt-6 space-y-3 sm:pb-4">
                   <button className="w-full text-primary flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                     <FaRegNewspaper className="w-5 h-5 mr-3" />
                     Información de matrícula 2026
                   </button>
 
-                  <button className="w-full  flex items-center justify-center px-4 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors">
+                  <button className="w-full  flex items-center justify-center px-4 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors ">
                     <TbPasswordUser className="w-5 h-5 mr-3" />
                     Solicitar acceso
                   </button>

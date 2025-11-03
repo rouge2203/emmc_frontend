@@ -20,6 +20,7 @@ import ProjectDetail from "./pages/admin/ProjectDetail";
 import Calendar from "./pages/admin/Calendar";
 import Documents from "./pages/admin/Documents";
 import Reports from "./pages/admin/Reports";
+import CreatePassword from "./pages/CreatePassword";
 
 export const router = createBrowserRouter([
   {
@@ -41,6 +42,10 @@ export const router = createBrowserRouter([
       {
         path: "/restablecer-contrasena",
         element: <ResetPassword />,
+      },
+      {
+        path: "/activar-cuenta",
+        element: <CreatePassword />,
       },
       {
         path: "/unauthorized",

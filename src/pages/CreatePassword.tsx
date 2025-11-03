@@ -65,6 +65,8 @@ const ResetPassword = () => {
 
   const uid = searchParams.get("uid");
   const token = searchParams.get("token");
+  const name = searchParams.get("name");
+  const email = searchParams.get("email");
   const isLinkInvalid = !uid || !token;
 
   useEffect(() => {
@@ -187,7 +189,7 @@ const ResetPassword = () => {
     <>
       <div className="sm:h-screen bg-white flex items-center justify-center sm:py-4 lg:py-16">
         <div className="lg:max-w-5xl sm:max-w-xl h-full w-full flex items-center justify-center">
-          <div className="bg-white sm:rounded-2xl w-full h-full shadow-2xl overflow-hidden flex flex-col lg:flex-row">
+          <div className="bg-white sm:rounded-2xl w-full h-full shadow-2xl flex flex-col lg:flex-row">
             <div className="lg:w-1/2 relative">
               <img
                 alt="Instrumento musical"
@@ -206,14 +208,26 @@ const ResetPassword = () => {
               </div>
             </div>
 
-            <div className="lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center overflow-y-auto">
+            <div className="lg:w-1/2 p-8 lg:px-12 lg:py-8 flex flex-col justify-center overflow-y-auto">
               <div className="w-full max-w-md mx-auto h-full">
-                <img
-                  src="/emmc_logo.png"
-                  alt="Logo"
-                  className="h-22 sm:h-26 mx-auto mb-8"
-                />
-
+                <div className="">
+                  <img
+                    src="/emmc_logo.png"
+                    alt="Logo"
+                    className="h-22 sm:h-26 mx-auto mb-4"
+                  />
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                    Establece tu contraseña
+                  </h2>
+                  <p className="text-sm text-gray-700 mb-6 ">
+                    Hola {name?.replace(/_/g, " ")}, por favor, ingresa una
+                    contraseña segura para tu cuenta.{" "}
+                    <u>
+                      La contraseña debe tener más de 8 caracteres, al menos una
+                      letra mayúscula y un carácter especial.
+                    </u>
+                  </p>
+                </div>
                 <form className="space-y-6" onSubmit={handleSubmit}>
                   <p
                     ref={errRef}
@@ -234,7 +248,7 @@ const ResetPassword = () => {
                       htmlFor="password"
                       className="block text-sm font-medium text-gray-700 mb-2"
                     >
-                      Nueva contraseña
+                      Contraseña
                     </label>
                     <div className="relative">
                       <input
@@ -332,7 +346,7 @@ const ResetPassword = () => {
                       : "Restablecer contraseña"}
                   </button>
 
-                  <div className="flex items-center justify-center ">
+                  <div className="flex items-center justify-center -mt-2 ">
                     <Link
                       to="/login"
                       className="text-sm text-primary hover:underline sm:mb-6"
@@ -375,10 +389,13 @@ const ResetPassword = () => {
                     as="h3"
                     className="text-base font-semibold text-gray-900"
                   >
-                    ¡Contraseña actualizada!
+                    ¡Cuenta activada!
                   </DialogTitle>
                   <div className="mt-2">
-                    <p className="text-sm text-gray-500">{successMsg}</p>
+                    <p className="text-sm text-gray-500">
+                      Ahora puedes iniciar sesión con el correo {email} y la
+                      contraseña que has establecido.
+                    </p>
                   </div>
                 </div>
               </div>
