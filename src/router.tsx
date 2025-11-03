@@ -12,6 +12,14 @@ import TeacherDashboard from "./pages/dashboards/TeacherDashboard";
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
 import RequireAuth from "./components/RequireAuth";
 import PersistLogin from "./components/PersistLogin";
+import AdminLayout from "./layouts/AdminLayout";
+import Teams from "./pages/admin/Teams";
+import TeamDetail from "./pages/admin/TeamDetail";
+import Projects from "./pages/admin/Projects";
+import ProjectDetail from "./pages/admin/ProjectDetail";
+import Calendar from "./pages/admin/Calendar";
+import Documents from "./pages/admin/Documents";
+import Reports from "./pages/admin/Reports";
 
 export const router = createBrowserRouter([
   {
@@ -48,8 +56,41 @@ export const router = createBrowserRouter([
         element: <RequireAuth allowedRoles={["admin"]} />,
         children: [
           {
-            path: "/admin/dashboard",
-            element: <AdminDashboard />,
+            element: <AdminLayout />,
+            children: [
+              {
+                path: "/admin/dashboard",
+                element: <AdminDashboard />,
+              },
+              {
+                path: "/admin/teams",
+                element: <Teams />,
+              },
+              {
+                path: "/admin/teams/:teamName",
+                element: <TeamDetail />,
+              },
+              {
+                path: "/admin/projects",
+                element: <Projects />,
+              },
+              {
+                path: "/admin/projects/:projectName",
+                element: <ProjectDetail />,
+              },
+              {
+                path: "/admin/calendar",
+                element: <Calendar />,
+              },
+              {
+                path: "/admin/documents",
+                element: <Documents />,
+              },
+              {
+                path: "/admin/reports",
+                element: <Reports />,
+              },
+            ],
           },
         ],
       },
