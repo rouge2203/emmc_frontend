@@ -21,6 +21,7 @@ import Calendar from "./pages/admin/Calendar";
 import Documents from "./pages/admin/Documents";
 import Reports from "./pages/admin/Reports";
 import CreatePassword from "./pages/CreatePassword";
+import AdminUsers from "./pages/admin/AdminUsers";
 
 export const router = createBrowserRouter([
   {
@@ -94,6 +95,11 @@ export const router = createBrowserRouter([
               {
                 path: "/admin/reports",
                 element: <Reports />,
+              },
+              // New routes
+              {
+                path: "/admin/administradores",
+                element: <AdminUsers />,
               },
             ],
           },

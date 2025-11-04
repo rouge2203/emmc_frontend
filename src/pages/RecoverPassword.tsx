@@ -103,8 +103,8 @@ const RecoverPassword = () => {
               </div>
             </div>
 
-            <div className="lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center">
-              <div className="w-full max-w-md mx-auto">
+            <div className="lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center overflow-y-auto">
+              <div className="w-full max-w-md mx-auto h-full">
                 <img
                   src="/emmc_logo.png"
                   alt="Logo"
@@ -180,7 +180,7 @@ const RecoverPassword = () => {
                     </div>
                   </div>
 
-                  <div className="mt-6 space-y-3">
+                  <div className="mt-6 space-y-3 sm:pb-4">
                     <button className="w-full text-primary flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                       <FaRegNewspaper className="w-5 h-5 mr-3" />
                       Información de matrícula 2026

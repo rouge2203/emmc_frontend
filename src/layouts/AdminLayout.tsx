@@ -26,6 +26,10 @@ import {
 } from "@heroicons/react/24/outline";
 import { ChevronRightIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 import { HomeIcon as HomeIconSolid } from "@heroicons/react/20/solid";
+import { PiStudent } from "react-icons/pi";
+import { LiaChalkboardTeacherSolid } from "react-icons/lia";
+import { LiaUserTieSolid } from "react-icons/lia";
+
 import useAuth from "../hooks/useAuth";
 import useLogout from "../hooks/useLogout";
 
@@ -37,24 +41,24 @@ const navigation = [
     current: false,
   },
   {
-    name: "Teams",
+    name: "Usuarios",
     icon: UsersIcon,
     current: false,
     children: [
       {
-        name: "Engineering",
-        href: "/admin/teams/Engineering",
-        icon: FolderIcon,
+        name: "Administradores",
+        href: "/admin/administradores",
+        icon: LiaUserTieSolid,
       },
       {
-        name: "Human Resources",
+        name: "Profesores",
         href: "/admin/teams/Human%20Resources",
-        icon: FolderIcon,
+        icon: LiaChalkboardTeacherSolid,
       },
       {
-        name: "Customer Success",
+        name: "Estudiantes",
         href: "/admin/teams/Customer%20Success",
-        icon: FolderIcon,
+        icon: PiStudent,
       },
     ],
   },
