@@ -10,6 +10,8 @@ import {
   XMarkIcon,
   InformationCircleIcon,
   CheckCircleIcon,
+  ClockIcon,
+  CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
@@ -28,6 +30,8 @@ interface AdminUser {
   profile: {
     user: number;
   } | null;
+  last_login: string | null;
+  date_joined: string;
 }
 
 interface UserResponse {
@@ -38,12 +42,14 @@ interface AdminInfoDrawerProps {
   userId: number | null;
   isOpen: boolean;
   onClose: () => void;
+  onSaveSuccess?: (updatedUser: AdminUser) => void;
 }
 
 const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
   userId,
   isOpen,
   onClose,
+  onSaveSuccess,
 }) => {
   const axiosPrivate = useAxiosPrivate();
   const [user, setUser] = useState<AdminUser | null>(null);
@@ -137,16 +143,23 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
       );
 
       // Update local user state with response
-      if (response.data.user) {
-        setUser(response.data.user);
+      const updatedUserData = response.data.user;
+      if (updatedUserData) {
+        setUser(updatedUserData);
         // Update form values to match response
-        setFirstName(response.data.user.first_name || "");
-        setLastName(response.data.user.last_name || "");
-        setEmail(response.data.user.email || "");
-        setCedula(response.data.user.cedula || "");
-        setPhone(response.data.user.phone || "");
-        setIsActive(response.data.user.is_active);
-        setOriginalIsActive(response.data.user.is_active);
+        setFirstName(updatedUserData.first_name || "");
+        setLastName(updatedUserData.last_name || "");
+        setEmail(updatedUserData.email || "");
+        setCedula(updatedUserData.cedula || "");
+        setPhone(updatedUserData.phone || "");
+        setIsActive(updatedUserData.is_active);
+        setOriginalIsActive(updatedUserData.is_active);
+
+        // Notify parent component to update the user in the table
+        // This updates the table without refetching, so the notification stays visible
+        if (onSaveSuccess) {
+          onSaveSuccess(updatedUserData);
+        }
       }
 
       // Close confirmation dialog
@@ -458,6 +471,71 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
                               </div>
                             ) : null}
                           </fieldset>
+
+                          {/* Account Information */}
+                          <div className="space-y-4 pt-4 border-t border-gray-200">
+                            <h3 className="text-sm/6 font-medium text-gray-900">
+                              Información de la cuenta
+                            </h3>
+
+                            {/* Last Login */}
+                            <div className="flex items-start">
+                              <div className="shrink-0">
+                                <ClockIcon
+                                  className="size-5 text-gray-400"
+                                  aria-hidden="true"
+                                />
+                              </div>
+                              <div className="ml-3 flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  Último inicio de sesión
+                                </p>
+                                <p className="mt-1 text-sm text-gray-500">
+                                  {user.last_login
+                                    ? new Date(user.last_login).toLocaleString(
+                                        "es-CR",
+                                        {
+                                          year: "numeric",
+                                          month: "long",
+                                          day: "numeric",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        }
+                                      )
+                                    : "Nunca"}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Date Joined */}
+                            <div className="flex items-start">
+                              <div className="shrink-0">
+                                <CalendarDaysIcon
+                                  className="size-5 text-gray-400"
+                                  aria-hidden="true"
+                                />
+                              </div>
+                              <div className="ml-3 flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  Fecha de registro
+                                </p>
+                                <p className="mt-1 text-sm text-gray-500">
+                                  {user.date_joined
+                                    ? new Date(user.date_joined).toLocaleString(
+                                        "es-CR",
+                                        {
+                                          year: "numeric",
+                                          month: "long",
+                                          day: "numeric",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        }
+                                      )
+                                    : "N/A"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ) : null}
@@ -476,7 +554,7 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
                       type="button"
                       onClick={handleSaveClick}
                       disabled={isSaving}
-                      className="ml-4 inline-flex justify-center rounded-md bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="ml-4 inline-flex justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSaving ? "Cargando..." : "Guardar"}
                     </button>

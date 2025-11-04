@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import { LiaUserTieSolid } from "react-icons/lia";
 import AdminInfoDrawer from "../../components/drawers/AdminInfoDrawer";
+import AdminCreateDrawer from "../../components/drawers/AdminCreateDrawer";
 
 interface AdminUser {
   id: number;
@@ -42,9 +43,10 @@ const AdminUsers = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(1);
+  const [pageSize] = useState(10);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
 
   const fetchUsers = async (pageNum: number) => {
     try {
@@ -85,7 +87,30 @@ const AdminUsers = () => {
   };
 
   const handleCreateAdmin = () => {
-    console.log("soon");
+    setIsCreateDrawerOpen(true);
+  };
+
+  const handleCloseCreateDrawer = () => {
+    setIsCreateDrawerOpen(false);
+  };
+
+  const handleUserCreated = (newUser: AdminUser) => {
+    // Add the new user to the current page if there's space, or refresh the table
+    // Since the user is created with is_active=false, we should refresh to see it
+    // But we'll add it to the current list if we're on the first page and there's space
+    if (page === 1 && users.length < pageSize) {
+      setUsers((prevUsers) => [...prevUsers, newUser]);
+      // Update pagination if needed
+      if (pagination) {
+        setPagination({
+          ...pagination,
+          total_count: pagination.total_count + 1,
+        });
+      }
+    } else {
+      // Refresh the table to include the new user
+      fetchUsers(page);
+    }
   };
 
   // Placeholder image URL (you can replace with your own placeholder)
@@ -152,7 +177,7 @@ const AdminUsers = () => {
       <div className="mt-2 sm:mt-4 flow-root ">
         <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8  ">
           <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8  ">
-            <div className=" sm:border sm:border-gray-300  sm:rounded-x-md sm:rounded-t-md sm:py-2 sm:px-2">
+            <div className=" sm:border sm:border-gray-300  sm:rounded-x-md sm:rounded-t-md sm:py-2 sm:px-4">
               <table className="relative min-w-full divide-y divide-gray-300    ">
                 <thead className="">
                   <tr>
@@ -242,9 +267,9 @@ const AdminUsers = () => {
                           <td className="py-5 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
                             <button
                               onClick={() => handleEdit(user)}
-                              className="text-gray-900 hover:text-gray-700"
+                              className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm"
                             >
-                              Editar
+                              Detalles
                               <span className="sr-only">, {fullName}</span>
                             </button>
                           </td>
@@ -305,6 +330,22 @@ const AdminUsers = () => {
         userId={selectedUserId}
         isOpen={isDrawerOpen}
         onClose={handleCloseDrawer}
+        onSaveSuccess={(updatedUser) => {
+          // Update the specific user in the table without refetching
+          // This keeps the notification visible and doesn't trigger a loading state
+          setUsers((prevUsers) =>
+            prevUsers.map((user) =>
+              user.id === updatedUser.id ? updatedUser : user
+            )
+          );
+        }}
+      />
+
+      {/* Admin Create Drawer */}
+      <AdminCreateDrawer
+        isOpen={isCreateDrawerOpen}
+        onClose={handleCloseCreateDrawer}
+        onUserCreated={handleUserCreated}
       />
     </div>
   );
