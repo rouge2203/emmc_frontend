@@ -234,7 +234,7 @@ export default function AdminLayout() {
 
     return (
       <li key={item.name}>
-        <Disclosure as="div">
+        <Disclosure as="div" defaultOpen={item.name === "Usuarios"}>
           <DisclosureButton
             className={classNames(
               item.current ? "bg-gray-50 text-primary" : "hover:bg-gray-50",

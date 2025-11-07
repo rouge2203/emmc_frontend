@@ -12,6 +12,7 @@ import {
   CheckCircleIcon,
   ClockIcon,
   CalendarDaysIcon,
+  XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
@@ -58,6 +59,14 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [showResendEmailDialog, setShowResendEmailDialog] = useState(false);
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
+  const [showResendEmailNotification, setShowResendEmailNotification] =
+    useState(false);
+  const [resendEmailNotificationType, setResendEmailNotificationType] =
+    useState<"success" | "error">("success");
+  const [resendEmailNotificationMessage, setResendEmailNotificationMessage] =
+    useState("");
 
   // Form state
   const [firstName, setFirstName] = useState("");
@@ -192,8 +201,54 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
   };
 
   const handleResendEmail = () => {
-    console.log("Sending activation email to:", email);
-    // TODO: Call API to resend activation email
+    setShowResendEmailDialog(true);
+  };
+
+  const handleConfirmResendEmail = async () => {
+    if (!userId) return;
+
+    setIsResendingEmail(true);
+    setError(null);
+
+    try {
+      const response = await axiosPrivate.post("auth/resend-activation-email", {
+        id: userId,
+      });
+
+      // Show success notification
+      setResendEmailNotificationType("success");
+      setResendEmailNotificationMessage(
+        response.data.detail || "Correo de activación reenviado exitosamente"
+      );
+      setShowResendEmailNotification(true);
+      setShowResendEmailDialog(false);
+
+      // Auto-dismiss after 5 seconds
+      setTimeout(() => {
+        setShowResendEmailNotification(false);
+      }, 5000);
+    } catch (err: any) {
+      // Show error notification
+      setResendEmailNotificationType("error");
+      setResendEmailNotificationMessage(
+        err?.response?.data?.error ||
+          err?.response?.data?.detail ||
+          "Error al reenviar el correo de activación"
+      );
+      setShowResendEmailNotification(true);
+      setShowResendEmailDialog(false);
+
+      // Auto-dismiss after 5 seconds
+      setTimeout(() => {
+        setShowResendEmailNotification(false);
+      }, 5000);
+    } finally {
+      setIsResendingEmail(false);
+    }
+  };
+
+  const handleCancelResendEmail = () => {
+    setShowResendEmailDialog(false);
   };
 
   const getPlaceholderImage = (name: string) => {
@@ -629,6 +684,69 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
         </div>
       </Dialog>
 
+      {/* Resend Activation Email Confirmation Dialog */}
+      <Dialog
+        open={showResendEmailDialog}
+        onClose={handleCancelResendEmail}
+        className="relative z-50"
+      >
+        <DialogBackdrop
+          transition
+          className="fixed inset-0 bg-gray-500/75 transition-opacity data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
+        />
+
+        <div className="fixed inset-0 z-50 w-screen overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <DialogPanel
+              transition
+              className="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in sm:my-8 sm:w-full sm:max-w-lg sm:p-6 data-closed:sm:translate-y-0 data-closed:sm:scale-95"
+            >
+              <div className="sm:flex sm:items-start">
+                <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-gray-100 sm:mx-0 sm:size-10">
+                  <InformationCircleIcon
+                    aria-hidden="true"
+                    className="size-6 text-gray-900"
+                  />
+                </div>
+                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                  <DialogTitle
+                    as="h3"
+                    className="text-base font-semibold text-gray-900"
+                  >
+                    Reenviar correo de activación
+                  </DialogTitle>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      ¿Estás seguro de que deseas reenviar el correo de
+                      activación a {user?.email}? El usuario recibirá un correo
+                      con un enlace para establecer su contraseña.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-5 sm:mt-4 sm:ml-10 sm:flex sm:pl-4">
+                <button
+                  type="button"
+                  onClick={handleConfirmResendEmail}
+                  disabled={isResendingEmail}
+                  className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
+                >
+                  {isResendingEmail ? "Enviando..." : "Reenviar"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelResendEmail}
+                  disabled={isResendingEmail}
+                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed sm:mt-0 sm:ml-3 sm:w-auto"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </DialogPanel>
+          </div>
+        </div>
+      </Dialog>
+
       {/* Success Notification */}
       <div
         aria-live="assertive"
@@ -659,6 +777,58 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
                       type="button"
                       onClick={() => {
                         setShowSuccessNotification(false);
+                      }}
+                      className="inline-flex rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
+                    >
+                      <span className="sr-only">Cerrar</span>
+                      <XMarkIconSolid aria-hidden="true" className="size-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Transition>
+        </div>
+      </div>
+
+      {/* Resend Email Notification */}
+      <div
+        aria-live="assertive"
+        className="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:items-start sm:p-6 z-50"
+      >
+        <div className="flex w-full flex-col items-center space-y-4 sm:items-end">
+          <Transition show={showResendEmailNotification}>
+            <div className="pointer-events-auto w-full max-w-sm rounded-lg bg-white shadow-lg outline-1 outline-black/5 ring-1 ring-black/5 transition data-closed:opacity-0 data-enter:transform data-enter:duration-300 data-enter:ease-out data-closed:data-enter:translate-y-2 data-leave:duration-100 data-leave:ease-in data-closed:data-enter:sm:translate-x-2 data-closed:data-enter:sm:translate-y-0">
+              <div className="p-4">
+                <div className="flex items-start">
+                  <div className="shrink-0">
+                    {resendEmailNotificationType === "success" ? (
+                      <CheckCircleIcon
+                        aria-hidden="true"
+                        className="size-6 text-primary"
+                      />
+                    ) : (
+                      <XCircleIcon
+                        aria-hidden="true"
+                        className="size-6 text-red-600"
+                      />
+                    )}
+                  </div>
+                  <div className="ml-3 w-0 flex-1 pt-0.5">
+                    <p className="text-sm font-medium text-gray-900">
+                      {resendEmailNotificationType === "success"
+                        ? "¡Correo reenviado exitosamente!"
+                        : "Error al reenviar correo"}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-500">
+                      {resendEmailNotificationMessage}
+                    </p>
+                  </div>
+                  <div className="ml-4 flex shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowResendEmailNotification(false);
                       }}
                       className="inline-flex rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
                     >
