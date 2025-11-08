@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import { LiaUserTieSolid } from "react-icons/lia";
 import AdminInfoDrawer from "../../components/drawers/AdminInfoDrawer";
 import AdminCreateDrawer from "../../components/drawers/AdminCreateDrawer";
+import UserObservationsDrawer from "../../components/drawers/UserObservationsDrawer";
 
 interface AdminUser {
   id: number;
@@ -47,6 +48,9 @@ const AdminUsers = () => {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
+  const [isObservationsDrawerOpen, setIsObservationsDrawerOpen] =
+    useState(false);
+  const [selectedUserName, setSelectedUserName] = useState("");
 
   const fetchUsers = async (pageNum: number) => {
     try {
@@ -96,6 +100,20 @@ const AdminUsers = () => {
     setIsCreateDrawerOpen(false);
   };
 
+  const handleObservations = (user: AdminUser) => {
+    const fullName =
+      `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Sin nombre";
+    setSelectedUserId(user.id);
+    setSelectedUserName(fullName);
+    setIsObservationsDrawerOpen(true);
+  };
+
+  const handleCloseObservationsDrawer = () => {
+    setIsObservationsDrawerOpen(false);
+    setSelectedUserId(null);
+    setSelectedUserName("");
+  };
+
   const handleUserCreated = (newUser: AdminUser) => {
     // Add the new user to the current page if there's space, or refresh the table
     // Since the user is created with is_active=false, we should refresh to see it
@@ -115,15 +133,8 @@ const AdminUsers = () => {
     }
   };
 
-  // Placeholder image URL (you can replace with your own placeholder)
+  // Placeholder image URL
   const getPlaceholderImage = (name: string) => {
-    // Using a placeholder image service
-    const initials = name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(
       name
     )}&background=155c95&color=fff&size=128`;
@@ -265,13 +276,22 @@ const AdminUsers = () => {
                               {user.role || "admin"}
                             </td>
                             <td className="py-5 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
-                              <button
-                                onClick={() => handleEdit(user)}
-                                className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm"
-                              >
-                                Detalles
-                                <span className="sr-only">, {fullName}</span>
-                              </button>
+                              <div className="flex gap-2 justify-end">
+                                <button
+                                  onClick={() => handleEdit(user)}
+                                  className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm"
+                                >
+                                  Detalles
+                                  <span className="sr-only">, {fullName}</span>
+                                </button>
+                                <button
+                                  onClick={() => handleObservations(user)}
+                                  className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm"
+                                >
+                                  Observaciones
+                                  <span className="sr-only">, {fullName}</span>
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -347,6 +367,14 @@ const AdminUsers = () => {
         isOpen={isCreateDrawerOpen}
         onClose={handleCloseCreateDrawer}
         onUserCreated={handleUserCreated}
+      />
+
+      {/* User Observations Drawer */}
+      <UserObservationsDrawer
+        userId={selectedUserId}
+        userName={selectedUserName}
+        isOpen={isObservationsDrawerOpen}
+        onClose={handleCloseObservationsDrawer}
       />
     </div>
   );

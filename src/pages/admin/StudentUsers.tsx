@@ -10,6 +10,7 @@ import {
 } from "@heroicons/react/24/outline";
 import StudentInfoDrawer from "../../components/drawers/StudentInfoDrawer";
 import StudentCreateDrawer from "../../components/drawers/StudentCreateDrawer";
+import UserObservationsDrawer from "../../components/drawers/UserObservationsDrawer";
 import { RiMailCloseFill } from "react-icons/ri";
 
 interface StudentUser {
@@ -70,6 +71,8 @@ const StudentUsers = () => {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
+  const [isObservationsDrawerOpen, setIsObservationsDrawerOpen] = useState(false);
+  const [selectedUserName, setSelectedUserName] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [orderBy, setOrderBy] = useState("-date_joined");
@@ -154,6 +157,19 @@ const StudentUsers = () => {
 
   const handleCloseCreateDrawer = () => {
     setIsCreateDrawerOpen(false);
+  };
+
+  const handleObservations = (user: StudentUser) => {
+    const fullName = `${user.last_name || ""} ${user.first_name || ""}`.trim() || "Sin nombre";
+    setSelectedUserId(user.id);
+    setSelectedUserName(fullName);
+    setIsObservationsDrawerOpen(true);
+  };
+
+  const handleCloseObservationsDrawer = () => {
+    setIsObservationsDrawerOpen(false);
+    setSelectedUserId(null);
+    setSelectedUserName("");
   };
 
   const handleUserCreated = (newUser: StudentUser) => {
@@ -480,13 +496,22 @@ const StudentUsers = () => {
                               {user.profile?.carnet || "—"}
                             </td>
                             <td className="py-5 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
-                              <button
-                                onClick={() => handleEdit(user)}
-                                className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm"
-                              >
-                                Detalles
-                                <span className="sr-only">, {fullName}</span>
-                              </button>
+                              <div className="flex gap-2 justify-end">
+                                <button
+                                  onClick={() => handleEdit(user)}
+                                  className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm"
+                                >
+                                  Detalles
+                                  <span className="sr-only">, {fullName}</span>
+                                </button>
+                                <button
+                                  onClick={() => handleObservations(user)}
+                                  className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm"
+                                >
+                                  Observaciones
+                                  <span className="sr-only">, {fullName}</span>
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -561,6 +586,14 @@ const StudentUsers = () => {
         isOpen={isCreateDrawerOpen}
         onClose={handleCloseCreateDrawer}
         onUserCreated={handleUserCreated}
+      />
+
+      {/* User Observations Drawer */}
+      <UserObservationsDrawer
+        userId={selectedUserId}
+        userName={selectedUserName}
+        isOpen={isObservationsDrawerOpen}
+        onClose={handleCloseObservationsDrawer}
       />
     </div>
   );
