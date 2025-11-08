@@ -71,7 +71,8 @@ const StudentUsers = () => {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
-  const [isObservationsDrawerOpen, setIsObservationsDrawerOpen] = useState(false);
+  const [isObservationsDrawerOpen, setIsObservationsDrawerOpen] =
+    useState(false);
   const [selectedUserName, setSelectedUserName] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -117,7 +118,7 @@ const StudentUsers = () => {
       } finally {
         setTimeout(() => {
           setIsLoading(false);
-        }, 500);
+        }, 250);
       }
     },
     [axiosPrivate, pageSize, searchQuery, orderBy, statusFilter, noEmailFilter]
@@ -160,7 +161,8 @@ const StudentUsers = () => {
   };
 
   const handleObservations = (user: StudentUser) => {
-    const fullName = `${user.last_name || ""} ${user.first_name || ""}`.trim() || "Sin nombre";
+    const fullName =
+      `${user.last_name || ""} ${user.first_name || ""}`.trim() || "Sin nombre";
     setSelectedUserId(user.id);
     setSelectedUserName(fullName);
     setIsObservationsDrawerOpen(true);

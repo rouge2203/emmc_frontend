@@ -74,7 +74,7 @@ const AdminUsers = () => {
     } finally {
       setTimeout(() => {
         setIsLoading(false);
-      }, 500);
+      }, 250);
     }
   };
 
