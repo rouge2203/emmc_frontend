@@ -68,7 +68,9 @@ const AdminUsers = () => {
       );
       console.error("Error fetching admin users:", err);
     } finally {
-      setIsLoading(false);
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 500);
     }
   };
 
@@ -127,21 +129,6 @@ const AdminUsers = () => {
     )}&background=155c95&color=fff&size=128`;
   };
 
-  if (isLoading) {
-    return (
-      <div className="px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-            <p className="mt-4 text-sm text-gray-600">
-              Cargando administradores...
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="px-4 sm:px-6 lg:px-8">
@@ -174,115 +161,129 @@ const AdminUsers = () => {
           </button>
         </div>
       </div>
-      <div className="mt-2 sm:mt-4 flow-root ">
-        <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8  ">
-          <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8  ">
-            <div className=" sm:border sm:border-gray-300  sm:rounded-x-md sm:rounded-t-md sm:py-2 sm:px-4">
-              <table className="relative min-w-full divide-y divide-gray-300    ">
-                <thead className="">
-                  <tr>
-                    <th
-                      scope="col"
-                      className="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0"
-                    >
-                      Nombre
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                    >
-                      Email
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                    >
-                      Estado
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                    >
-                      Rol
-                    </th>
-                    <th scope="col" className="py-3.5 pr-4 pl-3 sm:pr-0">
-                      <span className="sr-only">Editar</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {users.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={5}
-                        className="py-5 pr-3 pl-4 text-sm text-center text-gray-500 sm:pl-0"
-                      >
-                        No hay administradores registrados
-                      </td>
-                    </tr>
-                  ) : (
-                    users.map((user) => {
-                      const fullName =
-                        `${user.first_name || ""} ${
-                          user.last_name || ""
-                        }`.trim() || "Sin nombre";
-                      return (
-                        <tr key={user.id}>
-                          <td className="py-5 pr-3 pl-4 text-sm whitespace-nowrap sm:pl-0">
-                            <div className="flex items-center">
-                              <div className="size-11 shrink-0">
-                                <img
-                                  alt=""
-                                  src={getPlaceholderImage(fullName)}
-                                  className="size-11 rounded-full"
-                                />
-                              </div>
-                              <div className="ml-4">
-                                <div className="font-medium text-gray-900">
-                                  {fullName}
-                                </div>
-                                <div className="mt-1 text-gray-500">
-                                  {user.email}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
-                            {user.email}
-                          </td>
-                          <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
-                            <span
-                              className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
-                                user.is_active
-                                  ? "bg-green-50 text-green-700 ring-green-600/20"
-                                  : "bg-red-50 text-red-700 ring-red-600/20"
-                              }`}
-                            >
-                              {user.is_active ? "Activo" : "Inactivo"}
-                            </span>
-                          </td>
-                          <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
-                            {user.role || "admin"}
-                          </td>
-                          <td className="py-5 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
-                            <button
-                              onClick={() => handleEdit(user)}
-                              className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm"
-                            >
-                              Detalles
-                              <span className="sr-only">, {fullName}</span>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+      {isLoading && (
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+              <p className="mt-4 text-sm text-gray-600">
+                Cargando administradores...
+              </p>
             </div>
           </div>
         </div>
-      </div>
+      )}
+      {!isLoading && (
+        <div className="mt-2 sm:mt-4 flow-root ">
+          <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8  ">
+            <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8  ">
+              <div className=" sm:border sm:border-gray-300  sm:rounded-x-md sm:rounded-t-md sm:py-2 sm:px-4">
+                <table className="relative min-w-full divide-y divide-gray-300    ">
+                  <thead className="">
+                    <tr>
+                      <th
+                        scope="col"
+                        className="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0"
+                      >
+                        Nombre
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                      >
+                        Email
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                      >
+                        Estado
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                      >
+                        Rol
+                      </th>
+                      <th scope="col" className="py-3.5 pr-4 pl-3 sm:pr-0">
+                        <span className="sr-only">Editar</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {users.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="py-5 pr-3 pl-4 text-sm text-center text-gray-500 sm:pl-0"
+                        >
+                          No se encontraron administradores
+                        </td>
+                      </tr>
+                    ) : (
+                      users.map((user) => {
+                        const fullName =
+                          `${user.first_name || ""} ${
+                            user.last_name || ""
+                          }`.trim() || "Sin nombre";
+                        return (
+                          <tr key={user.id}>
+                            <td className="py-5 pr-3 pl-4 text-sm whitespace-nowrap sm:pl-0">
+                              <div className="flex items-center">
+                                <div className="size-11 shrink-0">
+                                  <img
+                                    alt=""
+                                    src={getPlaceholderImage(fullName)}
+                                    className="size-11 rounded-full"
+                                  />
+                                </div>
+                                <div className="ml-4">
+                                  <div className="font-medium text-gray-900">
+                                    {fullName}
+                                  </div>
+                                  <div className="mt-1 text-gray-500">
+                                    {user.email}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
+                              {user.email}
+                            </td>
+                            <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
+                              <span
+                                className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
+                                  user.is_active
+                                    ? "bg-green-50 text-green-700 ring-green-600/20"
+                                    : "bg-red-50 text-red-700 ring-red-600/20"
+                                }`}
+                              >
+                                {user.is_active ? "Activo" : "Inactivo"}
+                              </span>
+                            </td>
+                            <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
+                              {user.role || "admin"}
+                            </td>
+                            <td className="py-5 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
+                              <button
+                                onClick={() => handleEdit(user)}
+                                className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm"
+                              >
+                                Detalles
+                                <span className="sr-only">, {fullName}</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Pagination Controls */}
       {pagination && pagination.total_pages > 1 && (
         <nav

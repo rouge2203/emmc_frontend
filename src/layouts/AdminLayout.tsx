@@ -57,7 +57,7 @@ const navigation = [
       },
       {
         name: "Estudiantes",
-        href: "/admin/teams/Customer%20Success",
+        href: "/admin/estudiantes",
         icon: PiStudent,
       },
     ],
@@ -525,7 +525,7 @@ export default function AdminLayout() {
         </div>
 
         {/* Main content */}
-        <main className="">
+        <main className=" pb-10">
           <Outlet />
         </main>
       </div>

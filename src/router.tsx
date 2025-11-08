@@ -22,6 +22,7 @@ import Documents from "./pages/admin/Documents";
 import Reports from "./pages/admin/Reports";
 import CreatePassword from "./pages/CreatePassword";
 import AdminUsers from "./pages/admin/AdminUsers";
+import StudentUsers from "./pages/admin/StudentUsers";
 
 export const router = createBrowserRouter([
   {
@@ -100,6 +101,10 @@ export const router = createBrowserRouter([
               {
                 path: "/admin/administradores",
                 element: <AdminUsers />,
+              },
+              {
+                path: "/admin/estudiantes",
+                element: <StudentUsers />,
               },
             ],
           },

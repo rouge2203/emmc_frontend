@@ -222,10 +222,10 @@ const ResetPassword = () => {
                   <p className="text-sm text-gray-700 mb-6 ">
                     Hola {name?.replace(/_/g, " ")}, por favor, ingresa una
                     contraseña segura para tu cuenta.{" "}
-                    <u>
+                    <span className="font-medium">
                       La contraseña debe tener más de 8 caracteres, al menos una
                       letra mayúscula y un carácter especial.
-                    </u>
+                    </span>
                   </p>
                 </div>
                 <form className="space-y-6" onSubmit={handleSubmit}>
