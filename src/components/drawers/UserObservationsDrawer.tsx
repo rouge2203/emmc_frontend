@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Dialog,
   DialogPanel,
@@ -196,7 +197,7 @@ const UserObservationsDrawer: React.FC<UserObservationsDrawerProps> = ({
 
   return (
     <>
-      <Dialog open={isOpen} onClose={onClose} className="relative z-10">
+      <Dialog open={isOpen} onClose={onClose} className="relative z-20">
         <div className="fixed inset-0" />
 
         <div className="fixed inset-0 overflow-hidden">
@@ -217,7 +218,7 @@ const UserObservationsDrawer: React.FC<UserObservationsDrawerProps> = ({
                           <button
                             type="button"
                             onClick={onClose}
-                            className="relative rounded-md text-gray-400 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                            className="relative hover:cursor-pointer rounded-md text-gray-400 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                           >
                             <span className="absolute -inset-2.5" />
                             <span className="sr-only">Cerrar panel</span>
@@ -445,46 +446,53 @@ const UserObservationsDrawer: React.FC<UserObservationsDrawerProps> = ({
         </div>
       </Dialog>
 
-      {/* Success Notification */}
-      <div
-        aria-live="assertive"
-        className="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:items-start sm:p-6 z-50"
-      >
-        <div className="flex w-full flex-col items-center space-y-4 sm:items-end">
-          <Transition show={showSuccessNotification}>
-            <div className="pointer-events-auto w-full max-w-sm rounded-lg bg-white shadow-lg outline-1 outline-black/5 ring-1 ring-black/5 transition data-closed:opacity-0 data-enter:transform data-enter:duration-300 data-enter:ease-out data-closed:data-enter:translate-y-2 data-leave:duration-100 data-leave:ease-in data-closed:data-enter:sm:translate-x-2 data-closed:data-enter:sm:translate-y-0">
-              <div className="p-4">
-                <div className="flex items-start">
-                  <div className="shrink-0">
-                    <CheckCircleIcon
-                      aria-hidden="true"
-                      className="size-6 text-primary"
-                    />
-                  </div>
-                  <div className="ml-3 w-0 flex-1 pt-0.5">
-                    <p className="text-sm font-medium text-gray-900">
-                      {successTitle}
-                    </p>
-                    <p className="mt-1 text-sm text-gray-500">
-                      {successMessage}
-                    </p>
-                  </div>
-                  <div className="ml-4 flex shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setShowSuccessNotification(false)}
-                      className="inline-flex rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
-                    >
-                      <span className="sr-only">Cerrar</span>
-                      <XMarkIconSolid aria-hidden="true" className="size-5" />
-                    </button>
+      {/* Success Notification - Rendered via Portal outside Dialog */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <div
+            aria-live="assertive"
+            className="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:items-start sm:p-6 z-[9999]"
+          >
+            <div className="flex w-full flex-col items-center space-y-4 sm:items-end">
+              <Transition show={showSuccessNotification}>
+                <div className="pointer-events-auto w-full max-w-sm rounded-lg bg-white shadow-lg outline-1 outline-black/5 ring-1 ring-black/5 transition data-closed:opacity-0 data-enter:transform data-enter:duration-300 data-enter:ease-out data-closed:data-enter:translate-y-2 data-leave:duration-100 data-leave:ease-in data-closed:data-enter:sm:translate-x-2 data-closed:data-enter:sm:translate-y-0">
+                  <div className="p-4">
+                    <div className="flex items-start">
+                      <div className="shrink-0">
+                        <CheckCircleIcon
+                          aria-hidden="true"
+                          className="size-6 text-primary"
+                        />
+                      </div>
+                      <div className="ml-3 w-0 flex-1 pt-0.5">
+                        <p className="text-sm font-medium text-gray-900">
+                          {successTitle}
+                        </p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {successMessage}
+                        </p>
+                      </div>
+                      <div className="ml-4 flex shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setShowSuccessNotification(false)}
+                          className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
+                        >
+                          <span className="sr-only">Cerrar</span>
+                          <XMarkIconSolid
+                            aria-hidden="true"
+                            className="size-5"
+                          />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Transition>
             </div>
-          </Transition>
-        </div>
-      </div>
+          </div>,
+          document.body
+        )}
     </>
   );
 };

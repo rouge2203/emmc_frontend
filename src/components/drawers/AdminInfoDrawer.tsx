@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Dialog,
   DialogPanel,
@@ -747,101 +748,109 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
         </div>
       </Dialog>
 
-      {/* Success Notification */}
-      <div
-        aria-live="assertive"
-        className="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:items-start sm:p-6 z-50"
-      >
-        <div className="flex w-full flex-col items-center space-y-4 sm:items-end">
-          <Transition show={showSuccessNotification}>
-            <div className="pointer-events-auto w-full max-w-sm rounded-lg bg-white shadow-lg outline-1 outline-black/5 ring-1 ring-black/5 transition data-closed:opacity-0 data-enter:transform data-enter:duration-300 data-enter:ease-out data-closed:data-enter:translate-y-2 data-leave:duration-100 data-leave:ease-in data-closed:data-enter:sm:translate-x-2 data-closed:data-enter:sm:translate-y-0">
-              <div className="p-4">
-                <div className="flex items-start">
-                  <div className="shrink-0">
-                    <CheckCircleIcon
-                      aria-hidden="true"
-                      className="size-6 text-primary"
-                    />
-                  </div>
-                  <div className="ml-3 w-0 flex-1 pt-0.5">
-                    <p className="text-sm font-medium text-gray-900">
-                      ¡Guardado exitosamente!
-                    </p>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Los cambios en la información del administrador se han
-                      actualizado correctamente.
-                    </p>
-                  </div>
-                  <div className="ml-4 flex shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowSuccessNotification(false);
-                      }}
-                      className="inline-flex rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
-                    >
-                      <span className="sr-only">Cerrar</span>
-                      <XMarkIconSolid aria-hidden="true" className="size-5" />
-                    </button>
+      {/* Success Notification - Rendered via Portal outside Dialog */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <div
+            aria-live="assertive"
+            className="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:items-start sm:p-6 z-[9999]"
+          >
+            <div className="flex w-full flex-col items-center space-y-4 sm:items-end">
+              <Transition show={showSuccessNotification}>
+                <div className="pointer-events-auto w-full max-w-sm rounded-lg bg-white shadow-lg outline-1 outline-black/5 ring-1 ring-black/5 transition data-closed:opacity-0 data-enter:transform data-enter:duration-300 data-enter:ease-out data-closed:data-enter:translate-y-2 data-leave:duration-100 data-leave:ease-in data-closed:data-enter:sm:translate-x-2 data-closed:data-enter:sm:translate-y-0">
+                  <div className="p-4">
+                    <div className="flex items-start">
+                      <div className="shrink-0">
+                        <CheckCircleIcon
+                          aria-hidden="true"
+                          className="size-6 text-primary"
+                        />
+                      </div>
+                      <div className="ml-3 w-0 flex-1 pt-0.5">
+                        <p className="text-sm font-medium text-gray-900">
+                          ¡Guardado exitosamente!
+                        </p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          Los cambios en la información del administrador se han
+                          actualizado correctamente.
+                        </p>
+                      </div>
+                      <div className="ml-4 flex shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowSuccessNotification(false);
+                          }}
+                          className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
+                        >
+                          <span className="sr-only">Cerrar</span>
+                          <XMarkIconSolid aria-hidden="true" className="size-5" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Transition>
             </div>
-          </Transition>
-        </div>
-      </div>
+          </div>,
+          document.body
+        )}
 
-      {/* Resend Email Notification */}
-      <div
-        aria-live="assertive"
-        className="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:items-start sm:p-6 z-50"
-      >
-        <div className="flex w-full flex-col items-center space-y-4 sm:items-end">
-          <Transition show={showResendEmailNotification}>
-            <div className="pointer-events-auto w-full max-w-sm rounded-lg bg-white shadow-lg outline-1 outline-black/5 ring-1 ring-black/5 transition data-closed:opacity-0 data-enter:transform data-enter:duration-300 data-enter:ease-out data-closed:data-enter:translate-y-2 data-leave:duration-100 data-leave:ease-in data-closed:data-enter:sm:translate-x-2 data-closed:data-enter:sm:translate-y-0">
-              <div className="p-4">
-                <div className="flex items-start">
-                  <div className="shrink-0">
-                    {resendEmailNotificationType === "success" ? (
-                      <CheckCircleIcon
-                        aria-hidden="true"
-                        className="size-6 text-primary"
-                      />
-                    ) : (
-                      <XCircleIcon
-                        aria-hidden="true"
-                        className="size-6 text-red-600"
-                      />
-                    )}
-                  </div>
-                  <div className="ml-3 w-0 flex-1 pt-0.5">
-                    <p className="text-sm font-medium text-gray-900">
-                      {resendEmailNotificationType === "success"
-                        ? "¡Correo reenviado exitosamente!"
-                        : "Error al reenviar correo"}
-                    </p>
-                    <p className="mt-1 text-sm text-gray-500">
-                      {resendEmailNotificationMessage}
-                    </p>
-                  </div>
-                  <div className="ml-4 flex shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowResendEmailNotification(false);
-                      }}
-                      className="inline-flex rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
-                    >
-                      <span className="sr-only">Cerrar</span>
-                      <XMarkIconSolid aria-hidden="true" className="size-5" />
-                    </button>
+      {/* Resend Email Notification - Rendered via Portal outside Dialog */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <div
+            aria-live="assertive"
+            className="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:items-start sm:p-6 z-[9999]"
+          >
+            <div className="flex w-full flex-col items-center space-y-4 sm:items-end">
+              <Transition show={showResendEmailNotification}>
+                <div className="pointer-events-auto w-full max-w-sm rounded-lg bg-white shadow-lg outline-1 outline-black/5 ring-1 ring-black/5 transition data-closed:opacity-0 data-enter:transform data-enter:duration-300 data-enter:ease-out data-closed:data-enter:translate-y-2 data-leave:duration-100 data-leave:ease-in data-closed:data-enter:sm:translate-x-2 data-closed:data-enter:sm:translate-y-0">
+                  <div className="p-4">
+                    <div className="flex items-start">
+                      <div className="shrink-0">
+                        {resendEmailNotificationType === "success" ? (
+                          <CheckCircleIcon
+                            aria-hidden="true"
+                            className="size-6 text-primary"
+                          />
+                        ) : (
+                          <XCircleIcon
+                            aria-hidden="true"
+                            className="size-6 text-red-600"
+                          />
+                        )}
+                      </div>
+                      <div className="ml-3 w-0 flex-1 pt-0.5">
+                        <p className="text-sm font-medium text-gray-900">
+                          {resendEmailNotificationType === "success"
+                            ? "¡Correo reenviado exitosamente!"
+                            : "Error al reenviar correo"}
+                        </p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {resendEmailNotificationMessage}
+                        </p>
+                      </div>
+                      <div className="ml-4 flex shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowResendEmailNotification(false);
+                          }}
+                          className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
+                        >
+                          <span className="sr-only">Cerrar</span>
+                          <XMarkIconSolid aria-hidden="true" className="size-5" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Transition>
             </div>
-          </Transition>
-        </div>
-      </div>
+          </div>,
+          document.body
+        )}
     </>
   );
 };
