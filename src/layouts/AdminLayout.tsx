@@ -29,6 +29,14 @@ import { HomeIcon as HomeIconSolid } from "@heroicons/react/20/solid";
 import { PiStudent } from "react-icons/pi";
 import { LiaChalkboardTeacherSolid } from "react-icons/lia";
 import { LiaUserTieSolid } from "react-icons/lia";
+import { MdOutlineInventory } from "react-icons/md";
+import { FaRegListAlt } from "react-icons/fa";
+import {
+  PiArrowCounterClockwiseFill,
+  PiGuitar,
+  PiListBulletsBold,
+} from "react-icons/pi";
+import { CiViewList } from "react-icons/ci";
 
 import useAuth from "../hooks/useAuth";
 import useLogout from "../hooks/useLogout";
@@ -63,25 +71,24 @@ const navigation = [
     ],
   },
   {
-    name: "Projects",
-    icon: FolderIcon,
+    name: "Instrumentos",
+    icon: PiGuitar,
     current: false,
     children: [
       {
-        name: "GraphQL API",
-        href: "/admin/projects/GraphQL%20API",
-        icon: FolderIcon,
-      },
-      { name: "iOS App", href: "/admin/projects/iOS%20App", icon: FolderIcon },
-      {
-        name: "Android App",
-        href: "/admin/projects/Android%20App",
-        icon: FolderIcon,
+        name: "Registro",
+        href: "/admin/instrumentos/registro",
+        icon: PiListBulletsBold,
       },
       {
-        name: "New Customer Portal",
-        href: "/admin/projects/New%20Customer%20Portal",
-        icon: FolderIcon,
+        name: "Inventario",
+        href: "/admin/instrumentos/inventario",
+        icon: MdOutlineInventory,
+      },
+      {
+        name: "Alquileres",
+        href: "/admin/instrumentos/alquileres",
+        icon: PiArrowCounterClockwiseFill,
       },
     ],
   },
@@ -150,6 +157,15 @@ export default function AdminLayout() {
       calendar: "Calendar",
       documents: "Documents",
       reports: "Reports",
+      instrumentos: "Instrumentos",
+      administradores: "Administradores",
+      estudiantes: "Estudiantes",
+    };
+
+    // Map detail routes to readable names
+    const detailRouteMap: Record<string, string> = {
+      registro: "Registro",
+      inventario: "Inventario",
     };
 
     if (segments.length >= 2 && segments[1] === "dashboard") {
@@ -179,7 +195,10 @@ export default function AdminLayout() {
           href: `/admin/${mainRoute}`,
           current: false,
         });
-        const detailName = decodeURIComponent(segments[2]);
+        const detailSegment = decodeURIComponent(segments[2]);
+        const detailName =
+          detailRouteMap[detailSegment] ||
+          detailSegment.charAt(0).toUpperCase() + detailSegment.slice(1);
         breadcrumbs.push({ name: detailName, href: path, current: true });
       }
     } else {
@@ -234,7 +253,14 @@ export default function AdminLayout() {
 
     return (
       <li key={item.name}>
-        <Disclosure as="div" defaultOpen={item.name === "Usuarios"}>
+        <Disclosure
+          as="div"
+          defaultOpen={
+            item.name === "Usuarios" ||
+            (item.name === "Instrumentos" &&
+              item.children?.some((child) => location.pathname === child.href))
+          }
+        >
           <DisclosureButton
             className={classNames(
               item.current ? "bg-gray-50 text-primary" : "hover:bg-gray-50",

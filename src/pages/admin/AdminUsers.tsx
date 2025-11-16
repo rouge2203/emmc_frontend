@@ -305,7 +305,7 @@ const AdminUsers = () => {
         </div>
       )}
       {/* Pagination Controls */}
-      {pagination && pagination.total_pages > 1 && (
+      {pagination && (
         <nav
           aria-label="Pagination"
           className="flex items-center justify-between sm:shadow-sm sm:border-b sm:border-x sm:border-gray-300 sm:rounded-b-md bg-white px-4 py-3 sm:px-6"

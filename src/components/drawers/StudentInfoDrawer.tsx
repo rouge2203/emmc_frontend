@@ -724,148 +724,6 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
                             </div>
                           </div>
 
-                          {/* Account Information */}
-                          <div className="space-y-4 pt-4">
-                            <h3 className="text-sm/6 font-medium text-center underline underline-offset-3 text-gray-900">
-                              Información de la cuenta
-                            </h3>
-
-                            {/* Last Login */}
-                            <div className="flex items-start">
-                              <div className="shrink-0">
-                                <ClockIcon
-                                  className="size-5 text-gray-400"
-                                  aria-hidden="true"
-                                />
-                              </div>
-                              <div className="ml-3 flex-1">
-                                <p className="text-sm font-medium text-gray-900">
-                                  Último inicio de sesión
-                                </p>
-                                <p className="mt-1 text-sm text-gray-500">
-                                  {user.last_login
-                                    ? new Date(user.last_login).toLocaleString(
-                                        "es-CR",
-                                        {
-                                          year: "numeric",
-                                          month: "long",
-                                          day: "numeric",
-                                          hour: "2-digit",
-                                          minute: "2-digit",
-                                        }
-                                      )
-                                    : "Nunca"}
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Date Joined */}
-                            <div className="flex items-start">
-                              <div className="shrink-0">
-                                <CalendarDaysIcon
-                                  className="size-5 text-gray-400"
-                                  aria-hidden="true"
-                                />
-                              </div>
-                              <div className="ml-3 flex-1">
-                                <p className="text-sm font-medium text-gray-900">
-                                  Fecha de registro
-                                </p>
-                                <p className="mt-1 text-sm text-gray-500">
-                                  {user.date_joined
-                                    ? new Date(user.date_joined).toLocaleString(
-                                        "es-CR",
-                                        {
-                                          year: "numeric",
-                                          month: "long",
-                                          day: "numeric",
-                                          hour: "2-digit",
-                                          minute: "2-digit",
-                                        }
-                                      )
-                                    : "N/A"}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Status */}
-                          <fieldset className="pt-4 mt-4 ">
-                            <legend className="block text-sm/6 font-medium text-center underline underline-offset-3 text-gray-900 mb-3">
-                              Estado
-                            </legend>
-                            <div className="space-y-3">
-                              <div className="relative flex items-start">
-                                <div className="absolute flex h-6 items-center">
-                                  <input
-                                    id="status-active"
-                                    name="status"
-                                    type="radio"
-                                    checked={isActive}
-                                    onChange={() => setIsActive(true)}
-                                    className="relative size-4 appearance-none rounded-full border border-gray-300 before:absolute before:inset-1 before:rounded-full before:bg-white not-checked:before:hidden checked:border-gray-900 checked:bg-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
-                                  />
-                                </div>
-                                <div className="pl-7 text-sm/6">
-                                  <label
-                                    htmlFor="status-active"
-                                    className="font-medium text-gray-900 cursor-pointer"
-                                  >
-                                    Activo
-                                  </label>
-                                  <p className="text-gray-500">
-                                    El usuario puede iniciar sesión y acceder al
-                                    sistema.
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="relative flex items-start">
-                                <div className="absolute flex h-6 items-center">
-                                  <input
-                                    id="status-inactive"
-                                    name="status"
-                                    type="radio"
-                                    checked={!isActive}
-                                    onChange={() => setIsActive(false)}
-                                    className="relative size-4 appearance-none rounded-full border border-gray-300 before:absolute before:inset-1 before:rounded-full before:bg-white not-checked:before:hidden checked:border-gray-900 checked:bg-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
-                                  />
-                                </div>
-                                <div className="pl-7 text-sm/6">
-                                  <label
-                                    htmlFor="status-inactive"
-                                    className="font-medium text-gray-900 cursor-pointer"
-                                  >
-                                    Inactivo
-                                  </label>
-                                  <p className="text-gray-500">
-                                    El usuario no podrá iniciar sesión hasta que
-                                    el estado vuelva a activo.
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Status explanation and actions */}
-                            {!isActive && originalIsActive === false ? (
-                              <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
-                                <p className="text-xs text-gray-700 mb-2">
-                                  El usuario no podrá iniciar sesión mientras
-                                  esté inactivo. Si el usuario no ha establecido
-                                  su contraseña, puedes reenviar el correo de
-                                  activación para que pueda activar su cuenta y
-                                  establecer su contraseña.
-                                </p>
-                                <button
-                                  type="button"
-                                  onClick={handleResendEmail}
-                                  className="text-xs font-medium text-gray-900 hover:text-gray-700 underline"
-                                >
-                                  Reenviar correo de activación
-                                </button>
-                              </div>
-                            ) : null}
-                          </fieldset>
-
                           {/* Encargado Section */}
                           <div className="space-y-3.5 pt-4">
                             <h3 className="text-sm/6 font-medium text-center underline underline-offset-3 text-gray-900">
@@ -1076,6 +934,145 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
                                 />
                               </div>
                             </div>
+                            {/* Account Information */}
+                            <div className="space-y-4 pt-4">
+                              <h3 className="text-sm/6 font-medium text-center underline underline-offset-3 text-gray-900">
+                                Información de la cuenta
+                              </h3>
+
+                              {/* Last Login */}
+                              <div className="flex items-start">
+                                <div className="shrink-0">
+                                  <ClockIcon
+                                    className="size-5 text-gray-400"
+                                    aria-hidden="true"
+                                  />
+                                </div>
+                                <div className="ml-3 flex-1">
+                                  <p className="text-sm font-medium text-gray-900">
+                                    Último inicio de sesión
+                                  </p>
+                                  <p className="mt-1 text-sm text-gray-500">
+                                    {user.last_login
+                                      ? new Date(
+                                          user.last_login
+                                        ).toLocaleString("es-CR", {
+                                          year: "numeric",
+                                          month: "long",
+                                          day: "numeric",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })
+                                      : "Nunca"}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Date Joined */}
+                              <div className="flex items-start">
+                                <div className="shrink-0">
+                                  <CalendarDaysIcon
+                                    className="size-5 text-gray-400"
+                                    aria-hidden="true"
+                                  />
+                                </div>
+                                <div className="ml-3 flex-1">
+                                  <p className="text-sm font-medium text-gray-900">
+                                    Fecha de registro
+                                  </p>
+                                  <p className="mt-1 text-sm text-gray-500">
+                                    {user.date_joined
+                                      ? new Date(
+                                          user.date_joined
+                                        ).toLocaleString("es-CR", {
+                                          year: "numeric",
+                                          month: "long",
+                                          day: "numeric",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })
+                                      : "N/A"}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            {/* Status */}
+                            <fieldset className="pt-4 mt-4 ">
+                              <legend className="block text-sm/6 font-medium text-center underline underline-offset-3 text-gray-900 mb-3">
+                                Estado
+                              </legend>
+                              <div className="space-y-3">
+                                <div className="relative flex items-start">
+                                  <div className="absolute flex h-6 items-center">
+                                    <input
+                                      id="status-active"
+                                      name="status"
+                                      type="radio"
+                                      checked={isActive}
+                                      onChange={() => setIsActive(true)}
+                                      className="relative size-4 appearance-none rounded-full border border-gray-300 before:absolute before:inset-1 before:rounded-full before:bg-white not-checked:before:hidden checked:border-gray-900 checked:bg-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+                                    />
+                                  </div>
+                                  <div className="pl-7 text-sm/6">
+                                    <label
+                                      htmlFor="status-active"
+                                      className="font-medium text-gray-900 cursor-pointer"
+                                    >
+                                      Activo
+                                    </label>
+                                    <p className="text-gray-500">
+                                      El usuario puede iniciar sesión y acceder
+                                      al sistema.
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="relative flex items-start">
+                                  <div className="absolute flex h-6 items-center">
+                                    <input
+                                      id="status-inactive"
+                                      name="status"
+                                      type="radio"
+                                      checked={!isActive}
+                                      onChange={() => setIsActive(false)}
+                                      className="relative size-4 appearance-none rounded-full border border-gray-300 before:absolute before:inset-1 before:rounded-full before:bg-white not-checked:before:hidden checked:border-gray-900 checked:bg-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+                                    />
+                                  </div>
+                                  <div className="pl-7 text-sm/6">
+                                    <label
+                                      htmlFor="status-inactive"
+                                      className="font-medium text-gray-900 cursor-pointer"
+                                    >
+                                      Inactivo
+                                    </label>
+                                    <p className="text-gray-500">
+                                      El usuario no podrá iniciar sesión hasta
+                                      que el estado vuelva a activo.
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Status explanation and actions */}
+                              {!isActive && originalIsActive === false ? (
+                                <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
+                                  <p className="text-xs text-gray-700 mb-2">
+                                    El usuario no podrá iniciar sesión mientras
+                                    esté inactivo. Si el usuario no ha
+                                    establecido su contraseña, puedes reenviar
+                                    el correo de activación para que pueda
+                                    activar su cuenta y establecer su
+                                    contraseña.
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={handleResendEmail}
+                                    className="text-xs font-medium text-gray-900 hover:text-gray-700 underline"
+                                  >
+                                    Reenviar correo de activación
+                                  </button>
+                                </div>
+                              ) : null}
+                            </fieldset>
                           </div>
                         </div>
                       </div>
@@ -1269,7 +1266,10 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
                           className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
                         >
                           <span className="sr-only">Cerrar</span>
-                          <XMarkIconSolid aria-hidden="true" className="size-5" />
+                          <XMarkIconSolid
+                            aria-hidden="true"
+                            className="size-5"
+                          />
                         </button>
                       </div>
                     </div>
@@ -1325,7 +1325,10 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
                           className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
                         >
                           <span className="sr-only">Cerrar</span>
-                          <XMarkIconSolid aria-hidden="true" className="size-5" />
+                          <XMarkIconSolid
+                            aria-hidden="true"
+                            className="size-5"
+                          />
                         </button>
                       </div>
                     </div>

@@ -25,6 +25,7 @@ const Login = () => {
 
   const userRef = useRef<HTMLInputElement>(null);
   const errRef = useRef<HTMLParagraphElement>(null);
+  const isLoggingIn = useRef(false);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -47,16 +48,40 @@ const Login = () => {
     setErrMsg("");
   }, [username, password]);
 
-  // Redirect if already logged in
+  // Redirect if already logged in (but not during login process)
   useEffect(() => {
-    if (auth) {
-      navigate(from, { replace: true });
+    if (auth && !isLoggingIn.current) {
+      const role = auth.user?.role;
+
+      // Navigate based on user role instead of blindly going to 'from'
+      // This prevents redirecting back to login when 'from' is '/'
+      if (role === "admin") {
+        navigate("/admin/dashboard", { replace: true });
+      } else if (role === "teacher") {
+        navigate("/teacher/dashboard", { replace: true });
+      } else if (role === "student") {
+        navigate("/student/dashboard", { replace: true });
+      } else if (from !== "/" && from !== "/login") {
+        // Only use 'from' if it's not the login page itself
+        navigate(from, { replace: true });
+      } else {
+        // Fallback: if role is unknown and from is login, go to a default page
+        navigate("/", { replace: true });
+      }
     }
   }, [auth, from, navigate]);
+
+  // Reset isLoggingIn flag when component unmounts (after navigation)
+  useEffect(() => {
+    return () => {
+      isLoggingIn.current = false;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    isLoggingIn.current = true;
 
     try {
       const response = await axios.post(
@@ -87,6 +112,7 @@ const Login = () => {
         navigate(from, { replace: true });
       }
     } catch (err: any) {
+      isLoggingIn.current = false;
       if (!err?.response) {
         setErrMsg("Intento de conexión fallido");
       } else if (err.response?.status === 400) {

@@ -23,6 +23,9 @@ import Reports from "./pages/admin/Reports";
 import CreatePassword from "./pages/CreatePassword";
 import AdminUsers from "./pages/admin/AdminUsers";
 import StudentUsers from "./pages/admin/StudentUsers";
+import InstrumentTypes from "./pages/admin/InstrumentTypes";
+import Inventario from "./pages/admin/Inventario";
+import InstrumentLoans from "./pages/admin/InstrumentLoans";
 
 export const router = createBrowserRouter([
   {
@@ -31,7 +34,7 @@ export const router = createBrowserRouter([
       // Public routes
       {
         path: "/",
-        element: <Index />,
+        element: <Login />,
       },
       {
         path: "/login",
@@ -105,6 +108,18 @@ export const router = createBrowserRouter([
               {
                 path: "/admin/estudiantes",
                 element: <StudentUsers />,
+              },
+              {
+                path: "/admin/instrumentos/registro",
+                element: <InstrumentTypes />,
+              },
+              {
+                path: "/admin/instrumentos/inventario",
+                element: <Inventario />,
+              },
+              {
+                path: "/admin/instrumentos/alquileres",
+                element: <InstrumentLoans />,
               },
             ],
           },
