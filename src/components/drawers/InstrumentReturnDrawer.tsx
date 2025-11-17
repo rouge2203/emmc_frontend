@@ -14,6 +14,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
+import { InformationCircleIcon } from "@heroicons/react/24/outline";
 
 interface InstrumentReturnDrawerProps {
   isOpen: boolean;
@@ -40,6 +41,11 @@ interface InstrumentLoanResponse {
   message?: string;
 }
 
+interface Instrument {
+  id: number;
+  location: string | null;
+}
+
 const InstrumentReturnDrawer: React.FC<InstrumentReturnDrawerProps> = ({
   isOpen,
   onClose,
@@ -52,6 +58,9 @@ const InstrumentReturnDrawer: React.FC<InstrumentReturnDrawerProps> = ({
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [returnDate, setReturnDate] = useState("");
+  const [location, setLocation] = useState("");
+  const [previousLocation, setPreviousLocation] = useState<string | null>(null);
+  const [isLoadingInstrument, setIsLoadingInstrument] = useState(false);
 
   // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
@@ -59,18 +68,62 @@ const InstrumentReturnDrawer: React.FC<InstrumentReturnDrawerProps> = ({
     return today.toISOString().split("T")[0];
   };
 
-  // Initialize form when drawer opens
+  // Fetch instrument details when drawer opens
   useEffect(() => {
+    const fetchInstrumentDetails = async () => {
+      if (isOpen && loanId) {
+        setIsLoadingInstrument(true);
+        try {
+          // First, get the loan to get the instrument ID
+          const loanResponse = await axiosPrivate.get<InstrumentLoanResponse>(
+            "instruments/manage-instruments-loans",
+            {
+              params: {
+                instrument_loan_id: loanId,
+              },
+            }
+          );
+          const instrumentId = loanResponse.data.instrument_loan.instrument.id;
+
+          // Then fetch the instrument details to get the location
+          const instrumentsResponse = await axiosPrivate.get<{
+            results: Instrument[];
+          }>("instruments/manage-instruments", {
+            params: {
+              page: 1,
+              page_size: 1000,
+            },
+          });
+          const foundInstrument = instrumentsResponse.data.results.find(
+            (inst) => inst.id === instrumentId
+          );
+          if (foundInstrument) {
+            const currentLocation = foundInstrument.location || "";
+            setPreviousLocation(currentLocation);
+            setLocation(currentLocation);
+          }
+        } catch (err) {
+          console.error("Error fetching instrument details:", err);
+          // Don't show error, just proceed without location
+        } finally {
+          setIsLoadingInstrument(false);
+        }
+      }
+    };
+
     if (isOpen) {
       setReturnDate(getTodayDate());
       setErrors({});
+      fetchInstrumentDetails();
     } else {
       // Reset form when drawer closes
       setReturnDate("");
+      setLocation("");
+      setPreviousLocation(null);
       setErrors({});
       setShowConfirmDialog(false);
     }
-  }, [isOpen]);
+  }, [isOpen, loanId, axiosPrivate]);
 
   const handleSubmit = () => {
     if (!returnDate) {
@@ -89,11 +142,12 @@ const InstrumentReturnDrawer: React.FC<InstrumentReturnDrawerProps> = ({
 
     setIsSubmitting(true);
     try {
-      const response = await axiosPrivate.post<InstrumentLoanResponse>(
+      await axiosPrivate.post<InstrumentLoanResponse>(
         "instruments/register-return",
         {
           instrument_loan_id: loanId,
           actual_return_date: returnDate,
+          location: location || null,
         }
       );
 
@@ -182,7 +236,9 @@ const InstrumentReturnDrawer: React.FC<InstrumentReturnDrawerProps> = ({
                     {errors.submit && (
                       <div className="mx-4 mt-4 sm:mx-6">
                         <div className="rounded-md bg-red-50 border border-red-200 p-3">
-                          <p className="text-sm text-red-800">{errors.submit}</p>
+                          <p className="text-sm text-red-800">
+                            {errors.submit}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -225,6 +281,72 @@ const InstrumentReturnDrawer: React.FC<InstrumentReturnDrawerProps> = ({
                           )}
                         </div>
                       </div>
+
+                      {/* Location */}
+                      <div className="space-y-2 px-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0 sm:px-6 sm:py-5">
+                        <div>
+                          <label
+                            htmlFor="location"
+                            className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
+                          >
+                            Ubicación
+                          </label>
+                          {previousLocation && (
+                            <p className="mt-1 text-xs text-gray-500">
+                              Ubicación anterior:{" "}
+                              {previousLocation || "No especificada"}
+                            </p>
+                          )}
+                        </div>
+                        <div className="sm:col-span-2">
+                          <input
+                            type="text"
+                            id="location"
+                            name="location"
+                            value={location}
+                            onChange={(e) => {
+                              setLocation(e.target.value);
+                              if (errors.location) {
+                                setErrors({});
+                              }
+                            }}
+                            disabled={isLoadingInstrument}
+                            placeholder={
+                              isLoadingInstrument
+                                ? "Cargando..."
+                                : "Ingrese la nueva ubicación del instrumento"
+                            }
+                            className={`block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
+                              errors.location
+                                ? "outline-red-500 focus-visible:outline-red-500"
+                                : "focus-visible:outline-gray-900"
+                            } ${
+                              isLoadingInstrument
+                                ? "bg-gray-50 cursor-not-allowed"
+                                : ""
+                            }`}
+                          />
+                          {errors.location && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {errors.location}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {/* Email notification note */}
+                      <div className="mx-4 mt-4 sm:mx-6">
+                        <div className="rounded-md bg-gray-50 border border-gray-200 p-3">
+                          <p className="text-sm text-gray-800">
+                            <InformationCircleIcon
+                              className="size-5 inline-block mr-1 text-primary"
+                              aria-hidden="true"
+                            />
+                            Al registrar el retorno, se enviará un correo
+                            electrónico al usuario notificando que el retorno ha
+                            sido registrado exitosamente.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -256,7 +378,11 @@ const InstrumentReturnDrawer: React.FC<InstrumentReturnDrawerProps> = ({
       {/* Confirmation Dialog */}
       {typeof document !== "undefined" &&
         createPortal(
-          <Dialog open={showConfirmDialog} onClose={handleCancel} className="relative z-50">
+          <Dialog
+            open={showConfirmDialog}
+            onClose={handleCancel}
+            className="relative z-50"
+          >
             <DialogBackdrop
               transition
               className="fixed inset-0 bg-gray-500/75 transition-opacity data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
@@ -281,8 +407,11 @@ const InstrumentReturnDrawer: React.FC<InstrumentReturnDrawerProps> = ({
                       <div className="mt-2">
                         <p className="text-sm text-gray-500">
                           ¿Estás seguro de que deseas registrar el retorno del
-                          instrumento con fecha {returnDate ? new Date(returnDate).toLocaleDateString("es-CR") : ""}?
-                          Esta acción cambiará el estado del préstamo a
+                          instrumento con fecha{" "}
+                          {returnDate
+                            ? new Date(returnDate).toLocaleDateString("es-CR")
+                            : ""}
+                          ? Esta acción cambiará el estado del préstamo a
                           "devuelto" y liberará el instrumento.
                         </p>
                       </div>
@@ -347,7 +476,10 @@ const InstrumentReturnDrawer: React.FC<InstrumentReturnDrawerProps> = ({
                           className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
                         >
                           <span className="sr-only">Cerrar</span>
-                          <XMarkIconSolid aria-hidden="true" className="size-5" />
+                          <XMarkIconSolid
+                            aria-hidden="true"
+                            className="size-5"
+                          />
                         </button>
                       </div>
                     </div>
@@ -363,4 +495,3 @@ const InstrumentReturnDrawer: React.FC<InstrumentReturnDrawerProps> = ({
 };
 
 export default InstrumentReturnDrawer;
-

@@ -56,10 +56,11 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
   const axiosPrivate = useAxiosPrivate();
   const [user, setUser] = useState<AdminUser | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [showErrorNotification, setShowErrorNotification] = useState(false);
+  const [errorNotificationMessage, setErrorNotificationMessage] = useState("");
   const [showResendEmailDialog, setShowResendEmailDialog] = useState(false);
   const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [showResendEmailNotification, setShowResendEmailNotification] =
@@ -90,7 +91,6 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
 
     try {
       setIsLoading(true);
-      setError(null);
       const response = await axiosPrivate.get<UserResponse>(
         `users/get-user-info?id=${userId}`
       );
@@ -106,11 +106,16 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
       setIsActive(userData.is_active);
       setOriginalIsActive(userData.is_active);
     } catch (err: any) {
-      setError(
+      console.error("Error fetching user data:", err);
+      // Show error notification instead of form error
+      setErrorNotificationMessage(
         err?.response?.data?.error ||
           "Error al cargar la información del usuario"
       );
-      console.error("Error fetching user data:", err);
+      setShowErrorNotification(true);
+      setTimeout(() => {
+        setShowErrorNotification(false);
+      }, 5000);
     } finally {
       setIsLoading(false);
     }
@@ -120,7 +125,6 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
     if (!userId) return;
 
     setIsSaving(true);
-    setError(null);
 
     try {
       const updateData: any = {
@@ -185,9 +189,122 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
       // Optionally close the drawer after successful save
       // onClose();
     } catch (err: any) {
-      setError(err?.response?.data?.error || "Error al guardar los cambios");
       console.error("Error saving user data:", err);
       setShowConfirmDialog(false);
+
+      // Handle duplicate email or cedula errors
+      const errorMessage =
+        err?.response?.data?.error || err?.response?.data?.detail || "";
+      let errorString = "";
+
+      // Handle different error formats (string, tuple, object)
+      if (typeof errorMessage === "string") {
+        errorString = errorMessage;
+      } else if (Array.isArray(errorMessage) && errorMessage.length > 1) {
+        // Handle tuple format: (1062, "Duplicate entry...")
+        errorString = String(errorMessage[1] || errorMessage[0] || "");
+      } else {
+        errorString = JSON.stringify(errorMessage);
+      }
+
+      // Determine error message
+      let errorMsg = "";
+
+      // Check for validation error format: {'cedula': ['Ya existe Usuario con este Cedula.']}
+      if (
+        typeof errorMessage === "object" &&
+        errorMessage !== null &&
+        !Array.isArray(errorMessage)
+      ) {
+        // Check for cedula validation error
+        if (
+          errorMessage.cedula &&
+          Array.isArray(errorMessage.cedula) &&
+          errorMessage.cedula.length > 0
+        ) {
+          const cedulaErrorMsg = errorMessage.cedula[0];
+          if (
+            cedulaErrorMsg.includes("Ya existe") ||
+            cedulaErrorMsg.includes("ya existe")
+          ) {
+            errorMsg = `La cédula "${cedula}" ya está registrada por otro usuario. Por favor, verifique el número de cédula.`;
+          } else {
+            errorMsg = cedulaErrorMsg;
+          }
+        }
+        // Check for email validation error
+        else if (
+          errorMessage.email &&
+          Array.isArray(errorMessage.email) &&
+          errorMessage.email.length > 0
+        ) {
+          const emailErrorMsg = errorMessage.email[0];
+          if (
+            emailErrorMsg.includes("Ya existe") ||
+            emailErrorMsg.includes("ya existe")
+          ) {
+            errorMsg = `El correo electrónico "${email}" ya está en uso por otro usuario. Por favor, use un correo diferente.`;
+          } else {
+            errorMsg = emailErrorMsg;
+          }
+        }
+      }
+
+      // If no validation error found, check for duplicate entry format
+      if (!errorMsg) {
+        // Check for duplicate email error
+        if (
+          errorString.includes("Duplicate entry") &&
+          (errorString.includes("email") ||
+            errorString.includes("api_user_email"))
+        ) {
+          const emailMatch = errorString.match(
+            /Duplicate entry ['"]([^'"]+)['"]/
+          );
+          const duplicateEmail = emailMatch ? emailMatch[1] : email;
+          errorMsg = `El correo electrónico "${duplicateEmail}" ya está en uso por otro usuario. Por favor, use un correo diferente.`;
+        }
+        // Check for duplicate cedula error
+        else if (
+          errorString.includes("Duplicate entry") &&
+          (errorString.includes("cedula") ||
+            errorString.includes("api_user_cedula"))
+        ) {
+          const cedulaMatch = errorString.match(
+            /Duplicate entry ['"]([^'"]+)['"]/
+          );
+          const duplicateCedula = cedulaMatch ? cedulaMatch[1] : cedula;
+          errorMsg = `La cédula "${duplicateCedula}" ya está registrada por otro usuario. Por favor, verifique el número de cédula.`;
+        }
+        // Check for validation error in string format
+        else if (
+          errorString.includes("Ya existe Usuario con este Cedula") ||
+          errorString.includes("Ya existe Usuario con este cedula")
+        ) {
+          errorMsg = `La cédula "${cedula}" ya está registrada por otro usuario. Por favor, verifique el número de cédula.`;
+        } else if (
+          errorString.includes("Ya existe Usuario con este Email") ||
+          errorString.includes("Ya existe Usuario con este email")
+        ) {
+          errorMsg = `El correo electrónico "${email}" ya está en uso por otro usuario. Por favor, use un correo diferente.`;
+        }
+        // Generic error
+        else {
+          errorMsg =
+            typeof errorMessage === "string"
+              ? errorMessage
+              : Array.isArray(errorMessage)
+              ? String(errorMessage[1] || errorMessage[0])
+              : "Error al guardar los cambios";
+        }
+      }
+
+      // Show error notification (no form error display)
+      setErrorNotificationMessage(errorMsg || "Error al guardar los cambios");
+      setShowErrorNotification(true);
+      setTimeout(() => {
+        setShowErrorNotification(false);
+      }, 5000);
     } finally {
       setIsSaving(false);
     }
@@ -209,7 +326,6 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
     if (!userId) return;
 
     setIsResendingEmail(true);
-    setError(null);
 
     try {
       const response = await axiosPrivate.post("auth/resend-activation-email", {
@@ -307,12 +423,6 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
                           <p className="mt-4 text-sm text-gray-600">
                             Cargando información...
                           </p>
-                        </div>
-                      </div>
-                    ) : error ? (
-                      <div className="flex items-center justify-center py-12">
-                        <div className="text-center">
-                          <p className="text-sm text-red-600">{error}</p>
                         </div>
                       </div>
                     ) : user ? (
@@ -784,7 +894,60 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
                           className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
                         >
                           <span className="sr-only">Cerrar</span>
-                          <XMarkIconSolid aria-hidden="true" className="size-5" />
+                          <XMarkIconSolid
+                            aria-hidden="true"
+                            className="size-5"
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Transition>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Error Notification - Rendered via Portal outside Dialog */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <div
+            aria-live="assertive"
+            className="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:items-start sm:p-6 z-[9999]"
+          >
+            <div className="flex w-full flex-col items-center space-y-4 sm:items-end">
+              <Transition show={showErrorNotification}>
+                <div className="pointer-events-auto w-full max-w-sm rounded-lg bg-white shadow-lg outline-1 outline-black/5 ring-1 ring-black/5 transition data-closed:opacity-0 data-enter:transform data-enter:duration-300 data-enter:ease-out data-closed:data-enter:translate-y-2 data-leave:duration-100 data-leave:ease-in data-closed:data-enter:sm:translate-x-2 data-closed:data-enter:sm:translate-y-0">
+                  <div className="p-4">
+                    <div className="flex items-start">
+                      <div className="shrink-0">
+                        <XCircleIcon
+                          aria-hidden="true"
+                          className="size-6 text-red-600"
+                        />
+                      </div>
+                      <div className="ml-3 w-0 flex-1 pt-0.5">
+                        <p className="text-sm font-medium text-gray-900">
+                          Error al guardar
+                        </p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {errorNotificationMessage}
+                        </p>
+                      </div>
+                      <div className="ml-4 flex shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowErrorNotification(false);
+                          }}
+                          className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
+                        >
+                          <span className="sr-only">Cerrar</span>
+                          <XMarkIconSolid
+                            aria-hidden="true"
+                            className="size-5"
+                          />
                         </button>
                       </div>
                     </div>
@@ -840,7 +1003,10 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
                           className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
                         >
                           <span className="sr-only">Cerrar</span>
-                          <XMarkIconSolid aria-hidden="true" className="size-5" />
+                          <XMarkIconSolid
+                            aria-hidden="true"
+                            className="size-5"
+                          />
                         </button>
                       </div>
                     </div>

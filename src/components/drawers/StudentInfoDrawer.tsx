@@ -14,6 +14,7 @@ import {
   ClockIcon,
   CalendarDaysIcon,
   XCircleIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
@@ -71,10 +72,11 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
   const axiosPrivate = useAxiosPrivate();
   const [user, setUser] = useState<StudentUser | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [showErrorNotification, setShowErrorNotification] = useState(false);
+  const [errorNotificationMessage, setErrorNotificationMessage] = useState("");
   const [showResendEmailDialog, setShowResendEmailDialog] = useState(false);
   const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [showResendEmailNotification, setShowResendEmailNotification] =
@@ -83,6 +85,13 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
     useState<"success" | "error">("success");
   const [resendEmailNotificationMessage, setResendEmailNotificationMessage] =
     useState("");
+  const [showEmailActivationDialog, setShowEmailActivationDialog] =
+    useState(false);
+  const [emailActivationMessage, setEmailActivationMessage] = useState("");
+  const [emailActivationType, setEmailActivationType] = useState<
+    "success" | "error"
+  >("success");
+  const [originalEmailWasBlank, setOriginalEmailWasBlank] = useState(false);
 
   // Form state - Basic
   const [firstName, setFirstName] = useState("");
@@ -136,7 +145,6 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
 
     try {
       setIsLoading(true);
-      setError(null);
       const response = await axiosPrivate.get<UserResponse>(
         `users/get-user-info?id=${userId}`
       );
@@ -151,6 +159,10 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
       setPhone(userData.phone || "");
       setIsActive(userData.is_active);
       setOriginalIsActive(userData.is_active);
+
+      // Track if email was originally blank
+      const emailWasBlank = !userData.email || userData.email.trim() === "";
+      setOriginalEmailWasBlank(emailWasBlank);
 
       // Set form values - Student Profile
       if (userData.profile) {
@@ -175,11 +187,16 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
         setEmailSponsor(userData.profile.email_sponsor || "");
       }
     } catch (err: any) {
-      setError(
+      console.error("Error fetching user data:", err);
+      // Show error notification instead of form error
+      setErrorNotificationMessage(
         err?.response?.data?.error ||
           "Error al cargar la información del estudiante"
       );
-      console.error("Error fetching user data:", err);
+      setShowErrorNotification(true);
+      setTimeout(() => {
+        setShowErrorNotification(false);
+      }, 5000);
     } finally {
       setIsLoading(false);
     }
@@ -188,8 +205,20 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
   const handleSave = async () => {
     if (!userId) return;
 
+    // Validate: cannot change from inactive to active
+    if (isActive && !originalIsActive) {
+      setErrorNotificationMessage(
+        "No se puede cambiar el estado de inactivo a activo desde esta interfaz."
+      );
+      setShowErrorNotification(true);
+      setTimeout(() => {
+        setShowErrorNotification(false);
+      }, 5000);
+      setShowConfirmDialog(false);
+      return;
+    }
+
     setIsSaving(true);
-    setError(null);
 
     try {
       const updateData: any = {
@@ -324,6 +353,34 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
           setEmailSponsor(updatedUserData.profile.email_sponsor || "");
         }
 
+        // Check if email was blank and now has a value - send activation email
+        const emailWasAdded =
+          originalEmailWasBlank &&
+          updatedUserData.email &&
+          updatedUserData.email.trim() !== "";
+        if (emailWasAdded) {
+          try {
+            await axiosPrivate.post("auth/resend-activation-email", {
+              id: userId,
+            });
+            setEmailActivationType("success");
+            setEmailActivationMessage(
+              `Se ha guardado el correo electrónico y se ha enviado un correo de activación a ${updatedUserData.email}.`
+            );
+            setShowEmailActivationDialog(true);
+            setOriginalEmailWasBlank(false); // Update flag since email is no longer blank
+          } catch (err: any) {
+            setEmailActivationType("error");
+            setEmailActivationMessage(
+              err?.response?.data?.error ||
+                err?.response?.data?.detail ||
+                "Se guardó el correo electrónico, pero hubo un error al enviar el correo de activación. Puedes reenviarlo manualmente más tarde."
+            );
+            setShowEmailActivationDialog(true);
+            setOriginalEmailWasBlank(false);
+          }
+        }
+
         // Notify parent component
         if (onSaveSuccess) {
           onSaveSuccess(updatedUserData);
@@ -333,15 +390,130 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
       // Close confirmation dialog
       setShowConfirmDialog(false);
 
-      // Show success notification
-      setShowSuccessNotification(true);
-      setTimeout(() => {
-        setShowSuccessNotification(false);
-      }, 5000);
+      // Show success notification (only if email wasn't added, otherwise emailActivationDialog will show)
+      if (!(originalEmailWasBlank && email && email.trim() !== "")) {
+        setShowSuccessNotification(true);
+        setTimeout(() => {
+          setShowSuccessNotification(false);
+        }, 5000);
+      }
     } catch (err: any) {
-      setError(err?.response?.data?.error || "Error al guardar los cambios");
       console.error("Error saving user data:", err);
       setShowConfirmDialog(false);
+
+      // Handle duplicate email or cedula errors
+      const errorMessage =
+        err?.response?.data?.error || err?.response?.data?.detail || "";
+      let errorString = "";
+
+      // Handle different error formats (string, tuple, object)
+      if (typeof errorMessage === "string") {
+        errorString = errorMessage;
+      } else if (Array.isArray(errorMessage) && errorMessage.length > 1) {
+        // Handle tuple format: (1062, "Duplicate entry...")
+        errorString = String(errorMessage[1] || errorMessage[0] || "");
+      } else {
+        errorString = JSON.stringify(errorMessage);
+      }
+
+      // Determine error message
+      let errorMsg = "";
+
+      // Check for validation error format: {'cedula': ['Ya existe Usuario con este Cedula.']}
+      if (
+        typeof errorMessage === "object" &&
+        errorMessage !== null &&
+        !Array.isArray(errorMessage)
+      ) {
+        // Check for cedula validation error
+        if (
+          errorMessage.cedula &&
+          Array.isArray(errorMessage.cedula) &&
+          errorMessage.cedula.length > 0
+        ) {
+          const cedulaErrorMsg = errorMessage.cedula[0];
+          if (
+            cedulaErrorMsg.includes("Ya existe") ||
+            cedulaErrorMsg.includes("ya existe")
+          ) {
+            errorMsg = `La cédula "${cedula}" ya está registrada por otro usuario. Por favor, verifique el número de cédula.`;
+          } else {
+            errorMsg = cedulaErrorMsg;
+          }
+        }
+        // Check for email validation error
+        else if (
+          errorMessage.email &&
+          Array.isArray(errorMessage.email) &&
+          errorMessage.email.length > 0
+        ) {
+          const emailErrorMsg = errorMessage.email[0];
+          if (
+            emailErrorMsg.includes("Ya existe") ||
+            emailErrorMsg.includes("ya existe")
+          ) {
+            errorMsg = `El correo electrónico "${email}" ya está en uso por otro usuario. Por favor, use un correo diferente.`;
+          } else {
+            errorMsg = emailErrorMsg;
+          }
+        }
+      }
+
+      // If no validation error found, check for duplicate entry format
+      if (!errorMsg) {
+        // Check for duplicate email error
+        if (
+          errorString.includes("Duplicate entry") &&
+          (errorString.includes("email") ||
+            errorString.includes("api_user_email"))
+        ) {
+          const emailMatch = errorString.match(
+            /Duplicate entry ['"]([^'"]+)['"]/
+          );
+          const duplicateEmail = emailMatch ? emailMatch[1] : email;
+          errorMsg = `El correo electrónico "${duplicateEmail}" ya está en uso por otro usuario. Por favor, use un correo diferente.`;
+        }
+        // Check for duplicate cedula error
+        else if (
+          errorString.includes("Duplicate entry") &&
+          (errorString.includes("cedula") ||
+            errorString.includes("api_user_cedula"))
+        ) {
+          const cedulaMatch = errorString.match(
+            /Duplicate entry ['"]([^'"]+)['"]/
+          );
+          const duplicateCedula = cedulaMatch ? cedulaMatch[1] : cedula;
+          errorMsg = `La cédula "${duplicateCedula}" ya está registrada por otro usuario. Por favor, verifique el número de cédula.`;
+        }
+        // Check for validation error in string format
+        else if (
+          errorString.includes("Ya existe Usuario con este Cedula") ||
+          errorString.includes("Ya existe Usuario con este cedula")
+        ) {
+          errorMsg = `La cédula "${cedula}" ya está registrada por otro usuario. Por favor, verifique el número de cédula.`;
+        } else if (
+          errorString.includes("Ya existe Usuario con este Email") ||
+          errorString.includes("Ya existe Usuario con este email")
+        ) {
+          errorMsg = `El correo electrónico "${email}" ya está en uso por otro usuario. Por favor, use un correo diferente.`;
+        }
+        // Generic error
+        else {
+          errorMsg =
+            typeof errorMessage === "string"
+              ? errorMessage
+              : Array.isArray(errorMessage)
+              ? String(errorMessage[1] || errorMessage[0])
+              : "Error al guardar los cambios";
+        }
+      }
+
+      // Show error notification (no form error display)
+      setErrorNotificationMessage(errorMsg || "Error al guardar los cambios");
+      setShowErrorNotification(true);
+      setTimeout(() => {
+        setShowErrorNotification(false);
+      }, 5000);
     } finally {
       setIsSaving(false);
     }
@@ -363,7 +535,6 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
     if (!userId) return;
 
     setIsResendingEmail(true);
-    setError(null);
 
     try {
       const response = await axiosPrivate.post("auth/resend-activation-email", {
@@ -465,12 +636,6 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
                           </p>
                         </div>
                       </div>
-                    ) : error ? (
-                      <div className="flex items-center justify-center py-12">
-                        <div className="text-center">
-                          <p className="text-sm text-red-600">{error}</p>
-                        </div>
-                      </div>
                     ) : user ? (
                       <div className="divide-y divide-gray-200 px-4 sm:px-6 py-6">
                         <div className="space-y-3.5">
@@ -547,10 +712,24 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
                                   className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                                 />
                               </div>
-                              <p className="mt-1 ml-0.5 text-xs text-gray-500">
-                                Correo electrónico del usuario con el cual
-                                inicia sesión
-                              </p>
+                              {(!email || email.trim() === "") &&
+                              originalEmailWasBlank ? (
+                                <div className="mt-1 ml-0.5 flex items-center gap-1.5">
+                                  <ExclamationTriangleIcon
+                                    className="size-6 text-red-800 animate-pulse "
+                                    aria-hidden="true"
+                                  />
+                                  <p className="text-xs text-gray-600">
+                                    Por favor asigne un correo para acceder al
+                                    portal estudiantil.
+                                  </p>
+                                </div>
+                              ) : (
+                                <p className="mt-1 ml-0.5 text-xs text-gray-500">
+                                  Correo electrónico del usuario para iniciar
+                                  sesión en portal estudiantil.
+                                </p>
+                              )}
                             </div>
 
                             {/* Cédula */}
@@ -1010,17 +1189,32 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
                                       type="radio"
                                       checked={isActive}
                                       onChange={() => setIsActive(true)}
-                                      className="relative size-4 appearance-none rounded-full border border-gray-300 before:absolute before:inset-1 before:rounded-full before:bg-white not-checked:before:hidden checked:border-gray-900 checked:bg-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+                                      disabled={true}
+                                      className={`relative size-4 appearance-none rounded-full border before:absolute before:inset-1 before:rounded-full before:bg-white not-checked:before:hidden focus-visible:outline-2 focus-visible:outline-offset-2 cursor-not-allowed ${
+                                        isActive
+                                          ? "border-gray-900 bg-gray-900 opacity-50"
+                                          : "border-gray-300 bg-gray-100 opacity-50"
+                                      }`}
                                     />
                                   </div>
                                   <div className="pl-7 text-sm/6">
                                     <label
                                       htmlFor="status-active"
-                                      className="font-medium text-gray-900 cursor-pointer"
+                                      className={`font-medium cursor-not-allowed ${
+                                        isActive
+                                          ? "text-gray-900"
+                                          : "text-gray-400"
+                                      }`}
                                     >
                                       Activo
                                     </label>
-                                    <p className="text-gray-500">
+                                    <p
+                                      className={`${
+                                        isActive
+                                          ? "text-gray-500"
+                                          : "text-gray-400"
+                                      }`}
+                                    >
                                       El usuario puede iniciar sesión y acceder
                                       al sistema.
                                     </p>
@@ -1053,22 +1247,23 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
                               </div>
 
                               {/* Status explanation and actions */}
-                              {!isActive && originalIsActive === false ? (
+                              {!isActive &&
+                              originalIsActive === false &&
+                              !originalEmailWasBlank ? (
                                 <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
                                   <p className="text-xs text-gray-700 mb-2">
                                     El usuario no podrá iniciar sesión mientras
                                     esté inactivo. Si el usuario no ha
-                                    establecido su contraseña, puedes reenviar
-                                    el correo de activación para que pueda
-                                    activar su cuenta y establecer su
-                                    contraseña.
+                                    establecido su contraseña, puede enviar el
+                                    correo de activación para que pueda activar
+                                    su cuenta y establecer su contraseña.
                                   </p>
                                   <button
                                     type="button"
                                     onClick={handleResendEmail}
                                     className="text-xs font-medium text-gray-900 hover:text-gray-700 underline"
                                   >
-                                    Reenviar correo de activación
+                                    Enviar correo de activación
                                   </button>
                                 </div>
                               ) : null}
@@ -1281,6 +1476,56 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
           document.body
         )}
 
+      {/* Error Notification - Rendered via Portal outside Dialog */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <div
+            aria-live="assertive"
+            className="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:items-start sm:p-6 z-[9999]"
+          >
+            <div className="flex w-full flex-col items-center space-y-4 sm:items-end">
+              <Transition show={showErrorNotification}>
+                <div className="pointer-events-auto w-full max-w-sm rounded-lg bg-white shadow-lg outline-1 outline-black/5 ring-1 ring-black/5 transition data-closed:opacity-0 data-enter:transform data-enter:duration-300 data-enter:ease-out data-closed:data-enter:translate-y-2 data-leave:duration-100 data-leave:ease-in data-closed:data-enter:sm:translate-x-2 data-closed:data-enter:sm:translate-y-0">
+                  <div className="p-4">
+                    <div className="flex items-start">
+                      <div className="shrink-0">
+                        <XCircleIcon
+                          aria-hidden="true"
+                          className="size-6 text-red-600"
+                        />
+                      </div>
+                      <div className="ml-3 w-0 flex-1 pt-0.5">
+                        <p className="text-sm font-medium text-gray-900">
+                          Error al guardar
+                        </p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {errorNotificationMessage}
+                        </p>
+                      </div>
+                      <div className="ml-4 flex shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowErrorNotification(false);
+                          }}
+                          className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
+                        >
+                          <span className="sr-only">Cerrar</span>
+                          <XMarkIconSolid
+                            aria-hidden="true"
+                            className="size-5"
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Transition>
+            </div>
+          </div>,
+          document.body
+        )}
+
       {/* Resend Email Notification - Rendered via Portal outside Dialog */}
       {typeof document !== "undefined" &&
         createPortal(
@@ -1339,6 +1584,67 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
           </div>,
           document.body
         )}
+
+      {/* Email Activation Dialog */}
+      <Dialog
+        open={showEmailActivationDialog}
+        onClose={() => setShowEmailActivationDialog(false)}
+        className="relative z-50"
+      >
+        <DialogBackdrop
+          transition
+          className="fixed inset-0 bg-gray-500/75 transition-opacity data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
+        />
+
+        <div className="fixed inset-0 z-50 w-screen overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <DialogPanel
+              transition
+              className="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in sm:my-8 sm:w-full sm:max-w-lg sm:p-6 data-closed:sm:translate-y-0 data-closed:sm:scale-95"
+            >
+              <div className="sm:flex sm:items-start">
+                <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-gray-100 sm:mx-0 sm:size-10">
+                  {emailActivationType === "success" ? (
+                    <CheckCircleIcon
+                      aria-hidden="true"
+                      className="size-6 text-primary"
+                    />
+                  ) : (
+                    <XCircleIcon
+                      aria-hidden="true"
+                      className="size-6 text-red-600"
+                    />
+                  )}
+                </div>
+                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                  <DialogTitle
+                    as="h3"
+                    className="text-base font-semibold text-gray-900"
+                  >
+                    {emailActivationType === "success"
+                      ? "Correo guardado y activación enviada"
+                      : "Correo guardado con advertencia"}
+                  </DialogTitle>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      {emailActivationMessage}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={() => setShowEmailActivationDialog(false)}
+                  className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 sm:ml-3 sm:w-auto"
+                >
+                  Entendido
+                </button>
+              </div>
+            </DialogPanel>
+          </div>
+        </div>
+      </Dialog>
     </>
   );
 };
