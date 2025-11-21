@@ -15,6 +15,7 @@ import {
   ClockIcon,
   TrashIcon,
   ExclamationTriangleIcon,
+  XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
@@ -86,6 +87,8 @@ const InstrumentLoanEditDrawer: React.FC<InstrumentLoanEditDrawerProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [showErrorNotification, setShowErrorNotification] = useState(false);
+  const [errorNotificationMessage, setErrorNotificationMessage] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -184,7 +187,13 @@ const InstrumentLoanEditDrawer: React.FC<InstrumentLoanEditDrawerProps> = ({
         setShowSuccessNotification(false);
       }, 5000);
     } catch (err: any) {
-      setError(err?.response?.data?.error || "Error al guardar los cambios");
+      const errorMessage =
+        err?.response?.data?.error || "Error al guardar los cambios";
+      setErrorNotificationMessage(errorMessage);
+      setShowErrorNotification(true);
+      setTimeout(() => {
+        setShowErrorNotification(false);
+      }, 5000);
       console.error("Error saving loan data:", err);
       setShowConfirmDialog(false);
     } finally {

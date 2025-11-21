@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import { PiStudent } from "react-icons/pi";
 
@@ -12,6 +13,7 @@ import StudentInfoDrawer from "../../components/drawers/StudentInfoDrawer";
 import StudentCreateDrawer from "../../components/drawers/StudentCreateDrawer";
 import UserObservationsDrawer from "../../components/drawers/UserObservationsDrawer";
 import { RiMailCloseFill } from "react-icons/ri";
+import { HiOutlineAcademicCap } from "react-icons/hi2";
 
 interface StudentUser {
   id: number;
@@ -61,6 +63,7 @@ interface PaginatedResponse {
 }
 
 const StudentUsers = () => {
+  const navigate = useNavigate();
   const axiosPrivate = useAxiosPrivate();
   const [users, setUsers] = useState<StudentUser[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
@@ -499,6 +502,25 @@ const StudentUsers = () => {
                             </td>
                             <td className="py-5 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
                               <div className="flex gap-2 justify-end">
+                                <button
+                                  onClick={() => {
+                                    // If last_name is null or blank, search only by first_name
+                                    // If both exist, search only by last_name
+                                    const searchTerm = user.last_name?.trim()
+                                      ? user.last_name.trim()
+                                      : user.first_name?.trim() || "";
+                                    navigate(
+                                      `/admin/cursos-matriculados?student_search=${encodeURIComponent(
+                                        searchTerm
+                                      )}`
+                                    );
+                                  }}
+                                  className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm flex items-center gap-1"
+                                >
+                                  <HiOutlineAcademicCap className="h-4 w-4" />
+                                  Cursos
+                                  <span className="sr-only">, {fullName}</span>
+                                </button>
                                 <button
                                   onClick={() => handleEdit(user)}
                                   className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm"

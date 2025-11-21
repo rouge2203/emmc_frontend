@@ -26,6 +26,10 @@ import StudentUsers from "./pages/admin/StudentUsers";
 import InstrumentTypes from "./pages/admin/InstrumentTypes";
 import Inventario from "./pages/admin/Inventario";
 import InstrumentLoans from "./pages/admin/InstrumentLoans";
+import Catedra from "./pages/admin/Catedra";
+import Courses from "./pages/admin/Courses";
+import CourseEnrollments from "./pages/admin/CourseEnrollments";
+import TeacherUsers from "./pages/admin/TeacherUsers";
 
 export const router = createBrowserRouter([
   {
@@ -106,6 +110,10 @@ export const router = createBrowserRouter([
                 element: <AdminUsers />,
               },
               {
+                path: "/admin/profesores",
+                element: <TeacherUsers />,
+              },
+              {
                 path: "/admin/estudiantes",
                 element: <StudentUsers />,
               },
@@ -120,6 +128,18 @@ export const router = createBrowserRouter([
               {
                 path: "/admin/instrumentos/alquileres",
                 element: <InstrumentLoans />,
+              },
+              {
+                path: "/admin/catedra",
+                element: <Catedra />,
+              },
+              {
+                path: "/admin/cursos",
+                element: <Courses />,
+              },
+              {
+                path: "/admin/cursos-matriculados",
+                element: <CourseEnrollments />,
               },
             ],
           },

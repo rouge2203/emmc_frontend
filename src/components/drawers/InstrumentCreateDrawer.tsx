@@ -7,7 +7,7 @@ import {
   DialogBackdrop,
   Transition,
 } from "@headlessui/react";
-import { XMarkIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon, CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import { InformationCircleIcon } from "@heroicons/react/24/outline";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
@@ -74,6 +74,8 @@ const InstrumentCreateDrawer: React.FC<InstrumentCreateDrawerProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [showErrorNotification, setShowErrorNotification] = useState(false);
+  const [errorNotificationMessage, setErrorNotificationMessage] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Form state
@@ -223,16 +225,16 @@ const InstrumentCreateDrawer: React.FC<InstrumentCreateDrawerProps> = ({
       console.error("Error creating instrument:", err);
       setShowConfirmDialog(false);
 
-      // Set error message for display
+      // Set error message for notification
       const errorMessage =
         err?.response?.data?.error ||
         err?.response?.data?.detail ||
         "Error al crear el instrumento. Por favor, intenta de nuevo.";
-      setErrors({ submit: errorMessage });
 
-      // Clear error after 5 seconds
+      setErrorNotificationMessage(errorMessage);
+      setShowErrorNotification(true);
       setTimeout(() => {
-        setErrors({});
+        setShowErrorNotification(false);
       }, 5000);
     } finally {
       setIsCreating(false);
@@ -609,6 +611,56 @@ const InstrumentCreateDrawer: React.FC<InstrumentCreateDrawerProps> = ({
                         >
                           <span className="sr-only">Cerrar</span>
                           <XMarkIconSolid aria-hidden="true" className="size-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Transition>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Error Notification - Rendered via Portal outside Dialog */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <div
+            aria-live="assertive"
+            className="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:items-start sm:p-6 z-[9999]"
+          >
+            <div className="flex w-full flex-col items-center space-y-4 sm:items-end">
+              <Transition show={showErrorNotification}>
+                <div className="pointer-events-auto w-full max-w-sm rounded-lg bg-white shadow-lg outline-1 outline-black/5 ring-1 ring-black/5 transition data-closed:opacity-0 data-enter:transform data-enter:duration-300 data-enter:ease-out data-closed:data-enter:translate-y-2 data-leave:duration-100 data-leave:ease-in data-closed:data-enter:sm:translate-x-2 data-closed:data-enter:sm:translate-y-0">
+                  <div className="p-4">
+                    <div className="flex items-start">
+                      <div className="shrink-0">
+                        <XCircleIcon
+                          aria-hidden="true"
+                          className="size-6 text-red-600"
+                        />
+                      </div>
+                      <div className="ml-3 w-0 flex-1 pt-0.5">
+                        <p className="text-sm font-medium text-gray-900">
+                          Error al crear
+                        </p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {errorNotificationMessage}
+                        </p>
+                      </div>
+                      <div className="ml-4 flex shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowErrorNotification(false);
+                          }}
+                          className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
+                        >
+                          <span className="sr-only">Cerrar</span>
+                          <XMarkIconSolid
+                            aria-hidden="true"
+                            className="size-5"
+                          />
                         </button>
                       </div>
                     </div>

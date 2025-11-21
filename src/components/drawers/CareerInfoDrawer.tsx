@@ -12,43 +12,48 @@ import {
   InformationCircleIcon,
   CheckCircleIcon,
   CalendarDaysIcon,
+  ClockIcon,
   XCircleIcon,
 } from "@heroicons/react/24/outline";
+import { IoMdBook } from "react-icons/io";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 
-interface InstrumentType {
+interface Career {
   id: number;
   name: string;
   description: string | null;
-  created_at: string;
+  image_url: string | null;
+  created_by: { id: number; first_name: string; last_name: string } | null;
+  created_at: string | null;
+  updated_by: { id: number; first_name: string; last_name: string } | null;
+  updated_at: string | null;
+  courses_count: number;
 }
 
-interface InstrumentTypeEditDrawerProps {
-  instrumentTypeId: number | null;
+interface CareerInfoDrawerProps {
+  careerId: number | null;
   isOpen: boolean;
   onClose: () => void;
-  onInstrumentTypeUpdated?: (updatedInstrumentType: InstrumentType) => void;
+  onCareerUpdated?: (updatedCareer: Career) => void;
 }
 
-interface InstrumentTypeResponse {
-  instrument_type: InstrumentType;
+interface CareerResponse {
+  career: Career;
 }
 
-interface InstrumentTypesResponse {
-  instrument_types: InstrumentType[];
+interface CareersResponse {
+  careers: Career[];
 }
 
-const InstrumentTypeEditDrawer: React.FC<InstrumentTypeEditDrawerProps> = ({
-  instrumentTypeId,
+const CareerInfoDrawer: React.FC<CareerInfoDrawerProps> = ({
+  careerId,
   isOpen,
   onClose,
-  onInstrumentTypeUpdated,
+  onCareerUpdated,
 }) => {
   const axiosPrivate = useAxiosPrivate();
-  const [instrumentType, setInstrumentType] = useState<InstrumentType | null>(
-    null
-  );
+  const [career, setCareer] = useState<Career | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -60,78 +65,82 @@ const InstrumentTypeEditDrawer: React.FC<InstrumentTypeEditDrawerProps> = ({
   // Form state
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
 
   useEffect(() => {
-    if (isOpen && instrumentTypeId) {
-      fetchInstrumentTypeData();
+    if (isOpen && careerId) {
+      fetchCareerData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, instrumentTypeId]);
+  }, [isOpen, careerId]);
 
-  const fetchInstrumentTypeData = async () => {
-    if (!instrumentTypeId) return;
+  const fetchCareerData = async () => {
+    if (!careerId) return;
 
     try {
       setIsLoading(true);
       setError(null);
-      const response = await axiosPrivate.get<InstrumentTypesResponse>(
-        "instruments/manage-instruments-types"
+      const response = await axiosPrivate.get<CareersResponse>(
+        "courses/manage-careers"
       );
-      const foundType = response.data.instrument_types.find(
-        (type) => type.id === instrumentTypeId
-      );
-      if (foundType) {
-        setInstrumentType(foundType);
-        setName(foundType.name || "");
-        setDescription(foundType.description || "");
+      const foundCareer = response.data.careers.find((c) => c.id === careerId);
+      if (foundCareer) {
+        setCareer(foundCareer);
+        setName(foundCareer.name || "");
+        setDescription(foundCareer.description || "");
+        setImageUrl(foundCareer.image_url || "");
       } else {
-        setError("Tipo de instrumento no encontrado");
+        setError("Cátedra no encontrada");
       }
     } catch (err: any) {
       setError(
         err?.response?.data?.error ||
-          "Error al cargar la información del tipo de instrumento"
+          "Error al cargar la información de la cárrera"
       );
-      console.error("Error fetching instrument type data:", err);
+      console.error("Error fetching career data:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSave = async () => {
-    if (!instrumentTypeId) return;
+    if (!careerId) return;
 
     setIsSaving(true);
     setError(null);
 
     try {
       const updateData: any = {
-        instrument_type_id: instrumentTypeId,
+        career_id: careerId,
       };
 
       // Only include fields that have changed
-      if (name !== (instrumentType?.name || "")) {
+      if (name !== (career?.name || "")) {
         updateData.name = name;
       }
-      if (description !== (instrumentType?.description || "")) {
+      if (description !== (career?.description || "")) {
         updateData.description = description || null;
       }
+      if (imageUrl !== (career?.image_url || "")) {
+        updateData.image_url = imageUrl || null;
+      }
 
-      const response = await axiosPrivate.put<InstrumentTypeResponse>(
-        "instruments/manage-instruments-types",
+      const response = await axiosPrivate.put<CareerResponse>(
+        "courses/manage-careers",
         updateData
       );
 
       // Update local state with response
-      const updatedInstrumentType = response.data.instrument_type;
-      if (updatedInstrumentType) {
-        setInstrumentType(updatedInstrumentType);
-        setName(updatedInstrumentType.name || "");
-        setDescription(updatedInstrumentType.description || "");
+      const updatedCareer = response.data.career;
+      if (updatedCareer) {
+        setCareer(updatedCareer);
+        setName(updatedCareer.name || "");
+        setDescription(updatedCareer.description || "");
+        setImageUrl(updatedCareer.image_url || "");
 
         // Notify parent component to update the list
-        if (onInstrumentTypeUpdated) {
-          onInstrumentTypeUpdated(updatedInstrumentType);
+        if (onCareerUpdated) {
+          onCareerUpdated(updatedCareer);
         }
       }
 
@@ -152,7 +161,7 @@ const InstrumentTypeEditDrawer: React.FC<InstrumentTypeEditDrawerProps> = ({
       setTimeout(() => {
         setShowErrorNotification(false);
       }, 5000);
-      console.error("Error saving instrument type data:", err);
+      console.error("Error saving career data:", err);
       setShowConfirmDialog(false);
     } finally {
       setIsSaving(false);
@@ -184,7 +193,7 @@ const InstrumentTypeEditDrawer: React.FC<InstrumentTypeEditDrawerProps> = ({
                     <div className="bg-gray-900 px-4 py-20 sm:px-6">
                       <div className="flex items-center justify-between">
                         <DialogTitle className="text-base font-semibold text-white">
-                          Información del Tipo de Instrumento
+                          Información de la Cátedra
                         </DialogTitle>
                         <div className="ml-3 flex h-7 items-center">
                           <button
@@ -200,7 +209,7 @@ const InstrumentTypeEditDrawer: React.FC<InstrumentTypeEditDrawerProps> = ({
                       </div>
                       <div className="mt-1">
                         <p className="text-sm text-gray-300">
-                          Edita la información del tipo de instrumento.
+                          Edita la información de la cátedra.
                         </p>
                       </div>
                     </div>
@@ -219,7 +228,7 @@ const InstrumentTypeEditDrawer: React.FC<InstrumentTypeEditDrawerProps> = ({
                           <p className="text-sm text-red-600">{error}</p>
                         </div>
                       </div>
-                    ) : instrumentType ? (
+                    ) : career ? (
                       <div className="divide-y divide-gray-200 px-4 sm:px-6 py-6">
                         <div className="space-y-3.5">
                           {/* Name */}
@@ -262,12 +271,50 @@ const InstrumentTypeEditDrawer: React.FC<InstrumentTypeEditDrawerProps> = ({
                             </div>
                           </div>
 
+                          {/* Image URL */}
+                          <div>
+                            <label
+                              htmlFor="image_url"
+                              className="block text-sm/6 font-medium text-gray-900"
+                            >
+                              URL de Imagen
+                            </label>
+                            <div className="mt-2">
+                              <input
+                                id="image_url"
+                                name="image_url"
+                                type="text"
+                                value={imageUrl}
+                                onChange={(e) => setImageUrl(e.target.value)}
+                                placeholder="https://ejemplo.com/imagen.jpg"
+                                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                              />
+                            </div>
+                          </div>
+
                           {/* Account Information */}
                           <div className="space-y-4 pt-4 border-t border-gray-200">
                             <h3 className="text-sm/6 font-medium text-gray-900">
                               Información adicional
                             </h3>
 
+                            {/* Courses Count */}
+                            <div className="flex items-start">
+                              <div className="shrink-0">
+                                <IoMdBook
+                                  className="size-5 text-gray-400"
+                                  aria-hidden="true"
+                                />
+                              </div>
+                              <div className="ml-3 flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  Cantidad de cursos
+                                </p>
+                                <p className="mt-1 text-sm text-gray-500">
+                                  {career.courses_count || 0}
+                                </p>
+                              </div>
+                            </div>
                             {/* Created At */}
                             <div className="flex items-start">
                               <div className="shrink-0">
@@ -281,9 +328,77 @@ const InstrumentTypeEditDrawer: React.FC<InstrumentTypeEditDrawerProps> = ({
                                   Fecha de creación
                                 </p>
                                 <p className="mt-1 text-sm text-gray-500">
-                                  {instrumentType.created_at
+                                  {career.created_at
                                     ? new Date(
-                                        instrumentType.created_at
+                                        career.created_at
+                                      ).toLocaleString("es-CR", {
+                                        year: "numeric",
+                                        month: "long",
+                                        day: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })
+                                    : "N/A"}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Created By */}
+                            <div className="flex items-start">
+                              <div className="shrink-0">
+                                <ClockIcon
+                                  className="size-5 text-gray-400"
+                                  aria-hidden="true"
+                                />
+                              </div>
+                              <div className="ml-3 flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  Creado por
+                                </p>
+                                <p className="mt-1 text-sm text-gray-500">
+                                  {career.created_by
+                                    ? `${career.created_by.first_name} ${career.created_by.last_name}`
+                                    : "N/A"}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Updated By */}
+                            <div className="flex items-start">
+                              <div className="shrink-0">
+                                <ClockIcon
+                                  className="size-5 text-gray-400"
+                                  aria-hidden="true"
+                                />
+                              </div>
+                              <div className="ml-3 flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  Última actualización por
+                                </p>
+                                <p className="mt-1 text-sm text-gray-500">
+                                  {career.updated_by
+                                    ? `${career.updated_by.first_name} ${career.updated_by.last_name}`
+                                    : "N/A"}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Updated At */}
+                            <div className="flex items-start">
+                              <div className="shrink-0">
+                                <ClockIcon
+                                  className="size-5 text-gray-400"
+                                  aria-hidden="true"
+                                />
+                              </div>
+                              <div className="ml-3 flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  Fecha de última actualización
+                                </p>
+                                <p className="mt-1 text-sm text-gray-500">
+                                  {career.updated_at
+                                    ? new Date(
+                                        career.updated_at
                                       ).toLocaleString("es-CR", {
                                         year: "numeric",
                                         month: "long",
@@ -359,8 +474,8 @@ const InstrumentTypeEditDrawer: React.FC<InstrumentTypeEditDrawerProps> = ({
                   </DialogTitle>
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
-                      ¿Estás seguro de que deseas guardar los cambios en el tipo
-                      de instrumento? Esta acción actualizará los datos.
+                      ¿Estás seguro de que deseas guardar los cambios en la
+                      cátedra? Esta acción actualizará los datos.
                     </p>
                   </div>
                 </div>
@@ -411,7 +526,7 @@ const InstrumentTypeEditDrawer: React.FC<InstrumentTypeEditDrawerProps> = ({
                           ¡Guardado exitosamente!
                         </p>
                         <p className="mt-1 text-sm text-gray-500">
-                          Los cambios en el tipo de instrumento se han actualizado
+                          Los cambios en la cátedra se han actualizado
                           correctamente.
                         </p>
                       </div>
@@ -420,53 +535,6 @@ const InstrumentTypeEditDrawer: React.FC<InstrumentTypeEditDrawerProps> = ({
                           type="button"
                           onClick={() => {
                             setShowSuccessNotification(false);
-                          }}
-                          className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
-                        >
-                          <span className="sr-only">Cerrar</span>
-                          <XMarkIconSolid aria-hidden="true" className="size-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Transition>
-            </div>
-          </div>,
-          document.body
-        )}
-
-      {/* Error Notification - Rendered via Portal outside Dialog */}
-      {typeof document !== "undefined" &&
-        createPortal(
-          <div
-            aria-live="assertive"
-            className="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:items-start sm:p-6 z-[9999]"
-          >
-            <div className="flex w-full flex-col items-center space-y-4 sm:items-end">
-              <Transition show={showErrorNotification}>
-                <div className="pointer-events-auto w-full max-w-sm rounded-lg bg-white shadow-lg outline-1 outline-black/5 ring-1 ring-black/5 transition data-closed:opacity-0 data-enter:transform data-enter:duration-300 data-enter:ease-out data-closed:data-enter:translate-y-2 data-leave:duration-100 data-leave:ease-in data-closed:data-enter:sm:translate-x-2 data-closed:data-enter:sm:translate-y-0">
-                  <div className="p-4">
-                    <div className="flex items-start">
-                      <div className="shrink-0">
-                        <XCircleIcon
-                          aria-hidden="true"
-                          className="size-6 text-red-600"
-                        />
-                      </div>
-                      <div className="ml-3 w-0 flex-1 pt-0.5">
-                        <p className="text-sm font-medium text-gray-900">
-                          Error al guardar
-                        </p>
-                        <p className="mt-1 text-sm text-gray-500">
-                          {errorNotificationMessage}
-                        </p>
-                      </div>
-                      <div className="ml-4 flex shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowErrorNotification(false);
                           }}
                           className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
                         >
@@ -489,5 +557,4 @@ const InstrumentTypeEditDrawer: React.FC<InstrumentTypeEditDrawerProps> = ({
   );
 };
 
-export default InstrumentTypeEditDrawer;
-
+export default CareerInfoDrawer;

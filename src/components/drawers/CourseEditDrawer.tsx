@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   Dialog,
@@ -15,25 +15,37 @@ import {
   ClockIcon,
   TrashIcon,
   ExclamationTriangleIcon,
+  MagnifyingGlassIcon,
   XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 
-interface InstrumentType {
+interface Career {
   id: number;
   name: string;
-  description: string | null;
-  created_at: string;
 }
 
-interface Instrument {
+interface CourseType {
   id: number;
-  instrument_type: InstrumentType;
-  serial_number: string | null;
-  condition: string | null;
-  status: string | null;
-  location: string | null;
+  name: string;
+  price: number;
+}
+
+interface Course {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  career: Career;
+  career_name: string;
+  prerequisite_code: string | null;
+  week_duration: number;
+  course_type: CourseType;
+  course_type_name: string;
+  course_type_price: number;
+  special_price: number | null;
+  estudiantes_count: number;
   created_at: string;
   updated_at: string;
   created_by: {
@@ -48,32 +60,40 @@ interface Instrument {
   } | null;
 }
 
-interface InstrumentEditDrawerProps {
-  instrumentId: number | null;
+interface CourseEditDrawerProps {
+  courseId: number | null;
   isOpen: boolean;
   onClose: () => void;
-  onInstrumentUpdated?: (updatedInstrument: Instrument) => void;
-  onInstrumentDeleted?: () => void;
+  onCourseUpdated?: (updatedCourse: Course) => void;
+  onCourseDeleted?: () => void;
+  careers: Career[];
+  courseTypes: CourseType[];
 }
 
-interface InstrumentResponse {
-  instrument: Instrument;
+interface CourseResponse {
+  course: Course;
 }
 
-interface InstrumentsResponse {
-  results: Instrument[];
+interface CoursesResponse {
+  results: Course[];
   pagination: any;
 }
 
-const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
-  instrumentId,
+interface PrerequisiteCoursesResponse {
+  courses: Array<{ code: string; name: string }>;
+}
+
+const CourseEditDrawer: React.FC<CourseEditDrawerProps> = ({
+  courseId,
   isOpen,
   onClose,
-  onInstrumentUpdated,
-  onInstrumentDeleted,
+  onCourseUpdated,
+  onCourseDeleted,
+  careers,
+  courseTypes,
 }) => {
   const axiosPrivate = useAxiosPrivate();
-  const [instrument, setInstrument] = useState<Instrument | null>(null);
+  const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -83,97 +103,236 @@ const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
   const [errorNotificationMessage, setErrorNotificationMessage] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [prerequisiteCourses, setPrerequisiteCourses] = useState<
+    Array<{ code: string; name: string }>
+  >([]);
+  const [prerequisiteSearch, setPrerequisiteSearch] = useState("");
+  const [showPrerequisiteDropdown, setShowPrerequisiteDropdown] =
+    useState(false);
+  const priceManuallyEdited = useRef(false);
+  const previousCourseTypeId = useRef<number | null>(null);
+  const specialPriceRef = useRef<string>("");
 
   // Form state
-  const [serialNumber, setSerialNumber] = useState("");
-  const [condition, setCondition] = useState("");
-  const [location, setLocation] = useState("");
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("");
+  const [careerId, setCareerId] = useState<number | null>(null);
+  const [courseTypeId, setCourseTypeId] = useState<number | null>(null);
+  const [specialPrice, setSpecialPrice] = useState<string>("");
+  const [prerequisiteCode, setPrerequisiteCode] = useState<string>("");
+  const [weekDuration, setWeekDuration] = useState<number>(12);
+  const [description, setDescription] = useState("");
+
+  // Fetch prerequisite courses
+  useEffect(() => {
+    if (isOpen && courseId) {
+      const fetchPrerequisiteCourses = async () => {
+        try {
+          const response = await axiosPrivate.get<PrerequisiteCoursesResponse>(
+            "courses/list-courses-for-prerequisite",
+            {
+              params: {
+                exclude_course_id: courseId,
+              },
+            }
+          );
+          setPrerequisiteCourses(response.data.courses);
+        } catch (err: any) {
+          console.error("Error fetching prerequisite courses:", err);
+        }
+      };
+      fetchPrerequisiteCourses();
+    }
+  }, [isOpen, courseId, axiosPrivate]);
 
   useEffect(() => {
-    if (isOpen && instrumentId) {
-      fetchInstrumentData();
+    if (isOpen && courseId) {
+      fetchCourseData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, instrumentId]);
+  }, [isOpen, courseId]);
 
-  const fetchInstrumentData = async () => {
-    if (!instrumentId) return;
+  // Update special_price when course_type changes (only if not manually edited)
+  useEffect(() => {
+    if (courseTypeId && course) {
+      const selectedCourseType = courseTypes.find(
+        (type) => type.id === courseTypeId
+      );
+      if (selectedCourseType) {
+        // Only auto-set price if course type actually changed
+        if (previousCourseTypeId.current !== courseTypeId) {
+          // Only auto-set if user hasn't manually edited it
+          if (!priceManuallyEdited.current) {
+            const newPrice = selectedCourseType.price.toString();
+            setSpecialPrice(newPrice);
+            specialPriceRef.current = newPrice;
+          } else {
+            // Check if current price matches previous course type's price
+            const previousCourseType = courseTypes.find(
+              (type) => type.id === previousCourseTypeId.current
+            );
+            if (
+              previousCourseType &&
+              specialPriceRef.current === previousCourseType.price.toString()
+            ) {
+              // User hasn't changed the price, so update to new course type's price
+              const newPrice = selectedCourseType.price.toString();
+              setSpecialPrice(newPrice);
+              specialPriceRef.current = newPrice;
+              priceManuallyEdited.current = false;
+            }
+          }
+          previousCourseTypeId.current = courseTypeId;
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseTypeId, courseTypes, course]);
+
+  const fetchCourseData = async () => {
+    if (!courseId) return;
 
     try {
       setIsLoading(true);
       setError(null);
-      // Fetch the specific instrument by making a GET request
-      // Since we need to find by ID, we'll fetch all and filter, or we could add a specific endpoint
-      // For now, using a large page_size to get the instrument
-      const response = await axiosPrivate.get<InstrumentsResponse>(
-        "instruments/manage-instruments",
+      // Fetch the specific course by making a GET request
+      const response = await axiosPrivate.get<CoursesResponse>(
+        "courses/manage-courses",
         {
           params: {
             page: 1,
-            page_size: 1000, // Get enough to find our instrument
+            page_size: 1000, // Get enough to find our course
           },
         }
       );
-      const foundInstrument = response.data.results.find(
-        (inst) => inst.id === instrumentId
-      );
-      if (foundInstrument) {
-        setInstrument(foundInstrument);
-        setSerialNumber(foundInstrument.serial_number || "");
-        setCondition(foundInstrument.condition || "");
-        setLocation(foundInstrument.location || "");
+      const foundCourse = response.data.results.find((c) => c.id === courseId);
+      if (foundCourse) {
+        setCourse(foundCourse);
+        setCode(foundCourse.code);
+        setName(foundCourse.name);
+        setCareerId(foundCourse.career?.id || null);
+        setCourseTypeId(foundCourse.course_type.id);
+        const initialPrice =
+          foundCourse.special_price?.toString() ||
+          foundCourse.course_type_price.toString();
+        setSpecialPrice(initialPrice);
+        specialPriceRef.current = initialPrice;
+        // Reset manual edit flag when loading course data
+        priceManuallyEdited.current = false;
+        previousCourseTypeId.current = foundCourse.course_type.id;
+        setPrerequisiteCode(foundCourse.prerequisite_code || "");
+        setPrerequisiteSearch(foundCourse.prerequisite_code || "");
+        setWeekDuration(foundCourse.week_duration);
+        setDescription(foundCourse.description || "");
       } else {
-        setError("Instrumento no encontrado");
+        setError("Curso no encontrado");
       }
     } catch (err: any) {
       setError(
-        err?.response?.data?.error ||
-          "Error al cargar la información del instrumento"
+        err?.response?.data?.error || "Error al cargar la información del curso"
       );
-      console.error("Error fetching instrument data:", err);
+      console.error("Error fetching course data:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Filter prerequisite courses based on search
+  const filteredPrerequisiteCourses = prerequisiteCourses.filter(
+    (c) =>
+      c.code.toLowerCase().includes(prerequisiteSearch.toLowerCase()) ||
+      c.name.toLowerCase().includes(prerequisiteSearch.toLowerCase())
+  );
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest(".prerequisite-dropdown-container")) {
+        setShowPrerequisiteDropdown(false);
+      }
+    };
+
+    if (showPrerequisiteDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [showPrerequisiteDropdown]);
+
   const handleSave = async () => {
-    if (!instrumentId) return;
+    if (!courseId) return;
 
     setIsSaving(true);
     setError(null);
 
     try {
       const updateData: any = {
-        instrument_id: instrumentId,
+        course_id: courseId,
       };
 
-      // Only include fields that have changed
-      if (serialNumber !== (instrument?.serial_number || "")) {
-        updateData.serial_number = serialNumber || null;
+      // Include all fields that can be updated
+      if (code !== (course?.code || "")) {
+        updateData.code = code.trim();
       }
-      if (condition !== (instrument?.condition || "")) {
-        updateData.condition = condition || null;
+      if (name !== (course?.name || "")) {
+        updateData.name = name.trim();
       }
-      if (location !== (instrument?.location || "")) {
-        updateData.location = location || null;
+      // Always include career_id to allow setting it to null
+      const currentCareerId = course?.career?.id || null;
+      if (careerId !== currentCareerId) {
+        updateData.career_id = careerId || null;
+      }
+      if (courseTypeId !== course?.course_type.id) {
+        updateData.course_type_id = courseTypeId;
+      }
+      const currentSpecialPrice =
+        course?.special_price?.toString() ||
+        course?.course_type_price.toString() ||
+        "";
+      if (specialPrice !== currentSpecialPrice) {
+        updateData.special_price = specialPrice ? parseInt(specialPrice) : null;
+      }
+      if (prerequisiteCode !== (course?.prerequisite_code || "")) {
+        updateData.prerequisite_code = prerequisiteCode.trim() || null;
+      }
+      if (weekDuration !== (course?.week_duration || 12)) {
+        updateData.week_duration = weekDuration;
+      }
+      if (description !== (course?.description || "")) {
+        updateData.description = description.trim() || null;
       }
 
-      const response = await axiosPrivate.put<InstrumentResponse>(
-        "instruments/manage-instruments",
+      const response = await axiosPrivate.put<CourseResponse>(
+        "courses/manage-courses",
         updateData
       );
 
       // Update local state with response
-      const updatedInstrument = response.data.instrument;
-      if (updatedInstrument) {
-        setInstrument(updatedInstrument);
-        setSerialNumber(updatedInstrument.serial_number || "");
-        setCondition(updatedInstrument.condition || "");
-        setLocation(updatedInstrument.location || "");
+      const updatedCourse = response.data.course;
+      if (updatedCourse) {
+        setCourse(updatedCourse);
+        setCode(updatedCourse.code);
+        setName(updatedCourse.name);
+        setCareerId(updatedCourse.career?.id || null);
+        setCourseTypeId(updatedCourse.course_type.id);
+        const updatedPrice =
+          updatedCourse.special_price?.toString() ||
+          updatedCourse.course_type_price.toString();
+        setSpecialPrice(updatedPrice);
+        specialPriceRef.current = updatedPrice;
+        // Reset manual edit flag after successful save
+        priceManuallyEdited.current = false;
+        previousCourseTypeId.current = updatedCourse.course_type.id;
+        setPrerequisiteCode(updatedCourse.prerequisite_code || "");
+        setPrerequisiteSearch(updatedCourse.prerequisite_code || "");
+        setWeekDuration(updatedCourse.week_duration);
+        setDescription(updatedCourse.description || "");
 
         // Notify parent component to update the list
-        if (onInstrumentUpdated) {
-          onInstrumentUpdated(updatedInstrument);
+        if (onCourseUpdated) {
+          onCourseUpdated(updatedCourse);
         }
       }
 
@@ -194,7 +353,7 @@ const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
       setTimeout(() => {
         setShowErrorNotification(false);
       }, 5000);
-      console.error("Error saving instrument data:", err);
+      console.error("Error saving course data:", err);
       setShowConfirmDialog(false);
     } finally {
       setIsSaving(false);
@@ -214,23 +373,21 @@ const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
   };
 
   const handleDeleteConfirm = async () => {
-    if (!instrumentId) return;
+    if (!courseId) return;
 
     setIsDeleting(true);
     try {
-      await axiosPrivate.delete("instruments/manage-instruments", {
-        data: { instrument_id: instrumentId },
+      await axiosPrivate.delete("courses/manage-courses", {
+        data: { course_id: courseId },
       });
       setShowDeleteDialog(false);
       onClose();
-      if (onInstrumentDeleted) {
-        onInstrumentDeleted();
+      if (onCourseDeleted) {
+        onCourseDeleted();
       }
     } catch (err: any) {
-      console.error("Error deleting instrument:", err);
-      setError(
-        err?.response?.data?.error || "Error al eliminar el instrumento"
-      );
+      console.error("Error deleting course:", err);
+      setError(err?.response?.data?.error || "Error al eliminar el curso");
       setShowDeleteDialog(false);
     } finally {
       setIsDeleting(false);
@@ -241,7 +398,11 @@ const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
     setShowDeleteDialog(false);
   };
 
-  const isInstrumentRented = instrument?.status === "alquilado";
+  const handlePrerequisiteCodeSelect = (code: string) => {
+    setPrerequisiteCode(code);
+    setPrerequisiteSearch(code);
+    setShowPrerequisiteDropdown(false);
+  };
 
   return (
     <>
@@ -260,7 +421,7 @@ const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
                     <div className="bg-gray-900 px-4 py-20 sm:px-6">
                       <div className="flex items-center justify-between">
                         <DialogTitle className="text-base font-semibold text-white">
-                          Información del Instrumento
+                          Información del Curso
                         </DialogTitle>
                         <div className="ml-3 flex h-7 items-center">
                           <button
@@ -276,7 +437,7 @@ const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
                       </div>
                       <div className="mt-1">
                         <p className="text-sm text-gray-300">
-                          Edita la información del instrumento.
+                          Edita la información del curso.
                         </p>
                       </div>
                     </div>
@@ -295,110 +456,239 @@ const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
                           <p className="text-sm text-red-600">{error}</p>
                         </div>
                       </div>
-                    ) : instrument ? (
+                    ) : course ? (
                       <div className="divide-y divide-gray-200 px-4 sm:px-6 py-6">
                         <div className="space-y-3.5">
-                          {/* Instrument Type (Read-only) */}
+                          {/* Code */}
                           <div>
                             <label
-                              htmlFor="instrument_type"
+                              htmlFor="code"
                               className="block text-sm/6 font-medium text-gray-900"
                             >
-                              Tipo de instrumento
+                              Código <span className="text-red-500">*</span>
                             </label>
                             <div className="mt-2">
                               <input
-                                id="instrument_type"
-                                name="instrument_type"
+                                id="code"
+                                name="code"
                                 type="text"
-                                value={instrument.instrument_type.name}
-                                disabled
-                                className="block w-full rounded-md bg-gray-100 px-3 py-1.5 text-base text-gray-500 outline-1 -outline-offset-1 outline-gray-300 sm:text-sm/6 cursor-not-allowed"
+                                value={code}
+                                onChange={(e) => setCode(e.target.value)}
+                                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                               />
                             </div>
                           </div>
 
-                          {/* Serial Number (Editable) */}
+                          {/* Name */}
                           <div>
                             <label
-                              htmlFor="serial_number"
+                              htmlFor="name"
                               className="block text-sm/6 font-medium text-gray-900"
                             >
-                              Número de serie
+                              Nombre <span className="text-red-500">*</span>
                             </label>
                             <div className="mt-2">
                               <input
-                                id="serial_number"
-                                name="serial_number"
+                                id="name"
+                                name="name"
                                 type="text"
-                                value={serialNumber}
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Career */}
+                          <div>
+                            <label
+                              htmlFor="career"
+                              className="block text-sm/6 font-medium text-gray-900"
+                            >
+                              Cátedra
+                            </label>
+                            <div className="mt-2">
+                              <select
+                                id="career"
+                                name="career"
+                                value={careerId || ""}
                                 onChange={(e) =>
-                                  setSerialNumber(e.target.value)
+                                  setCareerId(
+                                    e.target.value
+                                      ? parseInt(e.target.value)
+                                      : null
+                                  )
+                                }
+                                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                              >
+                                <option value="">N/A</option>
+                                {careers.map((career) => (
+                                  <option key={career.id} value={career.id}>
+                                    {career.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Course Type */}
+                          <div>
+                            <label
+                              htmlFor="course_type"
+                              className="block text-sm/6 font-medium text-gray-900"
+                            >
+                              Tipo de curso{" "}
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <div className="mt-2">
+                              <select
+                                id="course_type"
+                                name="course_type"
+                                value={courseTypeId || ""}
+                                onChange={(e) =>
+                                  setCourseTypeId(
+                                    e.target.value
+                                      ? parseInt(e.target.value)
+                                      : null
+                                  )
+                                }
+                                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                              >
+                                <option value="">Seleccione un tipo</option>
+                                {courseTypes.map((type) => (
+                                  <option key={type.id} value={type.id}>
+                                    {type.name} - ₡{type.price.toLocaleString()}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Special Price */}
+                          <div>
+                            <label
+                              htmlFor="special_price"
+                              className="block text-sm/6 font-medium text-gray-900"
+                            >
+                              Precio (₡)
+                            </label>
+                            <div className="mt-2">
+                              <input
+                                id="special_price"
+                                name="special_price"
+                                type="number"
+                                min="0"
+                                value={specialPrice}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setSpecialPrice(value);
+                                  specialPriceRef.current = value; // Keep ref in sync
+                                  priceManuallyEdited.current = true; // Mark as manually edited
+                                }}
+                                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Prerequisite Code */}
+                          <div>
+                            <label
+                              htmlFor="prerequisite_code"
+                              className="block text-sm/6 font-medium text-gray-900"
+                            >
+                              Código de prerequisito
+                            </label>
+                            <div className="mt-2 relative prerequisite-dropdown-container">
+                              <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                  <MagnifyingGlassIcon
+                                    className="h-5 w-5 text-gray-400"
+                                    aria-hidden="true"
+                                  />
+                                </div>
+                                <input
+                                  id="prerequisite_code"
+                                  name="prerequisite_code"
+                                  type="text"
+                                  value={prerequisiteSearch}
+                                  onChange={(e) => {
+                                    setPrerequisiteSearch(e.target.value);
+                                    setShowPrerequisiteDropdown(true);
+                                  }}
+                                  onFocus={() =>
+                                    setShowPrerequisiteDropdown(true)
+                                  }
+                                  className="block w-full pl-10 rounded-md pr-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                                  placeholder="Buscar curso..."
+                                />
+                              </div>
+                              {showPrerequisiteDropdown &&
+                                filteredPrerequisiteCourses.length > 0 && (
+                                  <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                                    {filteredPrerequisiteCourses.map((c) => (
+                                      <div
+                                        key={c.code}
+                                        onClick={() =>
+                                          handlePrerequisiteCodeSelect(c.code)
+                                        }
+                                        className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100"
+                                      >
+                                        <div className="flex items-center">
+                                          <span className="font-medium text-gray-900">
+                                            {c.code}
+                                          </span>
+                                          <span className="ml-2 text-gray-500">
+                                            {c.name}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                            </div>
+                          </div>
+
+                          {/* Week Duration */}
+                          <div>
+                            <label
+                              htmlFor="week_duration"
+                              className="block text-sm/6 font-medium text-gray-900"
+                            >
+                              Duración (semanas){" "}
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <div className="mt-2">
+                              <input
+                                id="week_duration"
+                                name="week_duration"
+                                type="number"
+                                min="1"
+                                value={weekDuration}
+                                onChange={(e) =>
+                                  setWeekDuration(
+                                    parseInt(e.target.value) || 12
+                                  )
                                 }
                                 className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                               />
                             </div>
                           </div>
 
-                          {/* Condition (Editable) */}
+                          {/* Description */}
                           <div>
                             <label
-                              htmlFor="condition"
+                              htmlFor="description"
                               className="block text-sm/6 font-medium text-gray-900"
                             >
-                              Condición
+                              Descripción
                             </label>
                             <div className="mt-2">
-                              <input
-                                id="condition"
-                                name="condition"
-                                type="text"
-                                value={condition}
-                                onChange={(e) => setCondition(e.target.value)}
-                                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Status (Read-only) */}
-                          <div>
-                            <label
-                              htmlFor="status"
-                              className="block text-sm/6 font-medium text-gray-900"
-                            >
-                              Estado
-                            </label>
-                            <div className="mt-2">
-                              <input
-                                id="status"
-                                name="status"
-                                type="text"
-                                value={
-                                  instrument.status === "alquilado"
-                                    ? "Alquilado"
-                                    : "Libre"
-                                }
-                                disabled
-                                className="block w-full rounded-md bg-gray-100 px-3 py-1.5 text-base text-gray-500 outline-1 -outline-offset-1 outline-gray-300 sm:text-sm/6 cursor-not-allowed"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Location (Editable) */}
-                          <div>
-                            <label
-                              htmlFor="location"
-                              className="block text-sm/6 font-medium text-gray-900"
-                            >
-                              Ubicación
-                            </label>
-                            <div className="mt-2">
-                              <input
-                                id="location"
-                                name="location"
-                                type="text"
-                                value={location}
-                                onChange={(e) => setLocation(e.target.value)}
+                              <textarea
+                                id="description"
+                                name="description"
+                                rows={3}
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
                                 className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                               />
                             </div>
@@ -423,9 +713,9 @@ const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
                                   Fecha de creación
                                 </p>
                                 <p className="mt-1 text-sm text-gray-500">
-                                  {instrument.created_at
+                                  {course.created_at
                                     ? new Date(
-                                        instrument.created_at
+                                        course.created_at
                                       ).toLocaleString("es-CR", {
                                         year: "numeric",
                                         month: "long",
@@ -451,9 +741,9 @@ const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
                                   Última actualización
                                 </p>
                                 <p className="mt-1 text-sm text-gray-500">
-                                  {instrument.updated_at
+                                  {course.updated_at
                                     ? new Date(
-                                        instrument.updated_at
+                                        course.updated_at
                                       ).toLocaleString("es-CR", {
                                         year: "numeric",
                                         month: "long",
@@ -467,7 +757,7 @@ const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
                             </div>
 
                             {/* Created By */}
-                            {instrument.created_by && (
+                            {course.created_by && (
                               <div className="flex items-start">
                                 <div className="shrink-0">
                                   <ClockIcon
@@ -480,14 +770,14 @@ const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
                                     Creado por
                                   </p>
                                   <p className="mt-1 text-sm text-gray-500">
-                                    {`${instrument.created_by.first_name} ${instrument.created_by.last_name}`}
+                                    {`${course.created_by.first_name} ${course.created_by.last_name}`}
                                   </p>
                                 </div>
                               </div>
                             )}
 
                             {/* Updated By */}
-                            {instrument.updated_by && (
+                            {course.updated_by && (
                               <div className="flex items-start">
                                 <div className="shrink-0">
                                   <ClockIcon
@@ -500,7 +790,7 @@ const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
                                     Actualizado por
                                   </p>
                                   <p className="mt-1 text-sm text-gray-500">
-                                    {`${instrument.updated_by.first_name} ${instrument.updated_by.last_name}`}
+                                    {`${course.updated_by.first_name} ${course.updated_by.last_name}`}
                                   </p>
                                 </div>
                               </div>
@@ -515,7 +805,8 @@ const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
                     <button
                       type="button"
                       onClick={handleDeleteClick}
-                      disabled={isSaving || isDeleting}
+                      //   disabled={isSaving || isDeleting}
+                      disabled={true}
                       className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-semibold text-red-600 shadow-xs ring-1 ring-inset ring-red-300 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <TrashIcon className="h-4 w-4" />
@@ -581,7 +872,7 @@ const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
                       ¿Estás seguro de que deseas guardar los cambios en el
-                      instrumento? Esta acción actualizará los datos.
+                      curso? Esta acción actualizará los datos.
                     </p>
                   </div>
                 </div>
@@ -632,7 +923,7 @@ const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
                           ¡Guardado exitosamente!
                         </p>
                         <p className="mt-1 text-sm text-gray-500">
-                          Los cambios en el instrumento se han actualizado
+                          Los cambios en el curso se han actualizado
                           correctamente.
                         </p>
                       </div>
@@ -688,37 +979,33 @@ const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
                     as="h3"
                     className="text-base font-semibold text-gray-900"
                   >
-                    {isInstrumentRented
-                      ? "No se puede eliminar"
-                      : "Confirmar eliminación"}
+                    Confirmar eliminación
                   </DialogTitle>
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
-                      {isInstrumentRented
-                        ? `El instrumento "${instrument?.instrument_type.name}" está actualmente alquilado. Debes cancelar el alquiler antes de poder eliminarlo.`
-                        : `¿Estás seguro de que deseas eliminar el instrumento "${instrument?.instrument_type.name}"? Esta acción es irreversible y no se puede deshacer.`}
+                      ¿Estás seguro de que deseas eliminar el curso "
+                      {course?.code} - {course?.name}"? Esta acción es
+                      irreversible y no se puede deshacer.
                     </p>
                   </div>
                 </div>
               </div>
               <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
-                {!isInstrumentRented && (
-                  <button
-                    type="button"
-                    onClick={handleDeleteConfirm}
-                    disabled={isDeleting}
-                    className="inline-flex w-full justify-center rounded-md bg-red-900 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-red-900/90 disabled:opacity-50 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
-                  >
-                    {isDeleting ? "Eliminando..." : "Eliminar"}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handleDeleteConfirm}
+                  disabled={isDeleting}
+                  className="inline-flex w-full justify-center rounded-md bg-red-900 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-red-900/90 disabled:opacity-50 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
+                >
+                  {isDeleting ? "Eliminando..." : "Eliminar"}
+                </button>
                 <button
                   type="button"
                   onClick={handleDeleteCancel}
                   disabled={isDeleting}
                   className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed sm:mt-0 sm:w-auto"
                 >
-                  {isInstrumentRented ? "Entendido" : "Cancelar"}
+                  Cancelar
                 </button>
               </div>
             </DialogPanel>
@@ -779,4 +1066,4 @@ const InstrumentEditDrawer: React.FC<InstrumentEditDrawerProps> = ({
   );
 };
 
-export default InstrumentEditDrawer;
+export default CourseEditDrawer;

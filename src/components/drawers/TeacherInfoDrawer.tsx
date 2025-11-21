@@ -18,7 +18,7 @@ import {
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 
-interface AdminUser {
+interface TeacherUser {
   id: number;
   email: string;
   first_name: string;
@@ -37,24 +37,24 @@ interface AdminUser {
 }
 
 interface UserResponse {
-  user: AdminUser;
+  user: TeacherUser;
 }
 
-interface AdminInfoDrawerProps {
+interface TeacherInfoDrawerProps {
   userId: number | null;
   isOpen: boolean;
   onClose: () => void;
-  onSaveSuccess?: (updatedUser: AdminUser) => void;
+  onSaveSuccess?: (updatedUser: TeacherUser) => void;
 }
 
-const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
+const TeacherInfoDrawer: React.FC<TeacherInfoDrawerProps> = ({
   userId,
   isOpen,
   onClose,
   onSaveSuccess,
 }) => {
   const axiosPrivate = useAxiosPrivate();
-  const [user, setUser] = useState<AdminUser | null>(null);
+  const [user, setUser] = useState<TeacherUser | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -396,7 +396,7 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
                     <div className="bg-gray-900 px-4 py-20 sm:px-6">
                       <div className="flex items-center justify-between">
                         <DialogTitle className="text-base font-semibold text-white">
-                          Información del Administrador
+                          Información del Profesor
                         </DialogTitle>
                         <div className="ml-3 flex h-7 items-center">
                           <button
@@ -412,7 +412,7 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
                       </div>
                       <div className="mt-1">
                         <p className="text-sm text-gray-300">
-                          Edita la información del administrador y gestiona su
+                          Edita la información del profesor y gestiona su
                           estado.
                         </p>
                       </div>
@@ -538,26 +538,6 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
                                 value={phone}
                                 onChange={(e) => setPhone(e.target.value)}
                                 className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Role (Non-editable) */}
-                          <div>
-                            <label
-                              htmlFor="role"
-                              className="block text-sm/6 font-medium text-gray-900"
-                            >
-                              Rol
-                            </label>
-                            <div className="mt-2">
-                              <input
-                                id="role"
-                                name="role"
-                                type="text"
-                                value={user.role || "admin"}
-                                disabled
-                                className="block w-full rounded-md bg-gray-100 px-3 py-1.5 text-base text-gray-500 outline-1 -outline-offset-1 outline-gray-300 sm:text-sm/6 cursor-not-allowed"
                               />
                             </div>
                           </div>
@@ -767,7 +747,7 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
                       ¿Estás seguro de que deseas guardar los cambios en la
-                      información del administrador? Esta acción actualizará los
+                      información del profesor? Esta acción actualizará los
                       datos del usuario.
                     </p>
                   </div>
@@ -882,7 +862,7 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
                           ¡Guardado exitosamente!
                         </p>
                         <p className="mt-1 text-sm text-gray-500">
-                          Los cambios en la información del administrador se han
+                          Los cambios en la información del profesor se han
                           actualizado correctamente.
                         </p>
                       </div>
@@ -1022,4 +1002,5 @@ const AdminInfoDrawer: React.FC<AdminInfoDrawerProps> = ({
   );
 };
 
-export default AdminInfoDrawer;
+export default TeacherInfoDrawer;
+

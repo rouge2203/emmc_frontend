@@ -37,6 +37,11 @@ import {
   PiListBulletsBold,
 } from "react-icons/pi";
 import { CiViewList } from "react-icons/ci";
+import {
+  HiOutlineBuildingLibrary,
+  HiOutlineAcademicCap,
+} from "react-icons/hi2";
+import { LuListChecks } from "react-icons/lu";
 
 import useAuth from "../hooks/useAuth";
 import useLogout from "../hooks/useLogout";
@@ -60,7 +65,7 @@ const navigation = [
       },
       {
         name: "Profesores",
-        href: "/admin/teams/Human%20Resources",
+        href: "/admin/profesores",
         icon: LiaChalkboardTeacherSolid,
       },
       {
@@ -91,6 +96,24 @@ const navigation = [
         icon: PiArrowCounterClockwiseFill,
       },
     ],
+  },
+  {
+    name: "Cátedra",
+    href: "/admin/catedra",
+    icon: HiOutlineBuildingLibrary,
+    current: false,
+  },
+  {
+    name: "Cursos",
+    href: "/admin/cursos",
+    icon: HiOutlineAcademicCap,
+    current: false,
+  },
+  {
+    name: "Cursos Matriculados",
+    href: "/admin/cursos-matriculados",
+    icon: LuListChecks,
+    current: false,
   },
   {
     name: "Calendar",
@@ -160,6 +183,9 @@ export default function AdminLayout() {
       instrumentos: "Instrumentos",
       administradores: "Administradores",
       estudiantes: "Estudiantes",
+      catedra: "Catedra",
+      cursos: "Cursos",
+      "cursos-matriculados": "Cursos Matriculados",
     };
 
     // Map detail routes to readable names

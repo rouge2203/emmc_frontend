@@ -13,34 +13,46 @@ import { InformationCircleIcon } from "@heroicons/react/24/outline";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import * as Yup from "yup";
 
-interface InstrumentType {
+interface TeacherUser {
   id: number;
-  name: string;
-  description: string | null;
-  created_at: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  cedula: string | null;
+  phone: string | null;
+  role: string;
+  is_active: boolean;
+  is_staff: boolean;
+  is_superuser: boolean;
+  profile: {
+    user: number;
+  } | null;
 }
 
-interface InstrumentTypeCreateDrawerProps {
+interface TeacherCreateDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  onInstrumentTypeCreated?: (newInstrumentType: InstrumentType) => void;
-}
-
-interface InstrumentTypeResponse {
-  instrument_type: InstrumentType;
+  onUserCreated?: (newUser: TeacherUser) => void;
 }
 
 const validationSchema = Yup.object({
-  name: Yup.string()
+  first_name: Yup.string()
     .required("El nombre es obligatorio")
     .min(2, "El nombre debe tener al menos 2 caracteres"),
-  description: Yup.string().nullable(),
+  last_name: Yup.string()
+    .required("El apellido es obligatorio")
+    .min(2, "El apellido debe tener al menos 2 caracteres"),
+  email: Yup.string()
+    .required("El email es obligatorio")
+    .email("El email debe ser válido"),
+  phone: Yup.string().required("El teléfono es obligatorio"),
+  cedula: Yup.string().nullable(),
 });
 
-const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
+const TeacherCreateDrawer: React.FC<TeacherCreateDrawerProps> = ({
   isOpen,
   onClose,
-  onInstrumentTypeCreated,
+  onUserCreated,
 }) => {
   const axiosPrivate = useAxiosPrivate();
   const [isCreating, setIsCreating] = useState(false);
@@ -51,16 +63,23 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Form state
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [cedula, setCedula] = useState("");
+  const [phone, setPhone] = useState("");
+  const role = "teacher"; // Fixed role
 
   // Validate form
   const validateForm = async () => {
     try {
       await validationSchema.validate(
         {
-          name: name,
-          description: description || null,
+          first_name: firstName,
+          last_name: lastName,
+          email: email,
+          phone: phone || null,
+          cedula: cedula || null,
         },
         { abortEarly: false }
       );
@@ -81,17 +100,31 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
   };
 
   // Handle input changes
-  const handleNameChange = (value: string) => {
-    setName(value);
-    if (errors.name) {
-      setErrors({ ...errors, name: "" });
+  const handleFirstNameChange = (value: string) => {
+    setFirstName(value);
+    if (errors.first_name) {
+      setErrors({ ...errors, first_name: "" });
     }
   };
 
-  const handleDescriptionChange = (value: string) => {
-    setDescription(value);
-    if (errors.description) {
-      setErrors({ ...errors, description: "" });
+  const handleLastNameChange = (value: string) => {
+    setLastName(value);
+    if (errors.last_name) {
+      setErrors({ ...errors, last_name: "" });
+    }
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (errors.email) {
+      setErrors({ ...errors, email: "" });
+    }
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setPhone(value);
+    if (errors.phone) {
+      setErrors({ ...errors, phone: "" });
     }
   };
 
@@ -108,14 +141,15 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
     setIsCreating(true);
     try {
       const createData = {
-        name: name.trim(),
-        description: description.trim() || null,
+        email: email.trim(),
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        phone: phone.trim(),
+        role: role,
+        cedula: cedula.trim() || null,
       };
 
-      const response = await axiosPrivate.post<InstrumentTypeResponse>(
-        "instruments/manage-instruments-types",
-        createData
-      );
+      const response = await axiosPrivate.post("auth/create-user", createData);
 
       // Close confirmation dialog
       setShowConfirmDialog(false);
@@ -127,13 +161,33 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
       }, 5000);
 
       // Notify parent component
-      if (onInstrumentTypeCreated && response.data?.instrument_type) {
-        onInstrumentTypeCreated(response.data.instrument_type);
+      if (onUserCreated && response.data?.user) {
+        // The API returns { detail: '...', user: {...} }
+        const userData = response.data.user;
+        const newUser: TeacherUser = {
+          id: userData.id,
+          email: userData.email,
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+          cedula: userData.cedula || null,
+          phone: userData.phone || null,
+          role: userData.role,
+          is_active:
+            userData.is_active !== undefined ? userData.is_active : false,
+          is_staff: userData.is_staff !== undefined ? userData.is_staff : false,
+          is_superuser:
+            userData.is_superuser !== undefined ? userData.is_superuser : false,
+          profile: userData.profile || null,
+        };
+        onUserCreated(newUser);
       }
 
       // Reset form
-      setName("");
-      setDescription("");
+      setFirstName("");
+      setLastName("");
+      setEmail("");
+      setCedula("");
+      setPhone("");
       setErrors({});
 
       // Close drawer after a short delay
@@ -141,16 +195,125 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
         onClose();
       }, 1000);
     } catch (err: any) {
-      console.error("Error creating instrument type:", err);
+      console.error("Error creating user:", err);
       setShowConfirmDialog(false);
 
-      // Set error message for notification
+      // Handle duplicate email or cedula errors
       const errorMessage =
-        err?.response?.data?.error ||
-        err?.response?.data?.detail ||
-        "Error al crear el tipo de instrumento. Por favor, intenta de nuevo.";
+        err?.response?.data?.error || err?.response?.data?.detail || "";
+      let errorString = "";
 
-      setErrorNotificationMessage(errorMessage);
+      // Handle different error formats (string, tuple, object)
+      if (typeof errorMessage === "string") {
+        errorString = errorMessage;
+      } else if (Array.isArray(errorMessage) && errorMessage.length > 1) {
+        // Handle tuple format: (1062, "Duplicate entry...")
+        errorString = String(errorMessage[1] || errorMessage[0] || "");
+      } else {
+        errorString = JSON.stringify(errorMessage);
+      }
+
+      // Determine error message
+      let errorMsg = "";
+
+      // Check for validation error format: {'cedula': ['Ya existe Usuario con este Cedula.']}
+      if (
+        typeof errorMessage === "object" &&
+        errorMessage !== null &&
+        !Array.isArray(errorMessage)
+      ) {
+        // Check for cedula validation error
+        if (
+          errorMessage.cedula &&
+          Array.isArray(errorMessage.cedula) &&
+          errorMessage.cedula.length > 0
+        ) {
+          const cedulaErrorMsg = errorMessage.cedula[0];
+          if (
+            cedulaErrorMsg.includes("Ya existe") ||
+            cedulaErrorMsg.includes("ya existe")
+          ) {
+            errorMsg = `La cédula "${cedula}" ya está registrada por otro usuario. Por favor, verifique el número de cédula.`;
+          } else {
+            errorMsg = cedulaErrorMsg;
+          }
+        }
+        // Check for email validation error
+        else if (
+          errorMessage.email &&
+          Array.isArray(errorMessage.email) &&
+          errorMessage.email.length > 0
+        ) {
+          const emailErrorMsg = errorMessage.email[0];
+          if (
+            emailErrorMsg.includes("Ya existe") ||
+            emailErrorMsg.includes("ya existe")
+          ) {
+            errorMsg = `El correo electrónico "${email}" ya está en uso por otro usuario. Por favor, use un correo diferente.`;
+          } else {
+            errorMsg = emailErrorMsg;
+          }
+        }
+      }
+
+      // If no validation error found, check for duplicate entry format
+      if (!errorMsg) {
+        // Check for "Usuario ya existe" message (from backend check)
+        if (
+          errorString.includes("Usuario ya existe") ||
+          errorString.includes("usuario ya existe")
+        ) {
+          errorMsg = `El correo electrónico "${email}" ya está en uso por otro usuario. Por favor, use un correo diferente.`;
+        }
+        // Check for duplicate email error
+        else if (
+          errorString.includes("Duplicate entry") &&
+          (errorString.includes("email") ||
+            errorString.includes("api_user_email"))
+        ) {
+          const emailMatch = errorString.match(
+            /Duplicate entry ['"]([^'"]+)['"]/
+          );
+          const duplicateEmail = emailMatch ? emailMatch[1] : email;
+          errorMsg = `El correo electrónico "${duplicateEmail}" ya está en uso por otro usuario. Por favor, use un correo diferente.`;
+        }
+        // Check for duplicate cedula error
+        else if (
+          errorString.includes("Duplicate entry") &&
+          (errorString.includes("cedula") ||
+            errorString.includes("api_user_cedula"))
+        ) {
+          const cedulaMatch = errorString.match(
+            /Duplicate entry ['"]([^'"]+)['"]/
+          );
+          const duplicateCedula = cedulaMatch ? cedulaMatch[1] : cedula;
+          errorMsg = `La cédula "${duplicateCedula}" ya está registrada por otro usuario. Por favor, verifique el número de cédula.`;
+        }
+        // Check for validation error in string format
+        else if (
+          errorString.includes("Ya existe Usuario con este Cedula") ||
+          errorString.includes("Ya existe Usuario con este cedula")
+        ) {
+          errorMsg = `La cédula "${cedula}" ya está registrada por otro usuario. Por favor, verifique el número de cédula.`;
+        } else if (
+          errorString.includes("Ya existe Usuario con este Email") ||
+          errorString.includes("Ya existe Usuario con este email")
+        ) {
+          errorMsg = `El correo electrónico "${email}" ya está en uso por otro usuario. Por favor, use un correo diferente.`;
+        }
+        // Generic error
+        else {
+          errorMsg =
+            typeof errorMessage === "string"
+              ? errorMessage || "Error al crear el profesor. Por favor, intenta de nuevo."
+              : Array.isArray(errorMessage)
+              ? String(errorMessage[1] || errorMessage[0])
+              : "Error al crear el profesor. Por favor, intenta de nuevo.";
+        }
+      }
+
+      // Show error notification
+      setErrorNotificationMessage(errorMsg || "Error al crear el profesor. Por favor, intenta de nuevo.");
       setShowErrorNotification(true);
       setTimeout(() => {
         setShowErrorNotification(false);
@@ -165,9 +328,15 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
   };
 
   // Check if required fields are filled and valid
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const isSubmitDisabled =
-    !name.trim() ||
-    name.trim().length < 2 ||
+    !firstName.trim() ||
+    firstName.trim().length < 2 ||
+    !lastName.trim() ||
+    lastName.trim().length < 2 ||
+    !email.trim() ||
+    !emailRegex.test(email) ||
+    !phone.trim() ||
     isCreating;
 
   return (
@@ -189,11 +358,12 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
                       <div className="flex items-start justify-between space-x-3">
                         <div className="space-y-1">
                           <DialogTitle className="text-base font-semibold text-gray-900">
-                            Crear Tipo de Instrumento
+                            Crear Profesor
                           </DialogTitle>
                           <p className="text-sm text-gray-500">
-                            Completa la información para crear un nuevo tipo de
-                            instrumento.
+                            Completa la información para crear un nuevo
+                            profesor. El usuario recibirá un correo para
+                            establecer su contraseña.
                           </p>
                         </div>
                         <div className="flex h-7 items-center">
@@ -210,24 +380,13 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
                       </div>
                     </div>
 
-                    {/* Error message */}
-                    {errors.submit && (
-                      <div className="mx-4 mt-4 sm:mx-6">
-                        <div className="rounded-md bg-red-50 border border-red-200 p-3">
-                          <p className="text-sm text-red-800">
-                            {errors.submit}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
                     {/* Form fields */}
                     <div className="space-y-6 py-6 sm:space-y-0 sm:divide-y sm:divide-gray-200 sm:py-0">
-                      {/* Name */}
+                      {/* First Name */}
                       <div className="space-y-2 px-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0 sm:px-6 sm:py-5">
                         <div>
                           <label
-                            htmlFor="name"
+                            htmlFor="first_name"
                             className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
                           >
                             Nombre <span className="text-red-500">*</span>
@@ -235,57 +394,144 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
                         </div>
                         <div className="sm:col-span-2">
                           <input
-                            id="name"
-                            name="name"
+                            id="first_name"
+                            name="first_name"
                             type="text"
-                            value={name}
-                            onChange={(e) => handleNameChange(e.target.value)}
+                            value={firstName}
+                            onChange={(e) =>
+                              handleFirstNameChange(e.target.value)
+                            }
                             className={`block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
-                              errors.name
+                              errors.first_name
                                 ? "outline-red-500 focus-visible:outline-red-500"
                                 : "focus-visible:outline-gray-900"
                             }`}
-                            placeholder="Ej: Guitarra, Piano, Violín"
                           />
-                          {errors.name && (
+                          {errors.first_name && (
                             <p className="mt-1 text-sm text-red-600">
-                              {errors.name}
+                              {errors.first_name}
                             </p>
                           )}
                         </div>
                       </div>
 
-                      {/* Description */}
+                      {/* Last Name */}
                       <div className="space-y-2 px-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0 sm:px-6 sm:py-5">
                         <div>
                           <label
-                            htmlFor="description"
+                            htmlFor="last_name"
                             className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
                           >
-                            Descripción
+                            Apellido <span className="text-red-500">*</span>
                           </label>
                         </div>
                         <div className="sm:col-span-2">
-                          <textarea
-                            id="description"
-                            name="description"
-                            rows={4}
-                            value={description}
+                          <input
+                            id="last_name"
+                            name="last_name"
+                            type="text"
+                            value={lastName}
                             onChange={(e) =>
-                              handleDescriptionChange(e.target.value)
+                              handleLastNameChange(e.target.value)
                             }
                             className={`block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
-                              errors.description
+                              errors.last_name
                                 ? "outline-red-500 focus-visible:outline-red-500"
                                 : "focus-visible:outline-gray-900"
                             }`}
-                            placeholder="Descripción opcional del tipo de instrumento"
                           />
-                          {errors.description && (
+                          {errors.last_name && (
                             <p className="mt-1 text-sm text-red-600">
-                              {errors.description}
+                              {errors.last_name}
                             </p>
                           )}
+                        </div>
+                      </div>
+
+                      {/* Email */}
+                      <div className="space-y-2 px-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0 sm:px-6 sm:py-5">
+                        <div>
+                          <label
+                            htmlFor="email"
+                            className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
+                          >
+                            Email <span className="text-red-500">*</span>
+                          </label>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <input
+                            id="email"
+                            name="email"
+                            type="email"
+                            value={email}
+                            onChange={(e) => handleEmailChange(e.target.value)}
+                            className={`block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
+                              errors.email
+                                ? "outline-red-500 focus-visible:outline-red-500"
+                                : "focus-visible:outline-gray-900"
+                            }`}
+                          />
+                          {errors.email && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {errors.email}
+                            </p>
+                          )}
+                          <p className="mt-1 text-xs text-gray-500">
+                            Con este correo iniciará sesión
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Phone */}
+                      <div className="space-y-2 px-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0 sm:px-6 sm:py-5">
+                        <div>
+                          <label
+                            htmlFor="phone"
+                            className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
+                          >
+                            Teléfono <span className="text-red-500">*</span>
+                          </label>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <input
+                            id="phone"
+                            name="phone"
+                            type="tel"
+                            value={phone}
+                            onChange={(e) => handlePhoneChange(e.target.value)}
+                            className={`block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
+                              errors.phone
+                                ? "outline-red-500 focus-visible:outline-red-500"
+                                : "focus-visible:outline-gray-900"
+                            }`}
+                          />
+                          {errors.phone && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {errors.phone}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Cédula */}
+                      <div className="space-y-2 px-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0 sm:px-6 sm:py-5">
+                        <div>
+                          <label
+                            htmlFor="cedula"
+                            className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
+                          >
+                            Cédula
+                          </label>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <input
+                            id="cedula"
+                            name="cedula"
+                            type="text"
+                            value={cedula}
+                            onChange={(e) => setCedula(e.target.value)}
+                            className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                          />
                         </div>
                       </div>
                     </div>
@@ -351,8 +597,10 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
                   </DialogTitle>
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
-                      ¿Estás seguro de que deseas crear el tipo de instrumento
-                      "{name}"?
+                      ¿Estás seguro de que deseas crear este profesor? El
+                      usuario recibirá un correo electrónico para establecer su
+                      contraseña y podrá iniciar sesión una vez que active su
+                      cuenta.
                     </p>
                   </div>
                 </div>
@@ -400,10 +648,11 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
                       </div>
                       <div className="ml-3 w-0 flex-1 pt-0.5">
                         <p className="text-sm font-medium text-gray-900">
-                          ¡Tipo de instrumento creado exitosamente!
+                          ¡Profesor creado exitosamente!
                         </p>
                         <p className="mt-1 text-sm text-gray-500">
-                          El tipo de instrumento se ha agregado correctamente.
+                          El usuario recibirá un correo para establecer su
+                          contraseña.
                         </p>
                       </div>
                       <div className="ml-4 flex shrink-0">
@@ -480,5 +729,5 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
   );
 };
 
-export default InstrumentTypeCreateDrawer;
+export default TeacherCreateDrawer;
 

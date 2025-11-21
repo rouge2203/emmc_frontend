@@ -13,21 +13,26 @@ import { InformationCircleIcon } from "@heroicons/react/24/outline";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import * as Yup from "yup";
 
-interface InstrumentType {
+interface Career {
   id: number;
   name: string;
   description: string | null;
-  created_at: string;
+  image_url: string | null;
+  created_by: { id: number; first_name: string; last_name: string } | null;
+  created_at: string | null;
+  updated_by: { id: number; first_name: string; last_name: string } | null;
+  updated_at: string | null;
+  courses_count: number;
 }
 
-interface InstrumentTypeCreateDrawerProps {
+interface CareerCreateDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  onInstrumentTypeCreated?: (newInstrumentType: InstrumentType) => void;
+  onCareerCreated?: (newCareer: Career) => void;
 }
 
-interface InstrumentTypeResponse {
-  instrument_type: InstrumentType;
+interface CareerResponse {
+  career: Career;
 }
 
 const validationSchema = Yup.object({
@@ -35,12 +40,13 @@ const validationSchema = Yup.object({
     .required("El nombre es obligatorio")
     .min(2, "El nombre debe tener al menos 2 caracteres"),
   description: Yup.string().nullable(),
+  image_url: Yup.string().url("Debe ser una URL válida").nullable(),
 });
 
-const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
+const CareerCreateDrawer: React.FC<CareerCreateDrawerProps> = ({
   isOpen,
   onClose,
-  onInstrumentTypeCreated,
+  onCareerCreated,
 }) => {
   const axiosPrivate = useAxiosPrivate();
   const [isCreating, setIsCreating] = useState(false);
@@ -53,6 +59,7 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
   // Form state
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
 
   // Validate form
   const validateForm = async () => {
@@ -61,6 +68,7 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
         {
           name: name,
           description: description || null,
+          image_url: imageUrl || null,
         },
         { abortEarly: false }
       );
@@ -95,6 +103,13 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
     }
   };
 
+  const handleImageUrlChange = (value: string) => {
+    setImageUrl(value);
+    if (errors.image_url) {
+      setErrors({ ...errors, image_url: "" });
+    }
+  };
+
   // Handle create click
   const handleCreateClick = async () => {
     const isValid = await validateForm();
@@ -110,10 +125,11 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
       const createData = {
         name: name.trim(),
         description: description.trim() || null,
+        image_url: imageUrl.trim() || null,
       };
 
-      const response = await axiosPrivate.post<InstrumentTypeResponse>(
-        "instruments/manage-instruments-types",
+      const response = await axiosPrivate.post<CareerResponse>(
+        "courses/manage-careers",
         createData
       );
 
@@ -127,13 +143,14 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
       }, 5000);
 
       // Notify parent component
-      if (onInstrumentTypeCreated && response.data?.instrument_type) {
-        onInstrumentTypeCreated(response.data.instrument_type);
+      if (onCareerCreated && response.data?.career) {
+        onCareerCreated(response.data.career);
       }
 
       // Reset form
       setName("");
       setDescription("");
+      setImageUrl("");
       setErrors({});
 
       // Close drawer after a short delay
@@ -141,14 +158,14 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
         onClose();
       }, 1000);
     } catch (err: any) {
-      console.error("Error creating instrument type:", err);
+      console.error("Error creating career:", err);
       setShowConfirmDialog(false);
 
       // Set error message for notification
       const errorMessage =
         err?.response?.data?.error ||
         err?.response?.data?.detail ||
-        "Error al crear el tipo de instrumento. Por favor, intenta de nuevo.";
+        "Error al crear la cátedra. Por favor, intenta de nuevo.";
 
       setErrorNotificationMessage(errorMessage);
       setShowErrorNotification(true);
@@ -165,10 +182,7 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
   };
 
   // Check if required fields are filled and valid
-  const isSubmitDisabled =
-    !name.trim() ||
-    name.trim().length < 2 ||
-    isCreating;
+  const isSubmitDisabled = !name.trim() || name.trim().length < 2 || isCreating;
 
   return (
     <>
@@ -189,11 +203,11 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
                       <div className="flex items-start justify-between space-x-3">
                         <div className="space-y-1">
                           <DialogTitle className="text-base font-semibold text-gray-900">
-                            Crear Tipo de Instrumento
+                            Crear Cátedra
                           </DialogTitle>
                           <p className="text-sm text-gray-500">
-                            Completa la información para crear un nuevo tipo de
-                            instrumento.
+                            Completa la información para crear una nueva
+                            cátedra.
                           </p>
                         </div>
                         <div className="flex h-7 items-center">
@@ -245,7 +259,7 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
                                 ? "outline-red-500 focus-visible:outline-red-500"
                                 : "focus-visible:outline-gray-900"
                             }`}
-                            placeholder="Ej: Guitarra, Piano, Violín"
+                            placeholder="Ej: Música Clásica, Jazz, Composición"
                           />
                           {errors.name && (
                             <p className="mt-1 text-sm text-red-600">
@@ -279,11 +293,45 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
                                 ? "outline-red-500 focus-visible:outline-red-500"
                                 : "focus-visible:outline-gray-900"
                             }`}
-                            placeholder="Descripción opcional del tipo de instrumento"
+                            placeholder="Descripción opcional de la cátedra"
                           />
                           {errors.description && (
                             <p className="mt-1 text-sm text-red-600">
                               {errors.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Image URL */}
+                      <div className="space-y-2 px-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0 sm:px-6 sm:py-5">
+                        <div>
+                          <label
+                            htmlFor="image_url"
+                            className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
+                          >
+                            URL de Imagen
+                          </label>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <input
+                            id="image_url"
+                            name="image_url"
+                            type="text"
+                            value={imageUrl}
+                            onChange={(e) =>
+                              handleImageUrlChange(e.target.value)
+                            }
+                            placeholder="https://ejemplo.com/imagen.jpg"
+                            className={`block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
+                              errors.image_url
+                                ? "outline-red-500 focus-visible:outline-red-500"
+                                : "focus-visible:outline-gray-900"
+                            }`}
+                          />
+                          {errors.image_url && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {errors.image_url}
                             </p>
                           )}
                         </div>
@@ -351,8 +399,7 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
                   </DialogTitle>
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
-                      ¿Estás seguro de que deseas crear el tipo de instrumento
-                      "{name}"?
+                      ¿Estás seguro de que deseas crear la cátedra "{name}"?
                     </p>
                   </div>
                 </div>
@@ -400,10 +447,10 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
                       </div>
                       <div className="ml-3 w-0 flex-1 pt-0.5">
                         <p className="text-sm font-medium text-gray-900">
-                          ¡Tipo de instrumento creado exitosamente!
+                          ¡Cátedra creada exitosamente!
                         </p>
                         <p className="mt-1 text-sm text-gray-500">
-                          El tipo de instrumento se ha agregado correctamente.
+                          La cátedra se ha agregado correctamente.
                         </p>
                       </div>
                       <div className="ml-4 flex shrink-0">
@@ -415,7 +462,10 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
                           className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
                         >
                           <span className="sr-only">Cerrar</span>
-                          <XMarkIconSolid aria-hidden="true" className="size-5" />
+                          <XMarkIconSolid
+                            aria-hidden="true"
+                            className="size-5"
+                          />
                         </button>
                       </div>
                     </div>
@@ -480,5 +530,4 @@ const InstrumentTypeCreateDrawer: React.FC<InstrumentTypeCreateDrawerProps> = ({
   );
 };
 
-export default InstrumentTypeCreateDrawer;
-
+export default CareerCreateDrawer;

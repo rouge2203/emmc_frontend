@@ -234,6 +234,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
       }
       if (email !== (user?.email || "")) {
         updateData.email = email;
+        updateData.username = email; // Update username to match email
       }
       if (cedula !== (user?.cedula || "")) {
         updateData.cedula = cedula;
