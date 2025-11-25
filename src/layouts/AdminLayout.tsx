@@ -116,8 +116,8 @@ const navigation = [
     current: false,
   },
   {
-    name: "Calendar",
-    href: "/admin/calendar",
+    name: "Calendario de Cursos",
+    href: "/admin/calendario-de-cursos",
     icon: CalendarIcon,
     current: false,
   },

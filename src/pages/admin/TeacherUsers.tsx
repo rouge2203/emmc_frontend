@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import { LiaUserTieSolid } from "react-icons/lia";
+import { HiOutlineAcademicCap } from "react-icons/hi2";
 import TeacherInfoDrawer from "../../components/drawers/TeacherInfoDrawer";
 import TeacherCreateDrawer from "../../components/drawers/TeacherCreateDrawer";
 import UserObservationsDrawer from "../../components/drawers/UserObservationsDrawer";
@@ -39,6 +40,7 @@ interface PaginatedResponse {
 }
 
 const TeacherUsers = () => {
+  const navigate = useNavigate();
   const axiosPrivate = useAxiosPrivate();
   const location = useLocation();
   const [users, setUsers] = useState<TeacherUser[]>([]);
@@ -281,10 +283,22 @@ const TeacherUsers = () => {
                               </span>
                             </td>
                             <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
-                              {user.role || "teacher"}
+                              {user.role === "teacher" ? "Profesor" : user.role || "teacher"}
                             </td>
                             <td className="py-5 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
                               <div className="flex gap-2 justify-end">
+                                <button
+                                  onClick={() => {
+                                    navigate(
+                                      `/admin/cursos-matriculados?professor_id=${user.id}`
+                                    );
+                                  }}
+                                  className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm flex items-center gap-1"
+                                >
+                                  <HiOutlineAcademicCap className="h-4 w-4" />
+                                  Cursos
+                                  <span className="sr-only">, {fullName}</span>
+                                </button>
                                 <button
                                   onClick={() => handleEdit(user)}
                                   className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm"

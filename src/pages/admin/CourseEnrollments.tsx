@@ -82,12 +82,24 @@ interface YearsResponse {
   years: number[];
 }
 
+interface Professor {
+  id: number;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+}
+
+interface ProfessorsResponse {
+  professors: Professor[];
+}
+
 const CourseEnrollments = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const axiosPrivate = useAxiosPrivate();
   const [enrollments, setEnrollments] = useState<CourseEnrollment[]>([]);
   const [careers, setCareers] = useState<Career[]>([]);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [professors, setProfessors] = useState<Professor[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [counts, setCounts] = useState<{
     missing_professor_count: number;
@@ -105,6 +117,7 @@ const CourseEnrollments = () => {
   const [studentSearchInput, setStudentSearchInput] = useState("");
   const [yearFilter, setYearFilter] = useState<number | null>(null);
   const [careerFilter, setCareerFilter] = useState<number | null>(null);
+  const [professorFilter, setProfessorFilter] = useState<number | null>(null);
   const [missingProfessorFilter, setMissingProfessorFilter] = useState(false);
   const [missingScheduleFilter, setMissingScheduleFilter] = useState(false);
 
@@ -140,6 +153,17 @@ const CourseEnrollments = () => {
     }
   };
 
+  const fetchProfessors = async () => {
+    try {
+      const response = await axiosPrivate.get<ProfessorsResponse>(
+        "courses/enrollment-professors"
+      );
+      setProfessors(response.data.professors);
+    } catch (err: any) {
+      console.error("Error fetching professors:", err);
+    }
+  };
+
   const fetchEnrollments = async (pageNum: number) => {
     try {
       setIsLoading(true);
@@ -151,6 +175,7 @@ const CourseEnrollments = () => {
       if (studentSearch) params.student_search = studentSearch;
       if (yearFilter) params.year = yearFilter;
       if (careerFilter) params.career_id = careerFilter;
+      if (professorFilter) params.professor_id = professorFilter;
       if (missingProfessorFilter) params.missing_professor = true;
       if (missingScheduleFilter) params.missing_schedule = true;
 
@@ -174,6 +199,7 @@ const CourseEnrollments = () => {
   useEffect(() => {
     fetchCareers();
     fetchAvailableYears();
+    fetchProfessors();
   }, [axiosPrivate]);
 
   // Handle URL params - this should run before fetchEnrollments
@@ -181,6 +207,7 @@ const CourseEnrollments = () => {
     if (!isInitialized) {
       const courseCodeParam = searchParams.get("course_code");
       const studentSearchParam = searchParams.get("student_search");
+      const professorIdParam = searchParams.get("professor_id");
       
       if (courseCodeParam && !urlParamsProcessed.current) {
         setStudentSearch(courseCodeParam);
@@ -194,6 +221,14 @@ const CourseEnrollments = () => {
         setPage(1);
         urlParamsProcessed.current = true;
         setSearchParams({}, { replace: true });
+      } else if (professorIdParam && !urlParamsProcessed.current) {
+        const professorId = parseInt(professorIdParam, 10);
+        if (!isNaN(professorId)) {
+          setProfessorFilter(professorId);
+          setPage(1);
+          urlParamsProcessed.current = true;
+          setSearchParams({}, { replace: true });
+        }
       }
       setIsInitialized(true);
     }
@@ -212,6 +247,7 @@ const CourseEnrollments = () => {
     studentSearch,
     yearFilter,
     careerFilter,
+    professorFilter,
     missingProfessorFilter,
     missingScheduleFilter,
     isInitialized,
@@ -233,6 +269,7 @@ const CourseEnrollments = () => {
     setStudentSearchInput("");
     setYearFilter(null);
     setCareerFilter(null);
+    setProfessorFilter(null);
     setMissingProfessorFilter(false);
     setMissingScheduleFilter(false);
     setPage(1);
@@ -242,6 +279,7 @@ const CourseEnrollments = () => {
     studentSearch !== "" ||
     yearFilter !== null ||
     careerFilter !== null ||
+    professorFilter !== null ||
     missingProfessorFilter ||
     missingScheduleFilter;
 
@@ -451,6 +489,34 @@ const CourseEnrollments = () => {
                 {careers.map((career) => (
                   <option key={career.id} value={career.id}>
                     {career.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Professor Filter */}
+            <div className="sm:w-48">
+              <label
+                htmlFor="professorFilter"
+                className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1"
+              >
+                <UserIcon className="h-4 w-4" />
+                Profesor/a
+              </label>
+              <select
+                id="professorFilter"
+                value={professorFilter || ""}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setProfessorFilter(value ? parseInt(value) : null);
+                  setPage(1);
+                }}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+              >
+                <option value="">Todos los profesores</option>
+                {professors.map((professor) => (
+                  <option key={professor.id} value={professor.id}>
+                    {professor.full_name}
                   </option>
                 ))}
               </select>

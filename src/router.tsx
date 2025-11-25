@@ -93,7 +93,7 @@ export const router = createBrowserRouter([
                 element: <ProjectDetail />,
               },
               {
-                path: "/admin/calendar",
+                path: "/admin/calendario-de-cursos",
                 element: <Calendar />,
               },
               {

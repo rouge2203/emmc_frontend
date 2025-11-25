@@ -44,6 +44,7 @@ interface CourseEnrollment {
   course_name: string;
   course_code: string;
   student_full_name: string;
+  professor_full_name: string | null;
   status: string;
 }
 
@@ -423,6 +424,11 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                               <p className="mt-1 text-xs text-gray-700">
                                 Estudiante: {enrollment.student_full_name}
                               </p>
+                              {enrollment.professor_full_name && (
+                                <p className="mt-1 text-xs text-gray-700">
+                                  Profesor/a: {enrollment.professor_full_name}
+                                </p>
+                              )}
                               {isReadOnly && (
                                 <p className="mt-2 text-xs font-semibold text-orange-700">
                                   El curso ya ha concluido. No se pueden agregar
