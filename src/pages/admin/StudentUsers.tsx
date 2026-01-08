@@ -416,12 +416,6 @@ const StudentUsers = () => {
                         scope="col"
                         className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
                       >
-                        Email
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                      >
                         Estado
                       </th>
                       <th
@@ -439,7 +433,7 @@ const StudentUsers = () => {
                     {users.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={5}
+                          colSpan={4}
                           className="py-5 pr-3 pl-4 text-sm text-center text-gray-500 sm:pl-0"
                         >
                           No se encontraron estudiantes
@@ -477,14 +471,6 @@ const StudentUsers = () => {
                                   </div>
                                 </div>
                               </div>
-                            </td>
-                            <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
-                              {user.email || (
-                                <span className="flex items-center">
-                                  <RiMailCloseFill className="size-4 text-gray-500 mr-1" />
-                                  Falta asignar correo
-                                </span>
-                              )}
                             </td>
                             <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
                               <span

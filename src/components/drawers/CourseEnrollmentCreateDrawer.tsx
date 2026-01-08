@@ -7,7 +7,12 @@ import {
   DialogBackdrop,
   Transition,
 } from "@headlessui/react";
-import { XMarkIcon, CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import {
+  XMarkIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ExclamationTriangleIcon,
+} from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import {
   InformationCircleIcon,
@@ -24,6 +29,16 @@ interface Course {
   special_price: number | null;
   course_type_price: number | null;
   week_duration: number;
+  prerequisite_code: string | null;
+  prerequisite_name: string | null;
+}
+
+interface PrerequisiteStatus {
+  hasPrerequisite: boolean;
+  prerequisiteCode: string | null;
+  prerequisiteName: string | null;
+  studentHasPassed: boolean | null;
+  isChecking: boolean;
 }
 
 interface User {
@@ -113,6 +128,16 @@ const CourseEnrollmentCreateDrawer: React.FC<
   const priceManuallyEdited = useRef(false);
   const [weekDuration, setWeekDuration] = useState<number>(12);
 
+  // Prerequisite status state
+  const [prerequisiteStatus, setPrerequisiteStatus] =
+    useState<PrerequisiteStatus>({
+      hasPrerequisite: false,
+      prerequisiteCode: null,
+      prerequisiteName: null,
+      studentHasPassed: null,
+      isChecking: false,
+    });
+
   // Fetch courses
   useEffect(() => {
     if (isOpen) {
@@ -192,6 +217,67 @@ const CourseEnrollmentCreateDrawer: React.FC<
     }
   }, [selectedCourse]);
 
+  // Update prerequisite status when course changes
+  useEffect(() => {
+    if (selectedCourse?.prerequisite_code) {
+      setPrerequisiteStatus((prev) => ({
+        ...prev,
+        hasPrerequisite: true,
+        prerequisiteCode: selectedCourse.prerequisite_code,
+        prerequisiteName: selectedCourse.prerequisite_name,
+        studentHasPassed: null, // Reset when course changes
+      }));
+    } else {
+      setPrerequisiteStatus({
+        hasPrerequisite: false,
+        prerequisiteCode: null,
+        prerequisiteName: null,
+        studentHasPassed: null,
+        isChecking: false,
+      });
+    }
+  }, [selectedCourse]);
+
+  // Check prerequisite status when both course and student are selected
+  useEffect(() => {
+    const checkPrerequisite = async () => {
+      if (selectedCourse?.prerequisite_code && selectedStudent?.id) {
+        setPrerequisiteStatus((prev) => ({ ...prev, isChecking: true }));
+        try {
+          const response = await axiosPrivate.get(
+            "courses/check-prerequisite-status",
+            {
+              params: {
+                student_id: selectedStudent.id,
+                prerequisite_code: selectedCourse.prerequisite_code,
+              },
+            }
+          );
+          setPrerequisiteStatus((prev) => ({
+            ...prev,
+            studentHasPassed: response.data.has_passed,
+            isChecking: false,
+          }));
+        } catch (err: any) {
+          console.error("Error checking prerequisite status:", err);
+          setPrerequisiteStatus((prev) => ({
+            ...prev,
+            studentHasPassed: null,
+            isChecking: false,
+          }));
+        }
+      } else if (!selectedCourse?.prerequisite_code) {
+        setPrerequisiteStatus((prev) => ({
+          ...prev,
+          studentHasPassed: null,
+          isChecking: false,
+        }));
+      }
+    };
+
+    checkPrerequisite();
+  }, [selectedCourse, selectedStudent, axiosPrivate]);
+
   // Reset form when drawer closes
   useEffect(() => {
     if (!isOpen) {
@@ -210,6 +296,13 @@ const CourseEnrollmentCreateDrawer: React.FC<
       setShowStudentDropdown(false);
       setShowProfessorDropdown(false);
       priceManuallyEdited.current = false;
+      setPrerequisiteStatus({
+        hasPrerequisite: false,
+        prerequisiteCode: null,
+        prerequisiteName: null,
+        studentHasPassed: null,
+        isChecking: false,
+      });
     }
   }, [isOpen]);
 
@@ -511,6 +604,29 @@ const CourseEnrollmentCreateDrawer: React.FC<
                               {errors.course_id}
                             </p>
                           )}
+                          {/* Prerequisite info alert */}
+                          {selectedCourse?.prerequisite_code && (
+                            <div className="mt-2 rounded-md bg-blue-50 p-3">
+                              <div className="flex">
+                                <div className="shrink-0">
+                                  <InformationCircleIcon
+                                    aria-hidden="true"
+                                    className="size-5 text-blue-400"
+                                  />
+                                </div>
+                                <div className="ml-3">
+                                  <p className="text-sm text-blue-700">
+                                    <span className="font-medium">
+                                      Prerrequisito:
+                                    </span>{" "}
+                                    {selectedCourse.prerequisite_code}
+                                    {selectedCourse.prerequisite_name &&
+                                      ` - ${selectedCourse.prerequisite_name}`}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -576,6 +692,90 @@ const CourseEnrollmentCreateDrawer: React.FC<
                               {errors.student_id}
                             </p>
                           )}
+                          {/* Prerequisite status display */}
+                          {prerequisiteStatus.hasPrerequisite &&
+                            selectedStudent && (
+                              <>
+                                {prerequisiteStatus.isChecking ? (
+                                  <div className="mt-2 flex items-center text-sm text-gray-500">
+                                    <svg
+                                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <circle
+                                        className="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        strokeWidth="4"
+                                      ></circle>
+                                      <path
+                                        className="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                      ></path>
+                                    </svg>
+                                    Verificando prerrequisito...
+                                  </div>
+                                ) : prerequisiteStatus.studentHasPassed ===
+                                  true ? (
+                                  <div className="mt-2 rounded-md bg-green-50 p-3">
+                                    <div className="flex">
+                                      <div className="shrink-0">
+                                        <CheckCircleIcon
+                                          aria-hidden="true"
+                                          className="size-5 text-green-400"
+                                        />
+                                      </div>
+                                      <div className="ml-3">
+                                        <p className="text-sm text-green-700">
+                                          El estudiante ha aprobado el
+                                          prerrequisito{" "}
+                                          <span className="font-medium">
+                                            {
+                                              prerequisiteStatus.prerequisiteCode
+                                            }
+                                            {prerequisiteStatus.prerequisiteName &&
+                                              ` - ${prerequisiteStatus.prerequisiteName}`}
+                                          </span>
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : prerequisiteStatus.studentHasPassed ===
+                                  false ? (
+                                  <div className="mt-2 rounded-md bg-amber-50 p-3">
+                                    <div className="flex">
+                                      <div className="shrink-0">
+                                        <ExclamationTriangleIcon
+                                          aria-hidden="true"
+                                          className="size-5 text-amber-400"
+                                        />
+                                      </div>
+                                      <div className="ml-3">
+                                        <p className="text-sm text-amber-700">
+                                          El estudiante{" "}
+                                          <span className="font-medium">
+                                            NO
+                                          </span>{" "}
+                                          ha aprobado el prerrequisito{" "}
+                                          <span className="font-medium">
+                                            {
+                                              prerequisiteStatus.prerequisiteCode
+                                            }
+                                            {prerequisiteStatus.prerequisiteName &&
+                                              ` - ${prerequisiteStatus.prerequisiteName}`}
+                                          </span>
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </>
+                            )}
                         </div>
                       </div>
 
@@ -841,11 +1041,26 @@ const CourseEnrollmentCreateDrawer: React.FC<
               className="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in sm:my-8 sm:w-full sm:max-w-lg sm:p-6 data-closed:sm:translate-y-0 data-closed:sm:scale-95"
             >
               <div className="sm:flex sm:items-start">
-                <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-gray-100 sm:mx-0 sm:size-10">
-                  <InformationCircleIcon
-                    aria-hidden="true"
-                    className="size-6 text-gray-900"
-                  />
+                <div
+                  className={`mx-auto flex size-12 shrink-0 items-center justify-center rounded-full sm:mx-0 sm:size-10 ${
+                    prerequisiteStatus.hasPrerequisite &&
+                    prerequisiteStatus.studentHasPassed === false
+                      ? "bg-amber-100"
+                      : "bg-gray-100"
+                  }`}
+                >
+                  {prerequisiteStatus.hasPrerequisite &&
+                  prerequisiteStatus.studentHasPassed === false ? (
+                    <ExclamationTriangleIcon
+                      aria-hidden="true"
+                      className="size-6 text-amber-600"
+                    />
+                  ) : (
+                    <InformationCircleIcon
+                      aria-hidden="true"
+                      className="size-6 text-gray-900"
+                    />
+                  )}
                 </div>
                 <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
                   <DialogTitle
@@ -856,7 +1071,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
                   </DialogTitle>
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
-                      ¿Estás seguro de que deseas registrar la matrícula para{" "}
+                      ¿Está seguro de que desea registrar la matrícula para{" "}
                       {selectedStudent
                         ? `${selectedStudent.last_name || ""} ${
                             selectedStudent.first_name
@@ -868,6 +1083,33 @@ const CourseEnrollmentCreateDrawer: React.FC<
                         : ""}
                       ?
                     </p>
+                    {/* Warning for unmet prerequisite */}
+                    {prerequisiteStatus.hasPrerequisite &&
+                      prerequisiteStatus.studentHasPassed === false && (
+                        <div className="mt-3 rounded-md bg-amber-50 p-3">
+                          <div className="flex">
+                            <div className="shrink-0">
+                              <ExclamationTriangleIcon
+                                aria-hidden="true"
+                                className="size-5 text-amber-400"
+                              />
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm text-amber-700">
+                                <span className="font-medium">
+                                  Advertencia:
+                                </span>{" "}
+                                El estudiante no ha aprobado el prerrequisito{" "}
+                                <span className="font-medium">
+                                  {prerequisiteStatus.prerequisiteCode}
+                                  {prerequisiteStatus.prerequisiteName &&
+                                    ` - ${prerequisiteStatus.prerequisiteName}`}
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                   </div>
                 </div>
               </div>

@@ -24,6 +24,7 @@ interface CourseEnrollmentSchedule {
   day: string;
   day_display: string;
   hour: string | null;
+  classroom: string | null;
   created_by: {
     id: number;
     first_name: string;
@@ -89,7 +90,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
     Record<number, CourseEnrollmentSchedule>
   >({});
   const [newSchedules, setNewSchedules] = useState<
-    Array<{ day: string; hour: string; tempId: number }>
+    Array<{ day: string; hour: string; classroom: string; tempId: number }>
   >([]);
   const [schedulesToDelete, setSchedulesToDelete] = useState<number[]>([]);
   const [notifyUser, setNotifyUser] = useState(false);
@@ -177,7 +178,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
     }
     setNewSchedules((prev) => [
       ...prev,
-      { day: "", hour: "", tempId: tempIdCounter },
+      { day: "", hour: "", classroom: "", tempId: tempIdCounter },
     ]);
     setTempIdCounter((prev) => prev + 1);
   };
@@ -252,7 +253,8 @@ const CourseEnrollmentScheduleDrawer: React.FC<
         // Check if schedule was actually modified
         const wasModified =
           editingSchedule.day !== originalSchedule.day ||
-          editingSchedule.hour !== originalSchedule.hour;
+          editingSchedule.hour !== originalSchedule.hour ||
+          editingSchedule.classroom !== originalSchedule.classroom;
 
         if (wasModified) {
           try {
@@ -265,6 +267,9 @@ const CourseEnrollmentScheduleDrawer: React.FC<
             }
             if (editingSchedule.hour !== undefined) {
               updateData.hour = editingSchedule.hour || null;
+            }
+            if (editingSchedule.classroom !== undefined) {
+              updateData.classroom = editingSchedule.classroom || null;
             }
 
             await axiosPrivate.put<ScheduleResponse>(
@@ -285,13 +290,14 @@ const CourseEnrollmentScheduleDrawer: React.FC<
           const createData: any = {
             course_enrollment_id: enrollmentId,
             day: newSchedule.day,
-            notify_user:
-              notifyUser &&
-              newSchedule === schedulesToCreate[schedulesToCreate.length - 1], // Only notify on last create
           };
 
           if (newSchedule.hour) {
             createData.hour = newSchedule.hour;
+          }
+
+          if (newSchedule.classroom) {
+            createData.classroom = newSchedule.classroom;
           }
 
           await axiosPrivate.post<ScheduleResponse>(
@@ -306,6 +312,19 @@ const CourseEnrollmentScheduleDrawer: React.FC<
 
       // Refresh schedules to get updated data
       await fetchSchedules();
+
+      // Send notification email if checkbox is enabled (after all operations)
+      if (notifyUser) {
+        try {
+          await axiosPrivate.post("courses/manage-enrollment-schedules", {
+            course_enrollment_id: enrollmentId,
+            notify_only: true,
+          });
+        } catch (err: any) {
+          console.error("Error sending notification:", err);
+          // Don't fail the whole operation if notification fails
+        }
+      }
 
       // Show success notification
       setShowSuccessNotification(true);
@@ -466,7 +485,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                       key={schedule.id}
                                       className="border border-gray-200 rounded-lg p-4"
                                     >
-                                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                                         <div className="w-full min-w-0 flex-1">
                                           <label className="block text-xs font-medium text-gray-700 mb-1">
                                             Día
@@ -537,6 +556,34 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                             }}
                                           />
                                         </div>
+                                        <div className="w-full min-w-0 flex-1">
+                                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                                            Aula
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={
+                                              editingSchedule.classroom || ""
+                                            }
+                                            onChange={(e) =>
+                                              handleEditScheduleChange(
+                                                schedule.id,
+                                                "classroom",
+                                                e.target.value
+                                              )
+                                            }
+                                            disabled={isReadOnly}
+                                            placeholder="Ej: Aula 1"
+                                            className={`block w-full max-w-full min-w-0 rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 ${
+                                              isReadOnly
+                                                ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                                                : "bg-white text-gray-900 focus-visible:outline-gray-900"
+                                            }`}
+                                            style={{
+                                              boxSizing: "border-box",
+                                            }}
+                                          />
+                                        </div>
                                         <div className="flex items-end gap-2">
                                           {!isReadOnly && (
                                             <button
@@ -588,7 +635,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                     key={newSchedule.tempId}
                                     className="border border-gray-200 rounded-lg p-4"
                                   >
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                                       <div className="w-full min-w-0 flex-1">
                                         <label className="block text-xs font-medium text-gray-700 mb-1">
                                           Día{" "}
@@ -651,6 +698,32 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                             appearance: "none",
                                             boxSizing: "border-box",
                                             MozAppearance: "textfield",
+                                          }}
+                                        />
+                                      </div>
+                                      <div className="w-full min-w-0 flex-1">
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          Aula
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={newSchedule.classroom}
+                                          onChange={(e) =>
+                                            handleNewScheduleChange(
+                                              newSchedule.tempId,
+                                              "classroom",
+                                              e.target.value
+                                            )
+                                          }
+                                          disabled={isReadOnly}
+                                          placeholder="Ej: Aula 1"
+                                          className={`block w-full max-w-full min-w-0 rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 ${
+                                            isReadOnly
+                                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                                              : "bg-white text-gray-900 focus-visible:outline-gray-900"
+                                          }`}
+                                          style={{
+                                            boxSizing: "border-box",
                                           }}
                                         />
                                       </div>
