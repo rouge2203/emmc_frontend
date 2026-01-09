@@ -23,6 +23,7 @@ import {
   UsersIcon,
   XMarkIcon,
   BellIcon,
+  BanknotesIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronRightIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 import { HomeIcon as HomeIconSolid } from "@heroicons/react/20/solid";
@@ -116,6 +117,12 @@ const navigation = [
     current: false,
   },
   {
+    name: "Centro de Pagos",
+    href: "/admin/centro-de-pagos",
+    icon: BanknotesIcon,
+    current: false,
+  },
+  {
     name: "Calendario de Cursos",
     href: "/admin/calendario-de-cursos",
     icon: CalendarIcon,
@@ -186,6 +193,8 @@ export default function AdminLayout() {
       catedra: "Catedra",
       cursos: "Cursos",
       "cursos-matriculados": "Cursos Matriculados",
+      "centro-de-pagos": "Centro de Pagos",
+      "calendario-de-cursos": "Calendario de Cursos",
     };
 
     // Map detail routes to readable names

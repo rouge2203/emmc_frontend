@@ -30,6 +30,7 @@ import Catedra from "./pages/admin/Catedra";
 import Courses from "./pages/admin/Courses";
 import CourseEnrollments from "./pages/admin/CourseEnrollments";
 import TeacherUsers from "./pages/admin/TeacherUsers";
+import Payments from "./pages/admin/Payments";
 
 export const router = createBrowserRouter([
   {
@@ -140,6 +141,10 @@ export const router = createBrowserRouter([
               {
                 path: "/admin/cursos-matriculados",
                 element: <CourseEnrollments />,
+              },
+              {
+                path: "/admin/centro-de-pagos",
+                element: <Payments />,
               },
             ],
           },
