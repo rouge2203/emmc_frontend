@@ -24,6 +24,7 @@ interface CourseEnrollmentSchedule {
   day: string;
   day_display: string;
   hour: string | null;
+  end_hour: string | null;
   classroom: string | null;
   created_by: {
     id: number;
@@ -90,7 +91,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
     Record<number, CourseEnrollmentSchedule>
   >({});
   const [newSchedules, setNewSchedules] = useState<
-    Array<{ day: string; hour: string; classroom: string; tempId: number }>
+    Array<{ day: string; hour: string; end_hour: string; classroom: string; tempId: number }>
   >([]);
   const [schedulesToDelete, setSchedulesToDelete] = useState<number[]>([]);
   const [notifyUser, setNotifyUser] = useState(false);
@@ -178,7 +179,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
     }
     setNewSchedules((prev) => [
       ...prev,
-      { day: "", hour: "", classroom: "", tempId: tempIdCounter },
+      { day: "", hour: "", end_hour: "", classroom: "", tempId: tempIdCounter },
     ]);
     setTempIdCounter((prev) => prev + 1);
   };
@@ -254,6 +255,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
         const wasModified =
           editingSchedule.day !== originalSchedule.day ||
           editingSchedule.hour !== originalSchedule.hour ||
+          editingSchedule.end_hour !== originalSchedule.end_hour ||
           editingSchedule.classroom !== originalSchedule.classroom;
 
         if (wasModified) {
@@ -267,6 +269,9 @@ const CourseEnrollmentScheduleDrawer: React.FC<
             }
             if (editingSchedule.hour !== undefined) {
               updateData.hour = editingSchedule.hour || null;
+            }
+            if (editingSchedule.end_hour !== undefined) {
+              updateData.end_hour = editingSchedule.end_hour || null;
             }
             if (editingSchedule.classroom !== undefined) {
               updateData.classroom = editingSchedule.classroom || null;
@@ -294,6 +299,10 @@ const CourseEnrollmentScheduleDrawer: React.FC<
 
           if (newSchedule.hour) {
             createData.hour = newSchedule.hour;
+          }
+
+          if (newSchedule.end_hour) {
+            createData.end_hour = newSchedule.end_hour;
           }
 
           if (newSchedule.classroom) {
@@ -485,7 +494,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                       key={schedule.id}
                                       className="border border-gray-200 rounded-lg p-4"
                                     >
-                                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                                      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
                                         <div className="w-full min-w-0 flex-1">
                                           <label className="block text-xs font-medium text-gray-700 mb-1">
                                             Día
@@ -536,6 +545,43 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                               handleEditScheduleChange(
                                                 schedule.id,
                                                 "hour",
+                                                e.target.value
+                                              )
+                                            }
+                                            disabled={isReadOnly}
+                                            className={`block w-full max-w-full min-w-0 rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 ${
+                                              isReadOnly
+                                                ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                                                : "bg-white text-gray-900 focus-visible:outline-gray-900"
+                                            }`}
+                                            style={{
+                                              width: "100%",
+                                              maxWidth: "100%",
+                                              minWidth: "0",
+                                              WebkitAppearance: "none",
+                                              appearance: "none",
+                                              boxSizing: "border-box",
+                                              MozAppearance: "textfield",
+                                            }}
+                                          />
+                                        </div>
+                                        <div className="w-full min-w-0 flex-1">
+                                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                                            Hora Fin
+                                          </label>
+                                          <input
+                                            type="time"
+                                            value={
+                                              editingSchedule.end_hour
+                                                ? formatTimeForInput(
+                                                    editingSchedule.end_hour
+                                                  )
+                                                : ""
+                                            }
+                                            onChange={(e) =>
+                                              handleEditScheduleChange(
+                                                schedule.id,
+                                                "end_hour",
                                                 e.target.value
                                               )
                                             }
@@ -635,7 +681,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                     key={newSchedule.tempId}
                                     className="border border-gray-200 rounded-lg p-4"
                                   >
-                                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
                                       <div className="w-full min-w-0 flex-1">
                                         <label className="block text-xs font-medium text-gray-700 mb-1">
                                           Día{" "}
@@ -681,6 +727,37 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                             handleNewScheduleChange(
                                               newSchedule.tempId,
                                               "hour",
+                                              e.target.value
+                                            )
+                                          }
+                                          disabled={isReadOnly}
+                                          className={`block w-full max-w-full min-w-0 rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 ${
+                                            isReadOnly
+                                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                                              : "bg-white text-gray-900 focus-visible:outline-gray-900"
+                                          }`}
+                                          style={{
+                                            width: "100%",
+                                            maxWidth: "100%",
+                                            minWidth: "0",
+                                            WebkitAppearance: "none",
+                                            appearance: "none",
+                                            boxSizing: "border-box",
+                                            MozAppearance: "textfield",
+                                          }}
+                                        />
+                                      </div>
+                                      <div className="w-full min-w-0 flex-1">
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          Hora Fin
+                                        </label>
+                                        <input
+                                          type="time"
+                                          value={newSchedule.end_hour}
+                                          onChange={(e) =>
+                                            handleNewScheduleChange(
+                                              newSchedule.tempId,
+                                              "end_hour",
                                               e.target.value
                                             )
                                           }

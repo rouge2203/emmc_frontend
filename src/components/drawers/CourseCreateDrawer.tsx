@@ -7,7 +7,11 @@ import {
   DialogBackdrop,
   Transition,
 } from "@headlessui/react";
-import { XMarkIcon, CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import {
+  XMarkIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+} from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import {
   InformationCircleIcon,

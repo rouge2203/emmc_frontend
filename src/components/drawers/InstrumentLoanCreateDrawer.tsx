@@ -7,7 +7,11 @@ import {
   DialogBackdrop,
   Transition,
 } from "@headlessui/react";
-import { XMarkIcon, CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import {
+  XMarkIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+} from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import { InformationCircleIcon } from "@heroicons/react/24/outline";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
@@ -40,6 +44,7 @@ interface InstrumentLoan {
   expected_return_date: string | null;
   actual_return_date: string | null;
   status: string | null;
+  price: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -76,6 +81,7 @@ const validationSchema = Yup.object({
     "La fecha de retorno esperada es obligatoria"
   ),
   loan_date: Yup.string().nullable(),
+  price: Yup.number().nullable().min(0, "El precio debe ser mayor o igual a 0"),
 });
 
 const InstrumentLoanCreateDrawer: React.FC<InstrumentLoanCreateDrawerProps> = ({
@@ -97,6 +103,7 @@ const InstrumentLoanCreateDrawer: React.FC<InstrumentLoanCreateDrawerProps> = ({
   const [loanUserId, setLoanUserId] = useState<number | null>(null);
   const [loanDate, setLoanDate] = useState("");
   const [expectedReturnDate, setExpectedReturnDate] = useState("");
+  const [price, setPrice] = useState<number | null>(null);
   const [notifyUser, setNotifyUser] = useState(true);
 
   // Searchable select states for instruments
@@ -243,6 +250,7 @@ const InstrumentLoanCreateDrawer: React.FC<InstrumentLoanCreateDrawerProps> = ({
       setLoanUserId(null);
       setLoanDate("");
       setExpectedReturnDate("");
+      setPrice(null);
       setInstrumentSearch("");
       setUserSearch("");
       setShowInstrumentDropdown(false);
@@ -307,6 +315,7 @@ const InstrumentLoanCreateDrawer: React.FC<InstrumentLoanCreateDrawerProps> = ({
           loan_user_id: loanUserId,
           expected_return_date: expectedReturnDate,
           loan_date: loanDate || null,
+          price: price,
         },
         { abortEarly: false }
       );
@@ -345,6 +354,7 @@ const InstrumentLoanCreateDrawer: React.FC<InstrumentLoanCreateDrawerProps> = ({
           loan_user_id: loanUserId,
           loan_date: loanDate || null,
           expected_return_date: expectedReturnDate,
+          price: price,
           status: "prestado",
           notify_user: notifyUser,
         }
@@ -366,6 +376,7 @@ const InstrumentLoanCreateDrawer: React.FC<InstrumentLoanCreateDrawerProps> = ({
       setLoanUserId(null);
       setLoanDate(getTodayDate());
       setExpectedReturnDate("");
+      setPrice(null);
       setInstrumentSearch("");
       setUserSearch("");
       setErrors({});
@@ -662,6 +673,48 @@ const InstrumentLoanCreateDrawer: React.FC<InstrumentLoanCreateDrawerProps> = ({
                           {errors.expected_return_date && (
                             <p className="mt-1 text-sm text-red-600">
                               {errors.expected_return_date}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Price */}
+                      <div className="space-y-2 px-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0 sm:px-6 sm:py-5">
+                        <div>
+                          <label
+                            htmlFor="price"
+                            className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
+                          >
+                            Precio (por mes)
+                          </label>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <div className="flex items-center">
+                            <span className="mr-2 text-gray-500">₡</span>
+                            <input
+                              type="number"
+                              id="price"
+                              name="price"
+                              value={price ?? ""}
+                              onChange={(e) =>
+                                setPrice(
+                                  e.target.value
+                                    ? parseInt(e.target.value, 10)
+                                    : null
+                                )
+                              }
+                              min="0"
+                              placeholder="0"
+                              className={`block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
+                                errors.price
+                                  ? "outline-red-500 focus-visible:outline-red-500"
+                                  : "focus-visible:outline-gray-900"
+                              }`}
+                            />
+                          </div>
+                          {errors.price && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {errors.price}
                             </p>
                           )}
                         </div>

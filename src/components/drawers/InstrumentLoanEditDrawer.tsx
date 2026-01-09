@@ -47,6 +47,7 @@ interface InstrumentLoan {
   expected_return_date: string | null;
   actual_return_date: string | null;
   status: string | null;
+  price: number | null;
   created_at: string;
   updated_at: string;
   created_by: {
@@ -95,6 +96,7 @@ const InstrumentLoanEditDrawer: React.FC<InstrumentLoanEditDrawerProps> = ({
   // Form state
   const [expectedReturnDate, setExpectedReturnDate] = useState("");
   const [actualReturnDate, setActualReturnDate] = useState("");
+  const [price, setPrice] = useState<number | null>(null);
 
   useEffect(() => {
     if (isOpen && loanId) {
@@ -122,6 +124,7 @@ const InstrumentLoanEditDrawer: React.FC<InstrumentLoanEditDrawerProps> = ({
         setLoan(loanData);
         setExpectedReturnDate(loanData.expected_return_date || "");
         setActualReturnDate(loanData.actual_return_date || "");
+        setPrice(loanData.price);
       } else {
         setError("Alquiler no encontrado");
       }
@@ -158,6 +161,9 @@ const InstrumentLoanEditDrawer: React.FC<InstrumentLoanEditDrawerProps> = ({
           updateData.status = "devuelto";
         }
       }
+      if (price !== loan?.price) {
+        updateData.price = price;
+      }
 
       const response = await axiosPrivate.put<InstrumentLoanResponse>(
         "instruments/manage-instruments-loans",
@@ -170,6 +176,7 @@ const InstrumentLoanEditDrawer: React.FC<InstrumentLoanEditDrawerProps> = ({
         setLoan(updatedLoan);
         setExpectedReturnDate(updatedLoan.expected_return_date || "");
         setActualReturnDate(updatedLoan.actual_return_date || "");
+        setPrice(updatedLoan.price);
 
         // Notify parent component to update the list
         if (onLoanUpdated) {
@@ -231,9 +238,7 @@ const InstrumentLoanEditDrawer: React.FC<InstrumentLoanEditDrawerProps> = ({
       }
     } catch (err: any) {
       console.error("Error deleting loan:", err);
-      setError(
-        err?.response?.data?.error || "Error al eliminar el alquiler"
-      );
+      setError(err?.response?.data?.error || "Error al eliminar el alquiler");
       setShowDeleteDialog(false);
     } finally {
       setIsDeleting(false);
@@ -401,6 +406,39 @@ const InstrumentLoanEditDrawer: React.FC<InstrumentLoanEditDrawerProps> = ({
                                 }
                                 className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                               />
+                            </div>
+                          </div>
+
+                          {/* Price (Editable) */}
+                          <div className="space-y-2 px-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0 sm:px-0 sm:py-0">
+                            <div>
+                              <label
+                                htmlFor="price"
+                                className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
+                              >
+                                Precio (por mes)
+                              </label>
+                            </div>
+                            <div className="sm:col-span-2">
+                              <div className="flex items-center">
+                                <span className="mr-2 text-gray-500">₡</span>
+                                <input
+                                  type="number"
+                                  id="price"
+                                  name="price"
+                                  value={price ?? ""}
+                                  onChange={(e) =>
+                                    setPrice(
+                                      e.target.value
+                                        ? parseInt(e.target.value, 10)
+                                        : null
+                                    )
+                                  }
+                                  min="0"
+                                  placeholder="0"
+                                  className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                                />
+                              </div>
                             </div>
                           </div>
 
@@ -762,4 +800,3 @@ const InstrumentLoanEditDrawer: React.FC<InstrumentLoanEditDrawerProps> = ({
 };
 
 export default InstrumentLoanEditDrawer;
-
