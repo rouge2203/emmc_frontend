@@ -251,8 +251,8 @@ export default function AdminLayout() {
   const breadcrumbs = generateBreadcrumbs();
 
   const userNavigation = [
-    { name: "Your profile", href: "#" },
-    { name: "Sign out", onClick: logout },
+    { name: "Tu perfil", href: "#" },
+    { name: "Cerrar sesión", onClick: logout },
   ];
 
   const renderNavigationItem = (item: (typeof navigation)[0]) => {

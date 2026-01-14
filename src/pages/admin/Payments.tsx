@@ -41,7 +41,7 @@ interface Payment {
   instrument_loan: number | null;
   course_enrollment_info: CourseEnrollmentInfo | null;
   instrument_loan_info: InstrumentLoanInfo | null;
-  payment_type: "enrollment" | "loan" | null;
+  payment_type: "enrollment" | "loan" | "anualidad" | null;
   amount: number;
   amount_paid: number | null;
   remaining_amount: number;
@@ -51,6 +51,22 @@ interface Payment {
   updated_by: User | null;
   updated_at: string;
   note: string | null;
+}
+
+interface AnualidadItem {
+  id: number;
+  note: string;
+  amount: number;
+  amount_paid: number;
+  remaining: number;
+  status: string;
+  late_due: string | null;
+}
+
+interface AnualidadesSummary {
+  count: number;
+  anualidades: AnualidadItem[];
+  total_owed: number;
 }
 
 interface PaginationInfo {
@@ -121,6 +137,9 @@ const Payments = () => {
   const [yearFilter, setYearFilter] = useState<string>("");
   const [periodFilter, setPeriodFilter] = useState<string>("");
   const [availableYears, setAvailableYears] = useState<number[]>([]);
+
+  // Anualidades Summary
+  const [anualidadesSummary, setAnualidadesSummary] = useState<AnualidadesSummary | null>(null);
 
   // Summary
   const [summary, setSummary] = useState<StudentSummary | null>(null);
@@ -212,6 +231,23 @@ const Payments = () => {
     }
   };
 
+  const fetchAnualidadesSummary = async () => {
+    if (!selectedStudent) {
+      setAnualidadesSummary(null);
+      return;
+    }
+
+    try {
+      const response = await axiosPrivate.get<AnualidadesSummary>(
+        "payments/anualidades-summary",
+        { params: { student_id: selectedStudent.id } }
+      );
+      setAnualidadesSummary(response.data);
+    } catch (err: any) {
+      console.error("Error fetching anualidades summary:", err);
+    }
+  };
+
   const searchStudents = async (search: string) => {
     if (!search || search.length < 2) {
       setSearchResults([]);
@@ -268,6 +304,11 @@ const Payments = () => {
     fetchStudentSummary();
   }, [selectedStudent, paymentTypeFilter, yearFilter, periodFilter]);
 
+  // Effect to fetch anualidades summary when student changes
+  useEffect(() => {
+    fetchAnualidadesSummary();
+  }, [selectedStudent]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -294,6 +335,7 @@ const Payments = () => {
     setSelectedStudent(null);
     setStudentSearch("");
     setSummary(null);
+    setAnualidadesSummary(null);
     setPage(1);
   };
 
@@ -306,6 +348,7 @@ const Payments = () => {
     setYearFilter("");
     setPeriodFilter("");
     setSummary(null);
+    setAnualidadesSummary(null);
     setPage(1);
   };
 
@@ -402,6 +445,12 @@ const Payments = () => {
       return (
         <span className="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-600/20">
           Alquiler
+        </span>
+      );
+    } else if (paymentType === "anualidad") {
+      return (
+        <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-600/20">
+          Anualidad
         </span>
       );
     }
@@ -527,6 +576,7 @@ const Payments = () => {
                 <option value="">Todos</option>
                 <option value="enrollment">Mensualidades</option>
                 <option value="loan">Alquileres</option>
+                <option value="anualidad">Anualidades</option>
               </select>
             </div>
 
@@ -702,6 +752,37 @@ const Payments = () => {
                     </p>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Anualidades Summary Box (when student selected and has pending anualidades) */}
+      {selectedStudent && anualidadesSummary && anualidadesSummary.count > 0 && (
+        <div className="mb-6">
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <BanknotesIcon className="h-5 w-5 text-purple-500" />
+                  <h4 className="text-sm font-medium text-purple-900">
+                    Anualidades Pendientes
+                  </h4>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {anualidadesSummary.anualidades.map((anualidad) => (
+                    <span
+                      key={anualidad.id}
+                      className="inline-flex items-center rounded-md bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700"
+                    >
+                      {anualidad.note} - {formatCurrency(anualidad.remaining)}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-lg font-semibold text-purple-700 mt-2">
+                  Total: {formatCurrency(anualidadesSummary.total_owed)}
+                </p>
               </div>
             </div>
           </div>
