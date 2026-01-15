@@ -343,7 +343,7 @@ export default function CourseDashboard() {
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <dt className="text-sm font-medium text-gray-500">Estudiante</dt>
-            <dd className="mt-1 text-lg font-semibold text-gray-900">
+            <dd className="mt-1 text-lg font-semibold text-gray-900 ">
               {enrollment.student.first_name} {enrollment.student.last_name}
             </dd>
             <dd className="text-sm text-gray-500">
