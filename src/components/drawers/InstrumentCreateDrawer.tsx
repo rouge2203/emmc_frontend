@@ -317,26 +317,41 @@ const InstrumentCreateDrawer: React.FC<InstrumentCreateDrawerProps> = ({
                           </label>
                         </div>
                         <div className="sm:col-span-2">
-                          <select
-                            id="instrument_type"
-                            name="instrument_type"
-                            value={instrumentTypeId || ""}
-                            onChange={(e) =>
-                              handleInstrumentTypeChange(e.target.value)
-                            }
-                            className={`block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
-                              errors.instrument_type_id
-                                ? "outline-red-500 focus-visible:outline-red-500"
-                                : "focus-visible:outline-gray-900"
-                            }`}
-                          >
-                            <option value="">Seleccione un tipo</option>
-                            {instrumentTypes.map((type) => (
-                              <option key={type.id} value={type.id}>
-                                {type.name}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="mt-2 grid grid-cols-1">
+                            <select
+                              id="instrument_type"
+                              name="instrument_type"
+                              value={instrumentTypeId || ""}
+                              onChange={(e) =>
+                                handleInstrumentTypeChange(e.target.value)
+                              }
+                              className={`col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
+                                errors.instrument_type_id
+                                  ? "outline-red-500 focus-visible:outline-red-500"
+                                  : "focus-visible:outline-gray-900"
+                              }`}
+                            >
+                              <option value="">Seleccione un tipo</option>
+                              {instrumentTypes.map((type) => (
+                                <option key={type.id} value={type.id}>
+                                  {type.name}
+                                </option>
+                              ))}
+                            </select>
+                            <svg
+                              viewBox="0 0 16 16"
+                              fill="currentColor"
+                              data-slot="icon"
+                              aria-hidden="true"
+                              className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                            >
+                              <path
+                                d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                                clipRule="evenodd"
+                                fillRule="evenodd"
+                              />
+                            </svg>
+                          </div>
                           {errors.instrument_type_id && (
                             <p className="mt-1 text-sm text-red-600">
                               {errors.instrument_type_id}
@@ -424,20 +439,35 @@ const InstrumentCreateDrawer: React.FC<InstrumentCreateDrawerProps> = ({
                           </label>
                         </div>
                         <div className="sm:col-span-2">
-                          <select
-                            id="status"
-                            name="status"
-                            value={status}
-                            onChange={(e) => handleStatusChange(e.target.value)}
-                            className={`block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
-                              errors.status
-                                ? "outline-red-500 focus-visible:outline-red-500"
-                                : "focus-visible:outline-gray-900"
-                            }`}
-                          >
-                            <option value="libre">Libre</option>
-                            <option value="alquilado">Alquilado</option>
-                          </select>
+                          <div className="mt-2 grid grid-cols-1">
+                            <select
+                              id="status"
+                              name="status"
+                              value={status}
+                              onChange={(e) => handleStatusChange(e.target.value)}
+                              className={`col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
+                                errors.status
+                                  ? "outline-red-500 focus-visible:outline-red-500"
+                                  : "focus-visible:outline-gray-900"
+                              }`}
+                            >
+                              <option value="libre">Libre</option>
+                              <option value="alquilado">Alquilado</option>
+                            </select>
+                            <svg
+                              viewBox="0 0 16 16"
+                              fill="currentColor"
+                              data-slot="icon"
+                              aria-hidden="true"
+                              className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                            >
+                              <path
+                                d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                                clipRule="evenodd"
+                                fillRule="evenodd"
+                              />
+                            </svg>
+                          </div>
                           {errors.status && (
                             <p className="mt-1 text-sm text-red-600">
                               {errors.status}

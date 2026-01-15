@@ -564,20 +564,35 @@ const Payments = () => {
                 <BanknotesIcon className="h-4 w-4" />
                 Tipo de pago
               </label>
-              <select
-                id="paymentTypeFilter"
-                value={paymentTypeFilter}
-                onChange={(e) => {
-                  setPaymentTypeFilter(e.target.value);
-                  setPage(1);
-                }}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-              >
-                <option value="">Todos</option>
-                <option value="enrollment">Mensualidades</option>
-                <option value="loan">Alquileres</option>
-                <option value="anualidad">Anualidades</option>
-              </select>
+              <div className="mt-2 grid grid-cols-1">
+                <select
+                  id="paymentTypeFilter"
+                  value={paymentTypeFilter}
+                  onChange={(e) => {
+                    setPaymentTypeFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                >
+                  <option value="">Todos</option>
+                  <option value="enrollment">Mensualidades</option>
+                  <option value="loan">Alquileres</option>
+                  <option value="anualidad">Anualidades</option>
+                </select>
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  data-slot="icon"
+                  aria-hidden="true"
+                  className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                >
+                  <path
+                    d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                    clipRule="evenodd"
+                    fillRule="evenodd"
+                  />
+                </svg>
+              </div>
             </div>
 
             {/* Status Filter */}
@@ -589,20 +604,35 @@ const Payments = () => {
                 <ClockIcon className="h-4 w-4" />
                 Estado
               </label>
-              <select
-                id="statusFilter"
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value);
-                  setPage(1);
-                }}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-              >
-                <option value="">Todos</option>
-                <option value="en espera">En espera</option>
-                <option value="completado">Completado</option>
-                <option value="incompleto">Incompleto</option>
-              </select>
+              <div className="mt-2 grid grid-cols-1">
+                <select
+                  id="statusFilter"
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                >
+                  <option value="">Todos</option>
+                  <option value="en espera">En espera</option>
+                  <option value="completado">Completado</option>
+                  <option value="incompleto">Incompleto</option>
+                </select>
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  data-slot="icon"
+                  aria-hidden="true"
+                  className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                >
+                  <path
+                    d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                    clipRule="evenodd"
+                    fillRule="evenodd"
+                  />
+                </svg>
+              </div>
             </div>
 
             {/* Overdue Filter */}
@@ -636,22 +666,37 @@ const Payments = () => {
                 <CalendarIcon className="h-4 w-4" />
                 Año (Matrícula)
               </label>
-              <select
-                id="yearFilter"
-                value={yearFilter}
-                onChange={(e) => {
-                  setYearFilter(e.target.value);
-                  setPage(1);
-                }}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-              >
-                <option value="">Todos</option>
-                {availableYears.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
+              <div className="mt-2 grid grid-cols-1">
+                <select
+                  id="yearFilter"
+                  value={yearFilter}
+                  onChange={(e) => {
+                    setYearFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                >
+                  <option value="">Todos</option>
+                  {availableYears.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  data-slot="icon"
+                  aria-hidden="true"
+                  className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                >
+                  <path
+                    d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                    clipRule="evenodd"
+                    fillRule="evenodd"
+                  />
+                </svg>
+              </div>
             </div>
 
             {/* Period Filter */}
@@ -663,20 +708,35 @@ const Payments = () => {
                 <CalendarDaysIcon className="h-4 w-4" />
                 Período (Matrícula)
               </label>
-              <select
-                id="periodFilter"
-                value={periodFilter}
-                onChange={(e) => {
-                  setPeriodFilter(e.target.value);
-                  setPage(1);
-                }}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-              >
-                <option value="">Todos</option>
-                <option value="1">I</option>
-                <option value="2">II</option>
-                <option value="3">III</option>
-              </select>
+              <div className="mt-2 grid grid-cols-1">
+                <select
+                  id="periodFilter"
+                  value={periodFilter}
+                  onChange={(e) => {
+                    setPeriodFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                >
+                  <option value="">Todos</option>
+                  <option value="1">I</option>
+                  <option value="2">II</option>
+                  <option value="3">III</option>
+                </select>
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  data-slot="icon"
+                  aria-hidden="true"
+                  className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                >
+                  <path
+                    d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                    clipRule="evenodd"
+                    fillRule="evenodd"
+                  />
+                </svg>
+              </div>
             </div>
           </div>
         </div>

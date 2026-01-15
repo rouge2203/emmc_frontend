@@ -340,23 +340,38 @@ const Courses = () => {
                 <HiOutlineBuildingLibrary className="h-4 w-4" />
                 Cátedra
               </label>
-              <select
-                id="careerFilter"
-                value={careerFilter || ""}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setCareerFilter(value ? parseInt(value) : null);
-                  setPage(1);
-                }}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-              >
-                <option value="">Todas las cátedras</option>
-                {careers.map((career) => (
-                  <option key={career.id} value={career.id}>
-                    {career.name}
-                  </option>
-                ))}
-              </select>
+              <div className="mt-2 grid grid-cols-1">
+                <select
+                  id="careerFilter"
+                  value={careerFilter || ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setCareerFilter(value ? parseInt(value) : null);
+                    setPage(1);
+                  }}
+                  className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                >
+                  <option value="">Todas las cátedras</option>
+                  {careers.map((career) => (
+                    <option key={career.id} value={career.id}>
+                      {career.name}
+                    </option>
+                  ))}
+                </select>
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  data-slot="icon"
+                  aria-hidden="true"
+                  className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                >
+                  <path
+                    d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                    clipRule="evenodd"
+                    fillRule="evenodd"
+                  />
+                </svg>
+              </div>
             </div>
 
             {/* Course Type Filter */}
@@ -368,23 +383,38 @@ const Courses = () => {
                 <IoMdBook className="h-4 w-4" />
                 Tipo de curso
               </label>
-              <select
-                id="courseTypeFilter"
-                value={courseTypeFilter || ""}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setCourseTypeFilter(value ? parseInt(value) : null);
-                  setPage(1);
-                }}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-              >
-                <option value="">Todos los tipos</option>
-                {courseTypes.map((type) => (
-                  <option key={type.id} value={type.id}>
-                    {type.name}
-                  </option>
-                ))}
-              </select>
+              <div className="mt-2 grid grid-cols-1">
+                <select
+                  id="courseTypeFilter"
+                  value={courseTypeFilter || ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setCourseTypeFilter(value ? parseInt(value) : null);
+                    setPage(1);
+                  }}
+                  className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                >
+                  <option value="">Todos los tipos</option>
+                  {courseTypes.map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {type.name}
+                    </option>
+                  ))}
+                </select>
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  data-slot="icon"
+                  aria-hidden="true"
+                  className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                >
+                  <path
+                    d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                    clipRule="evenodd"
+                    fillRule="evenodd"
+                  />
+                </svg>
+              </div>
             </div>
           </div>
         </div>

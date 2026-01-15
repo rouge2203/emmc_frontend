@@ -507,7 +507,7 @@ const CourseEditDrawer: React.FC<CourseEditDrawerProps> = ({
                             >
                               Cátedra
                             </label>
-                            <div className="mt-2">
+                            <div className="mt-2 grid grid-cols-1">
                               <select
                                 id="career"
                                 name="career"
@@ -519,7 +519,7 @@ const CourseEditDrawer: React.FC<CourseEditDrawerProps> = ({
                                       : null
                                   )
                                 }
-                                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                                className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                               >
                                 <option value="">N/A</option>
                                 {careers.map((career) => (
@@ -528,6 +528,19 @@ const CourseEditDrawer: React.FC<CourseEditDrawerProps> = ({
                                   </option>
                                 ))}
                               </select>
+                              <svg
+                                viewBox="0 0 16 16"
+                                fill="currentColor"
+                                data-slot="icon"
+                                aria-hidden="true"
+                                className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                              >
+                                <path
+                                  d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                                  clipRule="evenodd"
+                                  fillRule="evenodd"
+                                />
+                              </svg>
                             </div>
                           </div>
 
@@ -540,7 +553,7 @@ const CourseEditDrawer: React.FC<CourseEditDrawerProps> = ({
                               Tipo de curso{" "}
                               <span className="text-red-500">*</span>
                             </label>
-                            <div className="mt-2">
+                            <div className="mt-2 grid grid-cols-1">
                               <select
                                 id="course_type"
                                 name="course_type"
@@ -552,7 +565,7 @@ const CourseEditDrawer: React.FC<CourseEditDrawerProps> = ({
                                       : null
                                   )
                                 }
-                                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                                className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                               >
                                 <option value="">Seleccione un tipo</option>
                                 {courseTypes.map((type) => (
@@ -561,6 +574,19 @@ const CourseEditDrawer: React.FC<CourseEditDrawerProps> = ({
                                   </option>
                                 ))}
                               </select>
+                              <svg
+                                viewBox="0 0 16 16"
+                                fill="currentColor"
+                                data-slot="icon"
+                                aria-hidden="true"
+                                className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                              >
+                                <path
+                                  d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                                  clipRule="evenodd"
+                                  fillRule="evenodd"
+                                />
+                              </svg>
                             </div>
                           </div>
 

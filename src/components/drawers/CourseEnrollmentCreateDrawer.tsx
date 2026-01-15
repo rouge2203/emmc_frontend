@@ -895,23 +895,38 @@ const CourseEnrollmentCreateDrawer: React.FC<
                           </label>
                         </div>
                         <div className="sm:col-span-2">
-                          <select
-                            id="period"
-                            name="period"
-                            value={period}
-                            onChange={(e) =>
-                              setPeriod(parseInt(e.target.value))
-                            }
-                            className={`block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
-                              errors.period
-                                ? "outline-red-500 focus-visible:outline-red-500"
-                                : "focus-visible:outline-gray-900"
-                            }`}
-                          >
-                            <option value={1}>I</option>
-                            <option value={2}>II</option>
-                            <option value={3}>III</option>
-                          </select>
+                          <div className="mt-2 grid grid-cols-1">
+                            <select
+                              id="period"
+                              name="period"
+                              value={period}
+                              onChange={(e) =>
+                                setPeriod(parseInt(e.target.value))
+                              }
+                              className={`col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
+                                errors.period
+                                  ? "outline-red-500 focus-visible:outline-red-500"
+                                  : "focus-visible:outline-gray-900"
+                              }`}
+                            >
+                              <option value={1}>I</option>
+                              <option value={2}>II</option>
+                              <option value={3}>III</option>
+                            </select>
+                            <svg
+                              viewBox="0 0 16 16"
+                              fill="currentColor"
+                              data-slot="icon"
+                              aria-hidden="true"
+                              className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                            >
+                              <path
+                                d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                                clipRule="evenodd"
+                                fillRule="evenodd"
+                              />
+                            </svg>
+                          </div>
                           {errors.period && (
                             <p className="mt-1 text-sm text-red-600">
                               {errors.period}

@@ -13,6 +13,7 @@ import StudentDashboard from "./pages/dashboards/StudentDashboard";
 import RequireAuth from "./components/RequireAuth";
 import PersistLogin from "./components/PersistLogin";
 import AdminLayout from "./layouts/AdminLayout";
+import TeacherLayout from "./layouts/TeacherLayout";
 import Teams from "./pages/admin/Teams";
 import TeamDetail from "./pages/admin/TeamDetail";
 import Projects from "./pages/admin/Projects";
@@ -31,6 +32,9 @@ import Courses from "./pages/admin/Courses";
 import CourseEnrollments from "./pages/admin/CourseEnrollments";
 import TeacherUsers from "./pages/admin/TeacherUsers";
 import Payments from "./pages/admin/Payments";
+import CourseDashboard from "./pages/teacher/CourseDashboard";
+import AssignmentDetail from "./pages/teacher/AssignmentDetail";
+import ResourceDetail from "./pages/teacher/ResourceDetail";
 
 export const router = createBrowserRouter([
   {
@@ -156,8 +160,25 @@ export const router = createBrowserRouter([
         element: <RequireAuth allowedRoles={["teacher"]} />,
         children: [
           {
-            path: "/teacher/dashboard",
-            element: <TeacherDashboard />,
+            element: <TeacherLayout />,
+            children: [
+              {
+                path: "/teacher/dashboard",
+                element: <TeacherDashboard />,
+              },
+              {
+                path: "/teacher/course/:enrollmentId",
+                element: <CourseDashboard />,
+              },
+              {
+                path: "/teacher/assignment/:assignmentId",
+                element: <AssignmentDetail />,
+              },
+              {
+                path: "/teacher/resource/:resourceId",
+                element: <ResourceDetail />,
+              },
+            ],
           },
         ],
       },

@@ -499,34 +499,53 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                           <label className="block text-xs font-medium text-gray-700 mb-1">
                                             Día
                                           </label>
-                                          <select
-                                            value={editingSchedule.day}
-                                            onChange={(e) =>
-                                              handleEditScheduleChange(
-                                                schedule.id,
-                                                "day",
-                                                e.target.value
-                                              )
-                                            }
-                                            disabled={isReadOnly}
-                                            className={`block w-full max-w-full min-w-0 rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 ${
-                                              isReadOnly
-                                                ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                                : "bg-white text-gray-900 focus-visible:outline-gray-900"
-                                            }`}
-                                            style={{
-                                              boxSizing: "border-box",
-                                            }}
-                                          >
-                                            {DAY_OPTIONS.map((option) => (
-                                              <option
-                                                key={option.value}
-                                                value={option.value}
-                                              >
-                                                {option.label}
-                                              </option>
-                                            ))}
-                                          </select>
+                                          <div className="mt-2 grid grid-cols-1">
+                                            <select
+                                              value={editingSchedule.day}
+                                              onChange={(e) =>
+                                                handleEditScheduleChange(
+                                                  schedule.id,
+                                                  "day",
+                                                  e.target.value
+                                                )
+                                              }
+                                              disabled={isReadOnly}
+                                              className={`col-start-1 row-start-1 w-full appearance-none rounded-md py-1.5 pr-8 pl-3 text-sm outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 ${
+                                                isReadOnly
+                                                  ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                                                  : "bg-white text-gray-900 focus-visible:outline-gray-900"
+                                              }`}
+                                              style={{
+                                                boxSizing: "border-box",
+                                              }}
+                                            >
+                                              {DAY_OPTIONS.map((option) => (
+                                                <option
+                                                  key={option.value}
+                                                  value={option.value}
+                                                >
+                                                  {option.label}
+                                                </option>
+                                              ))}
+                                            </select>
+                                            <svg
+                                              viewBox="0 0 16 16"
+                                              fill="currentColor"
+                                              data-slot="icon"
+                                              aria-hidden="true"
+                                              className={`pointer-events-none col-start-1 row-start-1 mr-2 size-4 self-center justify-self-end ${
+                                                isReadOnly
+                                                  ? "text-gray-400"
+                                                  : "text-gray-500"
+                                              }`}
+                                            >
+                                              <path
+                                                d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                                                clipRule="evenodd"
+                                                fillRule="evenodd"
+                                              />
+                                            </svg>
+                                          </div>
                                         </div>
                                         <div className="w-full min-w-0 flex-1">
                                           <label className="block text-xs font-medium text-gray-700 mb-1">

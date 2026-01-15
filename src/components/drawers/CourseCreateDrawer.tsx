@@ -508,24 +508,41 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
                           </label>
                         </div>
                         <div className="sm:col-span-2">
-                          <select
-                            id="career"
-                            name="career"
-                            value={careerId || ""}
-                            onChange={(e) => handleCareerChange(e.target.value)}
-                            className={`block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
-                              errors.career_id
-                                ? "outline-red-500 focus-visible:outline-red-500"
-                                : "focus-visible:outline-gray-900"
-                            }`}
-                          >
-                            <option value="">N/A</option>
-                            {careers.map((career) => (
-                              <option key={career.id} value={career.id}>
-                                {career.name}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="mt-2 grid grid-cols-1">
+                            <select
+                              id="career"
+                              name="career"
+                              value={careerId || ""}
+                              onChange={(e) =>
+                                handleCareerChange(e.target.value)
+                              }
+                              className={`col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
+                                errors.career_id
+                                  ? "outline-red-500 focus-visible:outline-red-500"
+                                  : "focus-visible:outline-gray-900"
+                              }`}
+                            >
+                              <option value="">N/A</option>
+                              {careers.map((career) => (
+                                <option key={career.id} value={career.id}>
+                                  {career.name}
+                                </option>
+                              ))}
+                            </select>
+                            <svg
+                              viewBox="0 0 16 16"
+                              fill="currentColor"
+                              data-slot="icon"
+                              aria-hidden="true"
+                              className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                            >
+                              <path
+                                d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                                clipRule="evenodd"
+                                fillRule="evenodd"
+                              />
+                            </svg>
+                          </div>
                           {errors.career_id && (
                             <p className="mt-1 text-sm text-red-600">
                               {errors.career_id}
@@ -546,26 +563,41 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
                           </label>
                         </div>
                         <div className="sm:col-span-2">
-                          <select
-                            id="course_type"
-                            name="course_type"
-                            value={courseTypeId || ""}
-                            onChange={(e) =>
-                              handleCourseTypeChange(e.target.value)
-                            }
-                            className={`block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
-                              errors.course_type_id
-                                ? "outline-red-500 focus-visible:outline-red-500"
-                                : "focus-visible:outline-gray-900"
-                            }`}
-                          >
-                            <option value="">Seleccione un tipo</option>
-                            {courseTypes.map((type) => (
-                              <option key={type.id} value={type.id}>
-                                {type.name} - ₡{type.price.toLocaleString()}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="mt-2 grid grid-cols-1">
+                            <select
+                              id="course_type"
+                              name="course_type"
+                              value={courseTypeId || ""}
+                              onChange={(e) =>
+                                handleCourseTypeChange(e.target.value)
+                              }
+                              className={`col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
+                                errors.course_type_id
+                                  ? "outline-red-500 focus-visible:outline-red-500"
+                                  : "focus-visible:outline-gray-900"
+                              }`}
+                            >
+                              <option value="">Seleccione un tipo</option>
+                              {courseTypes.map((type) => (
+                                <option key={type.id} value={type.id}>
+                                  {type.name} - ₡{type.price.toLocaleString()}
+                                </option>
+                              ))}
+                            </select>
+                            <svg
+                              viewBox="0 0 16 16"
+                              fill="currentColor"
+                              data-slot="icon"
+                              aria-hidden="true"
+                              className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                            >
+                              <path
+                                d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                                clipRule="evenodd"
+                                fillRule="evenodd"
+                              />
+                            </svg>
+                          </div>
                           {errors.course_type_id && (
                             <p className="mt-1 text-sm text-red-600">
                               {errors.course_type_id}
