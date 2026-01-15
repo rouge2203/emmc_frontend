@@ -14,6 +14,7 @@ import RequireAuth from "./components/RequireAuth";
 import PersistLogin from "./components/PersistLogin";
 import AdminLayout from "./layouts/AdminLayout";
 import TeacherLayout from "./layouts/TeacherLayout";
+import StudentLayout from "./layouts/StudentLayout";
 import Teams from "./pages/admin/Teams";
 import TeamDetail from "./pages/admin/TeamDetail";
 import Projects from "./pages/admin/Projects";
@@ -36,6 +37,7 @@ import News from "./pages/admin/News";
 import CourseDashboard from "./pages/teacher/CourseDashboard";
 import AssignmentDetail from "./pages/teacher/AssignmentDetail";
 import ResourceDetail from "./pages/teacher/ResourceDetail";
+import StudentCourseDashboard from "./pages/students/CourseDashboard";
 
 export const router = createBrowserRouter([
   {
@@ -193,8 +195,17 @@ export const router = createBrowserRouter([
         element: <RequireAuth allowedRoles={["student"]} />,
         children: [
           {
-            path: "/student/dashboard",
-            element: <StudentDashboard />,
+            element: <StudentLayout />,
+            children: [
+              {
+                path: "/student/dashboard",
+                element: <StudentDashboard />,
+              },
+              {
+                path: "/student/course/:enrollmentId",
+                element: <StudentCourseDashboard />,
+              },
+            ],
           },
         ],
       },
