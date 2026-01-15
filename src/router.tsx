@@ -32,6 +32,7 @@ import Courses from "./pages/admin/Courses";
 import CourseEnrollments from "./pages/admin/CourseEnrollments";
 import TeacherUsers from "./pages/admin/TeacherUsers";
 import Payments from "./pages/admin/Payments";
+import News from "./pages/admin/News";
 import CourseDashboard from "./pages/teacher/CourseDashboard";
 import AssignmentDetail from "./pages/teacher/AssignmentDetail";
 import ResourceDetail from "./pages/teacher/ResourceDetail";
@@ -149,6 +150,10 @@ export const router = createBrowserRouter([
               {
                 path: "/admin/centro-de-pagos",
                 element: <Payments />,
+              },
+              {
+                path: "/admin/news",
+                element: <News />,
               },
             ],
           },

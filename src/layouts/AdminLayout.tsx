@@ -31,13 +31,11 @@ import { PiStudent } from "react-icons/pi";
 import { LiaChalkboardTeacherSolid } from "react-icons/lia";
 import { LiaUserTieSolid } from "react-icons/lia";
 import { MdOutlineInventory } from "react-icons/md";
-import { FaRegListAlt } from "react-icons/fa";
 import {
   PiArrowCounterClockwiseFill,
   PiGuitar,
   PiListBulletsBold,
 } from "react-icons/pi";
-import { CiViewList } from "react-icons/ci";
 import {
   HiOutlineBuildingLibrary,
   HiOutlineAcademicCap,
@@ -129,6 +127,12 @@ const navigation = [
     current: false,
   },
   {
+    name: "Noticias",
+    href: "/admin/news",
+    icon: FolderIcon,
+    current: false,
+  },
+  {
     name: "Documents",
     href: "/admin/documents",
     icon: DocumentDuplicateIcon,
@@ -195,6 +199,7 @@ export default function AdminLayout() {
       "cursos-matriculados": "Cursos Matriculados",
       "centro-de-pagos": "Centro de Pagos",
       "calendario-de-cursos": "Calendario de Cursos",
+      news: "Noticias",
     };
 
     // Map detail routes to readable names
