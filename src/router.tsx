@@ -38,6 +38,8 @@ import CourseDashboard from "./pages/teacher/CourseDashboard";
 import AssignmentDetail from "./pages/teacher/AssignmentDetail";
 import ResourceDetail from "./pages/teacher/ResourceDetail";
 import StudentCourseDashboard from "./pages/students/CourseDashboard";
+import StudentPayments from "./pages/students/Payments";
+import StudentInstrumentLoans from "./pages/students/InstrumentLoans";
 
 export const router = createBrowserRouter([
   {
@@ -204,6 +206,14 @@ export const router = createBrowserRouter([
               {
                 path: "/student/course/:enrollmentId",
                 element: <StudentCourseDashboard />,
+              },
+              {
+                path: "/student/pagos",
+                element: <StudentPayments />,
+              },
+              {
+                path: "/student/alquileres",
+                element: <StudentInstrumentLoans />,
               },
             ],
           },

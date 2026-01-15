@@ -13,6 +13,9 @@ import {
   Bars3Icon,
   XMarkIcon,
   ChevronDownIcon,
+  HomeIcon,
+  BanknotesIcon,
+  MusicalNoteIcon,
 } from "@heroicons/react/24/outline";
 
 import useAuth from "../hooks/useAuth";
@@ -28,6 +31,22 @@ export default function StudentLayout() {
   const navigate = useNavigate();
   const { auth } = useAuth();
   const logout = useLogout();
+
+  const navItems = [
+    { name: "Inicio", href: "/student/dashboard", icon: HomeIcon },
+    { name: "Pagos", href: "/student/pagos", icon: BanknotesIcon },
+    { name: "Alquileres", href: "/student/alquileres", icon: MusicalNoteIcon },
+  ];
+
+  const isNavItemActive = (href: string) => {
+    if (href === "/student/dashboard") {
+      return (
+        location.pathname === "/student/dashboard" ||
+        location.pathname.startsWith("/student/course")
+      );
+    }
+    return location.pathname.startsWith(href);
+  };
 
   const searchParams = new URLSearchParams(location.search);
   const currentPeriod = searchParams.get("period") || "1";
@@ -71,7 +90,35 @@ export default function StudentLayout() {
             </button>
           </div>
 
-          <div className="hidden lg:flex lg:gap-x-12">
+          <div className="hidden lg:flex lg:items-center lg:gap-x-10">
+            <div className="flex items-center gap-x-2">
+              {navItems.map((item) => {
+                const isActive = isNavItemActive(item.href);
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={classNames(
+                      isActive
+                        ? "bg-gray-50 text-primary"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-primary",
+                      "group inline-flex items-center gap-x-2 rounded-md px-3 py-2 text-sm font-semibold transition"
+                    )}
+                  >
+                    <item.icon
+                      aria-hidden="true"
+                      className={classNames(
+                        isActive
+                          ? "text-primary"
+                          : "text-gray-400 group-hover:text-primary",
+                        "size-4"
+                      )}
+                    />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
             <Menu as="div" className="relative">
               <MenuButton className="flex items-center gap-x-1 text-sm/6 font-semibold text-gray-900">
                 Cuatrimestre
@@ -156,6 +203,34 @@ export default function StudentLayout() {
                 <div className="space-y-2 py-6">
                   <div className="px-3 py-2 text-base font-semibold text-gray-900">
                     Hola, {auth?.user?.first_name || "Estudiante"}
+                  </div>
+
+                  <div className="space-y-1">
+                    {navItems.map((item) => {
+                      const isActive = isNavItemActive(item.href);
+                      return (
+                        <Link
+                          key={item.name}
+                          to={item.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={classNames(
+                            isActive
+                              ? "bg-gray-50 text-primary"
+                              : "text-gray-900 hover:bg-gray-50",
+                            "flex items-center gap-2 rounded-lg px-3 py-2 text-base/7 font-semibold"
+                          )}
+                        >
+                          <item.icon
+                            aria-hidden="true"
+                            className={classNames(
+                              isActive ? "text-primary" : "text-gray-500",
+                              "size-5"
+                            )}
+                          />
+                          {item.name}
+                        </Link>
+                      );
+                    })}
                   </div>
 
                   <div className="-mx-3">
