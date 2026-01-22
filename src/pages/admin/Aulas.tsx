@@ -361,7 +361,7 @@ export default function Aulas() {
                         scope="col"
                         className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
                       >
-                        Matrículas Activas
+                        Clases por Semana
                       </th>
                       <th scope="col" className="py-3.5 pr-4 pl-3 sm:pr-0">
                         <span className="sr-only">Acciones</span>

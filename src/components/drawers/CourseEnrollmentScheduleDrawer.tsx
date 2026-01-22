@@ -221,6 +221,28 @@ const CourseEnrollmentScheduleDrawer: React.FC<
     }
   }, [isOpen, enrollmentId]);
 
+  // Initialize editingSchedules from schedules when they're loaded
+  useEffect(() => {
+    if (schedules.length > 0) {
+      setEditingSchedules((prevEditing) => {
+        // If prevEditing is empty, initialize from schedules
+        const needsInitialization = Object.keys(prevEditing).length === 0;
+        if (needsInitialization) {
+          const updatedEditing: Record<number, CourseEnrollmentSchedule> = {};
+          schedules.forEach((schedule) => {
+            updatedEditing[schedule.id] = {
+              ...schedule,
+              // classroom_id is already provided by the backend serializer
+            };
+          });
+          return updatedEditing;
+        }
+        // Otherwise preserve existing edits
+        return prevEditing;
+      });
+    }
+  }, [schedules]);
+
   const fetchSchedules = async () => {
     if (!enrollmentId) return;
 
@@ -236,15 +258,10 @@ const CourseEnrollmentScheduleDrawer: React.FC<
       );
       setSchedules(response.data.schedules);
       setEnrollment(response.data.enrollment);
-
-      // Initialize editing schedules with original data
-      const initialEditing: Record<number, CourseEnrollmentSchedule> = {};
-      response.data.schedules.forEach((schedule) => {
-        initialEditing[schedule.id] = { ...schedule };
-      });
-      setEditingSchedules(initialEditing);
       setSchedulesToDelete([]);
       setNewSchedules([]);
+      
+      // Note: classroom_id will be set in useEffect when classrooms are loaded
     } catch (err: any) {
       console.error("Error fetching schedules:", err);
       setErrorNotificationMessage(
