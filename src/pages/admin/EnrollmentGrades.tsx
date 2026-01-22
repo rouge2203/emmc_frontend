@@ -166,6 +166,9 @@ export default function EnrollmentGrades() {
   } | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
+  
+  // Read-only mode when status is not "cursando"
+  const isReadOnly = courseData?.enrollment.status !== "cursando";
 
   const fetchCourseData = async () => {
     setLoading(true);
@@ -192,18 +195,21 @@ export default function EnrollmentGrades() {
   }, [enrollmentId]);
 
   const openAssignmentDrawer = (week: number, assignment?: Assignment) => {
+    if (isReadOnly) return;
     setSelectedWeek(week);
     setEditingAssignment(assignment || null);
     setAssignmentDrawerOpen(true);
   };
 
   const openResourceDrawer = (week: number, resource?: Resource) => {
+    if (isReadOnly) return;
     setSelectedWeek(week);
     setEditingResource(resource || null);
     setResourceDrawerOpen(true);
   };
 
   const openGradeDialog = (assignment: Assignment) => {
+    if (isReadOnly) return;
     setGradingAssignment(assignment);
     setFormGrade(assignment.grade ?? "");
     setFormCommentGrade(assignment.comment_grade || "");
@@ -227,7 +233,7 @@ export default function EnrollmentGrades() {
   };
 
   const handleSaveDailyWork = async () => {
-    if (selectedDailyWorkWeek === null) return;
+    if (selectedDailyWorkWeek === null || isReadOnly) return;
     setSubmitting(true);
 
     try {
@@ -246,7 +252,7 @@ export default function EnrollmentGrades() {
   };
 
   const handleAssignAllDailyWorkPoints = async () => {
-    if (!courseData) return;
+    if (!courseData || isReadOnly) return;
     setSubmitting(true);
 
     try {
@@ -273,6 +279,7 @@ export default function EnrollmentGrades() {
   };
 
   const openDeleteDialog = (type: "assignment" | "resource", id: number, title: string) => {
+    if (isReadOnly) return;
     setDeletingItem({ type, id, title });
     setDeleteDialogOpen(true);
   };
@@ -302,7 +309,7 @@ export default function EnrollmentGrades() {
   };
 
   const handleSaveGrade = async () => {
-    if (!gradingAssignment) return;
+    if (!gradingAssignment || isReadOnly) return;
     setSubmitting(true);
 
     try {
@@ -393,7 +400,7 @@ export default function EnrollmentGrades() {
         <div className="text-center">
           <p className="text-red-600 text-lg">{error || "Curso no encontrado"}</p>
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate("/admin/cursos-matriculados")}
             className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90"
           >
             Volver
@@ -405,6 +412,9 @@ export default function EnrollmentGrades() {
 
   const { enrollment, assignments, resources, stats } = courseData;
   const weeks = Array.from({ length: enrollment.week_duration }, (_, i) => i + 1);
+
+  // Show read-only banner if status is not "cursando"
+  const showReadOnlyBanner = isReadOnly;
 
   const getAssignmentsForWeek = (week: number) =>
     assignments.filter((a) => a.week === week && !a.is_exam && !a.is_concert);
@@ -425,18 +435,32 @@ export default function EnrollmentGrades() {
           <div className="flex items-center gap-3">
             <InformationCircleIcon className="h-5 w-5 text-blue-600" />
             <p className="text-sm text-blue-800">
-              <span className="font-semibold">Vista de Administrador:</span> Esta es una vista del portal del profesor para calificar al estudiante. Puedes realizar todas las acciones que el profesor puede hacer. El estudiante ve la misma información pero sin opciones de edición.
+              <span className="font-semibold">Vista de Administrador:</span> Esta es una vista del portal del profesor para calificar al estudiante. {isReadOnly ? "Este curso está finalizado, solo puedes ver la información." : "Puedes realizar todas las acciones que el profesor puede hacer."} El estudiante ve la misma información pero sin opciones de edición.
             </p>
           </div>
         </div>
       </div>
+
+      {/* Read-only Banner */}
+      {showReadOnlyBanner && (
+        <div className="bg-yellow-50 border-b border-yellow-200">
+          <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-3">
+              <InformationCircleIcon className="h-5 w-5 text-yellow-600" />
+              <p className="text-sm text-yellow-800">
+                <span className="font-semibold">Modo de solo lectura:</span> Este curso tiene el estado "{statusLabels[enrollment.status]?.label || enrollment.status}". Solo puedes ver la información, no puedes realizar modificaciones.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate("/admin/course-enrollments")}
+              onClick={() => navigate("/admin/cursos-matriculados")}
               className="rounded-full p-2 hover:bg-gray-100"
             >
               <ArrowLeftIcon className="h-5 w-5 text-gray-500" />
@@ -537,7 +561,10 @@ export default function EnrollmentGrades() {
                       <h3 className="text-sm font-semibold text-gray-900">Semana {week}</h3>
                       <button
                         onClick={() => openDailyWorkDialog(week)}
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium border border-gray-300 hover:bg-gray-50"
+                        disabled={isReadOnly}
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium border border-gray-300 ${
+                          isReadOnly ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"
+                        }`}
                       >
                         <BiCalendarEdit className={`size-4 ${getDailyWorkGrade(week) !== null ? "text-green-700" : "text-amber-600"}`} />
                         {getDailyWorkGrade(week) !== null ? (
@@ -550,14 +577,20 @@ export default function EnrollmentGrades() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => openAssignmentDrawer(week)}
-                        className="inline-flex items-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                        disabled={isReadOnly}
+                        className={`inline-flex items-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 ${
+                          isReadOnly ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"
+                        }`}
                       >
                         <PlusIcon className="h-4 w-4" />
                         Tarea
                       </button>
                       <button
                         onClick={() => openResourceDrawer(week)}
-                        className="inline-flex items-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                        disabled={isReadOnly}
+                        className={`inline-flex items-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 ${
+                          isReadOnly ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"
+                        }`}
                       >
                         <PlusIcon className="h-4 w-4" />
                         Recurso
@@ -602,7 +635,7 @@ export default function EnrollmentGrades() {
                             <DocumentArrowDownIcon className="h-4 w-4" />
                           </a>
                         )}
-                        {assignment.grade === null && (
+                        {assignment.grade === null && !isReadOnly && (
                           <button
                             onClick={() => openGradeDialog(assignment)}
                             className="rounded-md bg-primary px-2.5 py-1.5 text-sm font-semibold text-white hover:bg-primary/90"
@@ -615,36 +648,40 @@ export default function EnrollmentGrades() {
                             <EllipsisVerticalIcon className="h-5 w-5" />
                           </Menu.Button>
                           <Menu.Items className="absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  onClick={() => openAssignmentDrawer(week, assignment)}
-                                  className={`${active ? "bg-gray-50" : ""} block w-full px-3 py-1 text-left text-sm text-gray-900`}
-                                >
-                                  Editar
-                                </button>
-                              )}
-                            </Menu.Item>
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  onClick={() => openGradeDialog(assignment)}
-                                  className={`${active ? "bg-gray-50" : ""} block w-full px-3 py-1 text-left text-sm text-gray-900`}
-                                >
-                                  Calificar
-                                </button>
-                              )}
-                            </Menu.Item>
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  onClick={() => openDeleteDialog("assignment", assignment.id, assignment.title)}
-                                  className={`${active ? "bg-gray-50" : ""} block w-full px-3 py-1 text-left text-sm text-red-600`}
-                                >
-                                  Eliminar
-                                </button>
-                              )}
-                            </Menu.Item>
+                            {!isReadOnly && (
+                              <>
+                                <Menu.Item>
+                                  {({ active }) => (
+                                    <button
+                                      onClick={() => openAssignmentDrawer(week, assignment)}
+                                      className={`${active ? "bg-gray-50" : ""} block w-full px-3 py-1 text-left text-sm text-gray-900`}
+                                    >
+                                      Editar
+                                    </button>
+                                  )}
+                                </Menu.Item>
+                                <Menu.Item>
+                                  {({ active }) => (
+                                    <button
+                                      onClick={() => openGradeDialog(assignment)}
+                                      className={`${active ? "bg-gray-50" : ""} block w-full px-3 py-1 text-left text-sm text-gray-900`}
+                                    >
+                                      Calificar
+                                    </button>
+                                  )}
+                                </Menu.Item>
+                                <Menu.Item>
+                                  {({ active }) => (
+                                    <button
+                                      onClick={() => openDeleteDialog("assignment", assignment.id, assignment.title)}
+                                      className={`${active ? "bg-gray-50" : ""} block w-full px-3 py-1 text-left text-sm text-red-600`}
+                                    >
+                                      Eliminar
+                                    </button>
+                                  )}
+                                </Menu.Item>
+                              </>
+                            )}
                           </Menu.Items>
                         </Menu>
                       </div>
@@ -681,26 +718,30 @@ export default function EnrollmentGrades() {
                             <EllipsisVerticalIcon className="h-5 w-5" />
                           </Menu.Button>
                           <Menu.Items className="absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  onClick={() => openResourceDrawer(week, resource)}
-                                  className={`${active ? "bg-gray-50" : ""} block w-full px-3 py-1 text-left text-sm text-gray-900`}
-                                >
-                                  Editar
-                                </button>
-                              )}
-                            </Menu.Item>
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  onClick={() => openDeleteDialog("resource", resource.id, resource.title)}
-                                  className={`${active ? "bg-gray-50" : ""} block w-full px-3 py-1 text-left text-sm text-red-600`}
-                                >
-                                  Eliminar
-                                </button>
-                              )}
-                            </Menu.Item>
+                            {!isReadOnly && (
+                              <>
+                                <Menu.Item>
+                                  {({ active }) => (
+                                    <button
+                                      onClick={() => openResourceDrawer(week, resource)}
+                                      className={`${active ? "bg-gray-50" : ""} block w-full px-3 py-1 text-left text-sm text-gray-900`}
+                                    >
+                                      Editar
+                                    </button>
+                                  )}
+                                </Menu.Item>
+                                <Menu.Item>
+                                  {({ active }) => (
+                                    <button
+                                      onClick={() => openDeleteDialog("resource", resource.id, resource.title)}
+                                      className={`${active ? "bg-gray-50" : ""} block w-full px-3 py-1 text-left text-sm text-red-600`}
+                                    >
+                                      Eliminar
+                                    </button>
+                                  )}
+                                </Menu.Item>
+                              </>
+                            )}
                           </Menu.Items>
                         </Menu>
                       </div>
@@ -756,7 +797,7 @@ export default function EnrollmentGrades() {
                       </div>
                     </div>
                     <div className="flex flex-none items-center gap-x-2">
-                      {assignment.grade === null && (
+                      {assignment.grade === null && !isReadOnly && (
                         <button
                           onClick={() => openGradeDialog(assignment)}
                           className="rounded-md bg-primary px-2.5 py-1.5 text-sm font-semibold text-white hover:bg-primary/90"
@@ -777,7 +818,7 @@ export default function EnrollmentGrades() {
                 </div>
                 <button
                   onClick={handleAssignAllDailyWorkPoints}
-                  disabled={submitting}
+                  disabled={submitting || isReadOnly}
                   className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <BiCalendarEdit className="h-4 w-4" />
@@ -905,7 +946,8 @@ export default function EnrollmentGrades() {
                   type="button"
                   disabled={submitting}
                   onClick={handleSaveGrade}
-                  className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50 sm:ml-3 sm:w-auto"
+                  disabled={isReadOnly}
+                  className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
                 >
                   {submitting ? "Guardando..." : "Guardar Calificación"}
                 </button>
@@ -1069,7 +1111,8 @@ export default function EnrollmentGrades() {
                   type="button"
                   disabled={submitting}
                   onClick={handleSaveDailyWork}
-                  className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50 sm:ml-3 sm:w-auto"
+                  disabled={isReadOnly}
+                  className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
                 >
                   {submitting ? "Guardando..." : "Guardar"}
                 </button>

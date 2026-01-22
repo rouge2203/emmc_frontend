@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Dialog,
@@ -6,6 +7,7 @@ import {
   DialogPanel,
   DialogTitle,
   DialogBackdrop,
+  Transition,
 } from "@headlessui/react";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import {
@@ -22,7 +24,10 @@ import {
   ExclamationTriangleIcon,
   MusicalNoteIcon,
   ClipboardDocumentCheckIcon,
+  XCircleIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/24/outline";
+import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import { BiCalendarEdit } from "react-icons/bi";
 import AssignmentDrawer from "../../components/drawers/teacher_drawers/AssignmentDrawer";
 import ResourceDrawer from "../../components/drawers/teacher_drawers/ResourceDrawer";
@@ -167,6 +172,14 @@ export default function CourseDashboard() {
   } | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
+  
+  // Notification states
+  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [showErrorNotification, setShowErrorNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState("");
+  
+  // Read-only mode when status is not "cursando"
+  const isReadOnly = courseData?.enrollment.status !== "cursando";
 
   const fetchCourseData = async () => {
     setLoading(true);
@@ -193,18 +206,21 @@ export default function CourseDashboard() {
   }, [enrollmentId]);
 
   const openAssignmentDrawer = (week: number, assignment?: Assignment) => {
+    if (isReadOnly) return;
     setSelectedWeek(week);
     setEditingAssignment(assignment || null);
     setAssignmentDrawerOpen(true);
   };
 
   const openResourceDrawer = (week: number, resource?: Resource) => {
+    if (isReadOnly) return;
     setSelectedWeek(week);
     setEditingResource(resource || null);
     setResourceDrawerOpen(true);
   };
 
   const openGradeDialog = (assignment: Assignment) => {
+    if (isReadOnly) return;
     setGradingAssignment(assignment);
     setFormGrade(assignment.grade ?? "");
     setFormCommentGrade(assignment.comment_grade || "");
@@ -229,27 +245,44 @@ export default function CourseDashboard() {
   };
 
   const handleSaveDailyWork = async () => {
-    if (selectedDailyWorkWeek === null) return;
+    if (selectedDailyWorkWeek === null || isReadOnly) return;
     setSubmitting(true);
 
     try {
       const weekKey = `week${selectedDailyWorkWeek}_points`;
+      const gradeValue = formDailyWorkGrade === "" ? null : Number(formDailyWorkGrade);
       await axiosPrivate.put(`courses/daily-work/${enrollmentId}`, {
-        [weekKey]: formDailyWorkGrade === "" ? null : Number(formDailyWorkGrade),
+        [weekKey]: gradeValue,
       });
+      
+      // Update local state instead of refetching
+      if (dailyWork) {
+        setDailyWork({
+          ...dailyWork,
+          [weekKey]: gradeValue,
+        });
+      }
+      
       setDailyWorkDialogOpen(false);
-      // Refresh daily work data
-      const response = await axiosPrivate.get(`courses/daily-work/${enrollmentId}`);
-      setDailyWork(response.data.daily_work);
-    } catch (err) {
+      setFormDailyWorkGrade("");
+      setSelectedDailyWorkWeek(null);
+      
+      // Show success notification
+      setNotificationMessage(`Trabajo cotidiano de la semana ${selectedDailyWorkWeek} actualizado correctamente`);
+      setShowSuccessNotification(true);
+      setTimeout(() => setShowSuccessNotification(false), 5000);
+    } catch (err: any) {
       console.error("Error saving daily work:", err);
+      setNotificationMessage(err?.response?.data?.error || "Error al guardar el trabajo cotidiano");
+      setShowErrorNotification(true);
+      setTimeout(() => setShowErrorNotification(false), 5000);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleAssignAllDailyWorkPoints = async () => {
-    if (!courseData) return;
+    if (!courseData || isReadOnly) return;
     setSubmitting(true);
 
     try {
@@ -262,11 +295,24 @@ export default function CourseDashboard() {
 
       await axiosPrivate.put(`courses/daily-work/${enrollmentId}`, allWeeksData);
       
-      // Refresh daily work data
-      const response = await axiosPrivate.get(`courses/daily-work/${enrollmentId}`);
-      setDailyWork(response.data.daily_work);
-    } catch (err) {
+      // Update local state instead of refetching
+      if (dailyWork) {
+        const updatedDailyWork = { ...dailyWork };
+        for (let i = 1; i <= weekDuration; i++) {
+          updatedDailyWork[`week${i}_points` as keyof DailyWork] = 10;
+        }
+        setDailyWork(updatedDailyWork);
+      }
+      
+      // Show success notification
+      setNotificationMessage(`Se asignaron 10 puntos a todas las semanas del trabajo cotidiano`);
+      setShowSuccessNotification(true);
+      setTimeout(() => setShowSuccessNotification(false), 5000);
+    } catch (err: any) {
       console.error("Error assigning all daily work points:", err);
+      setNotificationMessage(err?.response?.data?.error || "Error al asignar los puntos");
+      setShowErrorNotification(true);
+      setTimeout(() => setShowErrorNotification(false), 5000);
     } finally {
       setSubmitting(false);
     }
@@ -283,6 +329,7 @@ export default function CourseDashboard() {
     id: number,
     title: string
   ) => {
+    if (isReadOnly) return;
     setDeletingItem({ type, id, title });
     setDeleteDialogOpen(true);
   };
@@ -316,15 +363,39 @@ export default function CourseDashboard() {
     setSubmitting(true);
 
     try {
+      const gradeValue = formGrade === "" ? null : Number(formGrade);
       await axiosPrivate.put("courses/teacher-assignments", {
         assignment_id: gradingAssignment.id,
-        grade: formGrade === "" ? null : Number(formGrade),
+        grade: gradeValue,
         comment_grade: formCommentGrade,
       });
+      
+      // Update local state instead of refetching
+      if (courseData) {
+        setCourseData({
+          ...courseData,
+          assignments: courseData.assignments.map((a) =>
+            a.id === gradingAssignment.id
+              ? { ...a, grade: gradeValue, comment_grade: formCommentGrade }
+              : a
+          ),
+        });
+      }
+      
       setGradeDialogOpen(false);
-      fetchCourseData();
-    } catch (err) {
+      setFormGrade("");
+      setFormCommentGrade("");
+      setGradingAssignment(null);
+      
+      // Show success notification
+      setNotificationMessage(`Calificación de "${gradingAssignment.title}" guardada correctamente`);
+      setShowSuccessNotification(true);
+      setTimeout(() => setShowSuccessNotification(false), 5000);
+    } catch (err: any) {
       console.error("Error saving grade:", err);
+      setNotificationMessage(err?.response?.data?.error || "Error al guardar la calificación");
+      setShowErrorNotification(true);
+      setTimeout(() => setShowErrorNotification(false), 5000);
     } finally {
       setSubmitting(false);
     }
@@ -427,6 +498,9 @@ export default function CourseDashboard() {
     (_, i) => i + 1
   );
 
+  // Show read-only banner if status is not "cursando"
+  const showReadOnlyBanner = isReadOnly;
+
   // Regular assignments (not exam or concert) for weekly content
   const getAssignmentsForWeek = (week: number) =>
     assignments.filter((a) => a.week === week && !a.is_exam && !a.is_concert);
@@ -438,6 +512,20 @@ export default function CourseDashboard() {
 
   return (
     <div className="min-h-full bg-gray-50">
+      {/* Read-only Banner */}
+      {showReadOnlyBanner && (
+        <div className="bg-yellow-50 border-b border-yellow-200">
+          <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-3">
+              <InformationCircleIcon className="h-5 w-5 text-yellow-600" />
+              <p className="text-sm text-yellow-800">
+                <span className="font-semibold">Modo de solo lectura:</span> Este curso tiene el estado "{enrollment.status === 'aprobado' ? 'Aprobado' : enrollment.status === 'reprobado' ? 'Reprobado' : enrollment.status}". Solo puedes ver la información, no puedes realizar modificaciones.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -565,7 +653,10 @@ export default function CourseDashboard() {
                       {/* Trabajo Cotidiano Button */}
                       <button
                         onClick={() => openDailyWorkDialog(week)}
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium border border-gray-300 hover:bg-gray-50"
+                        disabled={isReadOnly}
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium border border-gray-300 ${
+                          isReadOnly ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"
+                        }`}
                       >
                         <BiCalendarEdit className={`size-4 ${getDailyWorkGrade(week) !== null ? "text-green-700" : "text-amber-600"}`} />
                         {getDailyWorkGrade(week) !== null ? (
@@ -577,22 +668,24 @@ export default function CourseDashboard() {
                         )}
                       </button>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => openAssignmentDrawer(week)}
-                        className="inline-flex items-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                      >
-                        <PlusIcon className="h-4 w-4" />
-                        Tarea
-                      </button>
-                      <button
-                        onClick={() => openResourceDrawer(week)}
-                        className="inline-flex items-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                      >
-                        <PlusIcon className="h-4 w-4" />
-                        Recurso
-                      </button>
-                    </div>
+                    {!isReadOnly && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => openAssignmentDrawer(week)}
+                          className="inline-flex items-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                        >
+                          <PlusIcon className="h-4 w-4" />
+                          Tarea
+                        </button>
+                        <button
+                          onClick={() => openResourceDrawer(week)}
+                          className="inline-flex items-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                        >
+                          <PlusIcon className="h-4 w-4" />
+                          Recurso
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {!hasContent && (
@@ -662,7 +755,7 @@ export default function CourseDashboard() {
                             <DocumentArrowDownIcon className="h-4 w-4" />
                           </a>
                         )}
-                        {assignment.grade === null && (
+                        {assignment.grade === null && !isReadOnly && (
                           <button
                             onClick={() => openGradeDialog(assignment)}
                             className="rounded-md bg-primary px-2.5 py-1.5 text-sm font-semibold text-white hover:bg-primary/90"
@@ -699,7 +792,7 @@ export default function CourseDashboard() {
                               )}
                             </Menu.Item>
                             {/* Only show Edit for non-concert assignments */}
-                            {!assignment.is_concert && (
+                            {!assignment.is_concert && !isReadOnly && (
                               <Menu.Item>
                                 {({ active }) => (
                                   <button
@@ -715,20 +808,22 @@ export default function CourseDashboard() {
                                 )}
                               </Menu.Item>
                             )}
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  onClick={() => openGradeDialog(assignment)}
-                                  className={`${
-                                    active ? "bg-gray-50" : ""
-                                  } block w-full px-3 py-1 text-left text-sm text-gray-900`}
-                                >
-                                  Calificar
-                                </button>
-                              )}
-                            </Menu.Item>
+                            {!isReadOnly && (
+                              <Menu.Item>
+                                {({ active }) => (
+                                  <button
+                                    onClick={() => openGradeDialog(assignment)}
+                                    className={`${
+                                      active ? "bg-gray-50" : ""
+                                    } block w-full px-3 py-1 text-left text-sm text-gray-900`}
+                                  >
+                                    Calificar
+                                  </button>
+                                )}
+                              </Menu.Item>
+                            )}
                             {/* Only show Delete for normal assignments (not concert or exam) */}
-                            {!assignment.is_concert && !assignment.is_exam && (
+                            {!assignment.is_concert && !assignment.is_exam && !isReadOnly && (
                               <Menu.Item>
                                 {({ active }) => (
                                   <button
@@ -814,38 +909,42 @@ export default function CourseDashboard() {
                                 </button>
                               )}
                             </Menu.Item>
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  onClick={() =>
-                                    openResourceDrawer(week, resource)
-                                  }
-                                  className={`${
-                                    active ? "bg-gray-50" : ""
-                                  } block w-full px-3 py-1 text-left text-sm text-gray-900`}
-                                >
-                                  Editar
-                                </button>
-                              )}
-                            </Menu.Item>
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  onClick={() =>
-                                    openDeleteDialog(
-                                      "resource",
-                                      resource.id,
-                                      resource.title
-                                    )
-                                  }
-                                  className={`${
-                                    active ? "bg-gray-50" : ""
-                                  } block w-full px-3 py-1 text-left text-sm text-red-600`}
-                                >
-                                  Eliminar
-                                </button>
-                              )}
-                            </Menu.Item>
+                            {!isReadOnly && (
+                              <>
+                                <Menu.Item>
+                                  {({ active }) => (
+                                    <button
+                                      onClick={() =>
+                                        openResourceDrawer(week, resource)
+                                      }
+                                      className={`${
+                                        active ? "bg-gray-50" : ""
+                                      } block w-full px-3 py-1 text-left text-sm text-gray-900`}
+                                    >
+                                      Editar
+                                    </button>
+                                  )}
+                                </Menu.Item>
+                                <Menu.Item>
+                                  {({ active }) => (
+                                    <button
+                                      onClick={() =>
+                                        openDeleteDialog(
+                                          "resource",
+                                          resource.id,
+                                          resource.title
+                                        )
+                                      }
+                                      className={`${
+                                        active ? "bg-gray-50" : ""
+                                      } block w-full px-3 py-1 text-left text-sm text-red-600`}
+                                    >
+                                      Eliminar
+                                    </button>
+                                  )}
+                                </Menu.Item>
+                              </>
+                            )}
                           </Menu.Items>
                         </Menu>
                       </div>
@@ -919,7 +1018,7 @@ export default function CourseDashboard() {
                           <DocumentArrowDownIcon className="h-4 w-4" />
                         </a>
                       )}
-                      {assignment.grade === null && (
+                      {assignment.grade === null && !isReadOnly && (
                         <button
                           onClick={() => openGradeDialog(assignment)}
                           className="rounded-md bg-primary px-2.5 py-1.5 text-sm font-semibold text-white hover:bg-primary/90"
@@ -971,7 +1070,7 @@ export default function CourseDashboard() {
                 </div>
                 <button
                   onClick={handleAssignAllDailyWorkPoints}
-                  disabled={submitting}
+                  disabled={submitting || isReadOnly}
                   className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <BiCalendarEdit className="h-4 w-4" />
@@ -1158,6 +1257,7 @@ export default function CourseDashboard() {
                   type="button"
                   disabled={submitting}
                   onClick={handleSaveGrade}
+                  disabled={isReadOnly}
                   className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
                 >
                   {submitting ? "Guardando..." : "Guardar Calificación"}
@@ -1435,6 +1535,7 @@ export default function CourseDashboard() {
                   type="button"
                   disabled={submitting}
                   onClick={handleSaveDailyWork}
+                  disabled={isReadOnly}
                   className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
                 >
                   {submitting ? "Guardando..." : "Guardar"}
@@ -1451,6 +1552,103 @@ export default function CourseDashboard() {
           </div>
         </div>
       </Dialog>
+
+      {/* Success Notification */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <div
+            aria-live="assertive"
+            className="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:items-start sm:p-6 z-[9999]"
+          >
+            <div className="flex w-full flex-col items-center space-y-4 sm:items-end">
+              <Transition show={showSuccessNotification}>
+                <div className="pointer-events-auto w-full max-w-sm rounded-lg bg-white shadow-lg outline-1 outline-black/5 ring-1 ring-black/5 transition data-closed:opacity-0 data-enter:transform data-enter:duration-300 data-enter:ease-out data-closed:data-enter:translate-y-2 data-leave:duration-100 data-leave:ease-in data-closed:data-enter:sm:translate-x-2 data-closed:data-enter:sm:translate-y-0">
+                  <div className="p-4">
+                    <div className="flex items-start">
+                      <div className="shrink-0">
+                        <CheckCircleIcon
+                          aria-hidden="true"
+                          className="size-6 text-primary"
+                        />
+                      </div>
+                      <div className="ml-3 w-0 flex-1 pt-0.5">
+                        <p className="text-sm font-medium text-gray-900">
+                          ¡Éxito!
+                        </p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {notificationMessage}
+                        </p>
+                      </div>
+                      <div className="ml-4 flex shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowSuccessNotification(false);
+                          }}
+                          className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
+                        >
+                          <span className="sr-only">Cerrar</span>
+                          <XMarkIconSolid aria-hidden="true" className="size-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Transition>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Error Notification */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <div
+            aria-live="assertive"
+            className="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:items-start sm:p-6 z-[9999]"
+          >
+            <div className="flex w-full flex-col items-center space-y-4 sm:items-end">
+              <Transition show={showErrorNotification}>
+                <div className="pointer-events-auto w-full max-w-sm rounded-lg bg-white shadow-lg outline-1 outline-black/5 ring-1 ring-black/5 transition data-closed:opacity-0 data-enter:transform data-enter:duration-300 data-enter:ease-out data-closed:data-enter:translate-y-2 data-leave:duration-100 data-leave:ease-in data-closed:data-enter:sm:translate-x-2 data-closed:data-enter:sm:translate-y-0">
+                  <div className="p-4">
+                    <div className="flex items-start">
+                      <div className="shrink-0">
+                        <XCircleIcon
+                          aria-hidden="true"
+                          className="size-6 text-red-600"
+                        />
+                      </div>
+                      <div className="ml-3 w-0 flex-1 pt-0.5">
+                        <p className="text-sm font-medium text-gray-900">
+                          Error
+                        </p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {notificationMessage}
+                        </p>
+                      </div>
+                      <div className="ml-4 flex shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowErrorNotification(false);
+                          }}
+                          className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
+                        >
+                          <span className="sr-only">Cerrar</span>
+                          <XMarkIconSolid
+                            aria-hidden="true"
+                            className="size-5"
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Transition>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

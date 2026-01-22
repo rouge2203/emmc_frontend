@@ -204,6 +204,7 @@ export default function AdminLayout() {
       catedra: "Catedra",
       cursos: "Cursos",
       "cursos-matriculados": "Cursos Matriculados",
+      "enrollment-grades": "Notas del curso",
       "centro-de-pagos": "Centro de Pagos",
       "calendario-de-cursos": "Calendario de Cursos",
       news: "Noticias",
@@ -237,16 +238,26 @@ export default function AdminLayout() {
         });
       } else {
         // Main route + detail (e.g., /admin/teams/Engineering)
-        breadcrumbs.push({
-          name: mainName,
-          href: `/admin/${mainRoute}`,
-          current: false,
-        });
-        const detailSegment = decodeURIComponent(segments[2]);
-        const detailName =
-          detailRouteMap[detailSegment] ||
-          detailSegment.charAt(0).toUpperCase() + detailSegment.slice(1);
-        breadcrumbs.push({ name: detailName, href: path, current: true });
+        // Special case: enrollment-grades should show "Cursos Matriculados" as parent
+        if (mainRoute === "enrollment-grades") {
+          breadcrumbs.push({
+            name: "Cursos Matriculados",
+            href: "/admin/cursos-matriculados",
+            current: false,
+          });
+          breadcrumbs.push({ name: "Notas del curso", href: path, current: true });
+        } else {
+          breadcrumbs.push({
+            name: mainName,
+            href: `/admin/${mainRoute}`,
+            current: false,
+          });
+          const detailSegment = decodeURIComponent(segments[2]);
+          const detailName =
+            detailRouteMap[detailSegment] ||
+            detailSegment.charAt(0).toUpperCase() + detailSegment.slice(1);
+          breadcrumbs.push({ name: detailName, href: path, current: true });
+        }
       }
     } else {
       // Fallback to Dashboard
