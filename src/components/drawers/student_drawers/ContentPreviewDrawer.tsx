@@ -19,6 +19,8 @@ interface Assignment {
   grade: number | null;
   comment_grade: string | null;
   assignment_file_url: string | null;
+  is_exam: boolean;
+  is_concert: boolean;
   created_at: string | null;
 }
 

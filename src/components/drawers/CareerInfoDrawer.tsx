@@ -90,7 +90,7 @@ const CareerInfoDrawer: React.FC<CareerInfoDrawerProps> = ({
         setDescription(foundCareer.description || "");
         setImageUrl(foundCareer.image_url || "");
       } else {
-        setError("Cátedra no encontrada");
+        setError("Carrera no encontrada");
       }
     } catch (err: any) {
       setError(
@@ -193,7 +193,7 @@ const CareerInfoDrawer: React.FC<CareerInfoDrawerProps> = ({
                     <div className="bg-gray-900 px-4 py-20 sm:px-6">
                       <div className="flex items-center justify-between">
                         <DialogTitle className="text-base font-semibold text-white">
-                          Información de la Cátedra
+                          Información de la Carrera
                         </DialogTitle>
                         <div className="ml-3 flex h-7 items-center">
                           <button
@@ -209,7 +209,7 @@ const CareerInfoDrawer: React.FC<CareerInfoDrawerProps> = ({
                       </div>
                       <div className="mt-1">
                         <p className="text-sm text-gray-300">
-                          Edita la información de la cátedra.
+                          Edita la información de la carrera.
                         </p>
                       </div>
                     </div>
@@ -475,7 +475,7 @@ const CareerInfoDrawer: React.FC<CareerInfoDrawerProps> = ({
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
                       ¿Estás seguro de que deseas guardar los cambios en la
-                      cátedra? Esta acción actualizará los datos.
+                      carrera? Esta acción actualizará los datos.
                     </p>
                   </div>
                 </div>
@@ -526,7 +526,7 @@ const CareerInfoDrawer: React.FC<CareerInfoDrawerProps> = ({
                           ¡Guardado exitosamente!
                         </p>
                         <p className="mt-1 text-sm text-gray-500">
-                          Los cambios en la cátedra se han actualizado
+                          Los cambios en la carrera se han actualizado
                           correctamente.
                         </p>
                       </div>

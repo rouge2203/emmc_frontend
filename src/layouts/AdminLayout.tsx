@@ -39,6 +39,7 @@ import {
 import {
   HiOutlineBuildingLibrary,
   HiOutlineAcademicCap,
+  HiOutlineBuildingOffice2,
 } from "react-icons/hi2";
 import { LuListChecks } from "react-icons/lu";
 
@@ -97,9 +98,15 @@ const navigation = [
     ],
   },
   {
-    name: "Cátedra",
+    name: "Carrera",
     href: "/admin/catedra",
     icon: HiOutlineBuildingLibrary,
+    current: false,
+  },
+  {
+    name: "Aulas",
+    href: "/admin/aulas",
+    icon: HiOutlineBuildingOffice2,
     current: false,
   },
   {

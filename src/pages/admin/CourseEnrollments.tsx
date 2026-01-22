@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import { LuListChecks } from "react-icons/lu";
 import {
@@ -9,6 +9,7 @@ import {
   CalendarDaysIcon,
   UserIcon,
   ClockIcon,
+  AcademicCapIcon,
 } from "@heroicons/react/24/outline";
 import CourseEnrollmentCreateDrawer from "../../components/drawers/CourseEnrollmentCreateDrawer";
 import CourseEnrollmentEditDrawer from "../../components/drawers/CourseEnrollmentEditDrawer";
@@ -488,7 +489,7 @@ const CourseEnrollments = () => {
                 className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1"
               >
                 <HiOutlineBuildingLibrary className="h-4 w-4" />
-                Cátedra
+                Carrera
               </label>
               <div className="mt-2 grid grid-cols-1">
                 <select
@@ -501,7 +502,7 @@ const CourseEnrollments = () => {
                   }}
                   className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                 >
-                  <option value="">Todas las cátedras</option>
+                  <option value="">Todas las carreras</option>
                   {careers.map((career) => (
                     <option key={career.id} value={career.id}>
                       {career.name}
@@ -779,6 +780,16 @@ const CourseEnrollments = () => {
                                   </span>
                                 </button>
                               )}
+                              <Link
+                                to={`/admin/enrollment-grades/${enrollment.id}`}
+                                className="text-gray-900 flex items-center gap-1 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-medium border py-0.5 px-2 rounded-sm"
+                              >
+                                <AcademicCapIcon className="h-4 w-4 text-gray-600" />
+                                Ver Notas
+                                <span className="sr-only">
+                                  , {enrollment.course_code}
+                                </span>
+                              </Link>
                               <button
                                 onClick={() => handleEdit(enrollment)}
                                 className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm"

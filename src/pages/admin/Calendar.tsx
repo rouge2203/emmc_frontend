@@ -593,7 +593,7 @@ const Calendar = () => {
                 className="text-xs font-medium text-gray-700 mb-1 flex items-center gap-1"
               >
                 <HiOutlineBuildingLibrary className="h-4 w-4" />
-                Cátedra
+                Carrera
               </label>
               <div className="mt-2 grid grid-cols-1">
                 <select
@@ -605,7 +605,7 @@ const Calendar = () => {
                   }}
                   className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                 >
-                  <option value="">Todas las cátedras</option>
+                  <option value="">Todas las carreras</option>
                   {careers.map((career) => (
                     <option key={career.id} value={career.id}>
                       {career.name}

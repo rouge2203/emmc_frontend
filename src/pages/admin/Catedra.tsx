@@ -45,7 +45,7 @@ const Catedra = () => {
       );
       setCareers(response.data.careers);
     } catch (err: any) {
-      setError(err?.response?.data?.error || "Error al cargar las cátedras");
+      setError(err?.response?.data?.error || "Error al cargar las carreras");
       console.error("Error fetching careers:", err);
     } finally {
       setTimeout(() => {
@@ -111,7 +111,7 @@ const Catedra = () => {
         <div className="sm:flex-auto flex items-start sm:items-center gap-2">
           <HiOutlineBuildingLibrary className="lg:size-6 size-9 h-full text-gray-700" />
           <h1 className="text-sm text-gray-700">
-            Cátedras registradas en el sistema.
+            Carreras registradas en el sistema.
           </h1>
         </div>
         <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none flex justify-left">
@@ -120,7 +120,7 @@ const Catedra = () => {
             onClick={handleCreateCareer}
             className="block rounded-md bg-gray-900 px-3 py-2 text-center text-sm font-semibold text-white shadow-xs hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
           >
-            Crear cátedra
+            Crear carrera
           </button>
         </div>
       </div>
@@ -129,7 +129,7 @@ const Catedra = () => {
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-              <p className="mt-4 text-sm text-gray-600">Cargando cátedras...</p>
+              <p className="mt-4 text-sm text-gray-600">Cargando carreras...</p>
             </div>
           </div>
         </div>
@@ -139,7 +139,7 @@ const Catedra = () => {
           {careers.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-sm text-gray-500">
-                No se encontraron cátedras
+                No se encontraron carreras
               </p>
             </div>
           ) : (

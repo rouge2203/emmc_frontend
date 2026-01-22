@@ -32,6 +32,8 @@ interface Assignment {
   comment_grade: string | null;
   assignment_file_url: string | null;
   created_at: string | null;
+  is_exam: boolean;
+  is_concert: boolean;
 }
 
 interface Enrollment {
@@ -445,7 +447,7 @@ export default function AssignmentDetail() {
                   <button
                     type="button"
                     onClick={() => openEditDialog("points", assignment.points)}
-                    className="rounded-md bg-white font-medium text-primary hover:text-primary/80"
+                    className={` ${assignment.is_exam ? "hidden" : assignment.is_concert ? "hidden" : "rounded-md bg-white font-medium text-primary hover:text-primary/80"}`}
                   >
                     Actualizar
                   </button>

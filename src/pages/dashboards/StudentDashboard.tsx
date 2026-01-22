@@ -231,7 +231,7 @@ const StudentDashboard = () => {
             </h2>
           </div>
           {dashboardData?.active_enrollments.length === 0 ? (
-            <div className="mt-6 py-12 text-center text-gray-500 bg-white rounded-xl border border-gray-200">
+            <div className="mt-6 py-12 text-center text-gray-500 bg-white rounded-xl border border-gray-200 shadow-md">
               No tienes cursos activos en este periodo
             </div>
           ) : (

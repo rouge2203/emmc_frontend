@@ -165,7 +165,7 @@ const CareerCreateDrawer: React.FC<CareerCreateDrawerProps> = ({
       const errorMessage =
         err?.response?.data?.error ||
         err?.response?.data?.detail ||
-        "Error al crear la cátedra. Por favor, intenta de nuevo.";
+        "Error al crear la carrera. Por favor, intenta de nuevo.";
 
       setErrorNotificationMessage(errorMessage);
       setShowErrorNotification(true);
@@ -203,11 +203,11 @@ const CareerCreateDrawer: React.FC<CareerCreateDrawerProps> = ({
                       <div className="flex items-start justify-between space-x-3">
                         <div className="space-y-1">
                           <DialogTitle className="text-base font-semibold text-gray-900">
-                            Crear Cátedra
+                            Crear Carrera
                           </DialogTitle>
                           <p className="text-sm text-gray-500">
                             Completa la información para crear una nueva
-                            cátedra.
+                            carrera.
                           </p>
                         </div>
                         <div className="flex h-7 items-center">
@@ -293,7 +293,7 @@ const CareerCreateDrawer: React.FC<CareerCreateDrawerProps> = ({
                                 ? "outline-red-500 focus-visible:outline-red-500"
                                 : "focus-visible:outline-gray-900"
                             }`}
-                            placeholder="Descripción opcional de la cátedra"
+                            placeholder="Descripción opcional de la carrera"
                           />
                           {errors.description && (
                             <p className="mt-1 text-sm text-red-600">
@@ -399,7 +399,7 @@ const CareerCreateDrawer: React.FC<CareerCreateDrawerProps> = ({
                   </DialogTitle>
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
-                      ¿Estás seguro de que deseas crear la cátedra "{name}"?
+                      ¿Estás seguro de que deseas crear la carrera "{name}"?
                     </p>
                   </div>
                 </div>
@@ -447,10 +447,10 @@ const CareerCreateDrawer: React.FC<CareerCreateDrawerProps> = ({
                       </div>
                       <div className="ml-3 w-0 flex-1 pt-0.5">
                         <p className="text-sm font-medium text-gray-900">
-                          ¡Cátedra creada exitosamente!
+                          ¡Carrera creada exitosamente!
                         </p>
                         <p className="mt-1 text-sm text-gray-500">
-                          La cátedra se ha agregado correctamente.
+                          La carrera se ha agregado correctamente.
                         </p>
                       </div>
                       <div className="ml-4 flex shrink-0">

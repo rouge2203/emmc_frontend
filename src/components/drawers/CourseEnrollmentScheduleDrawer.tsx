@@ -14,9 +14,30 @@ import {
   TrashIcon,
   XCircleIcon,
   InformationCircleIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
+
+interface Classroom {
+  id: number;
+  number: number;
+  name: string;
+  display_name: string;
+  enrollment_count?: number;
+}
+
+interface ConflictInfo {
+  schedule_id: number;
+  day: string;
+  hour: string | null;
+  end_hour: string | null;
+  course_name: string | null;
+  course_code: string | null;
+  student_name: string | null;
+  professor_name: string | null;
+  enrollment_id: number;
+}
 
 interface CourseEnrollmentSchedule {
   id: number;
@@ -26,6 +47,8 @@ interface CourseEnrollmentSchedule {
   hour: string | null;
   end_hour: string | null;
   classroom: string | null;
+  classroom_id: number | null;
+  classroom_name: string | null;
   created_by: {
     id: number;
     first_name: string;
@@ -82,6 +105,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
   const axiosPrivate = useAxiosPrivate();
   const [schedules, setSchedules] = useState<CourseEnrollmentSchedule[]>([]);
   const [enrollment, setEnrollment] = useState<CourseEnrollment | null>(null);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
@@ -91,20 +115,99 @@ const CourseEnrollmentScheduleDrawer: React.FC<
     Record<number, CourseEnrollmentSchedule>
   >({});
   const [newSchedules, setNewSchedules] = useState<
-    Array<{ day: string; hour: string; end_hour: string; classroom: string; tempId: number }>
+    Array<{ day: string; hour: string; end_hour: string; classroom_id: number | null; tempId: number }>
   >([]);
   const [schedulesToDelete, setSchedulesToDelete] = useState<number[]>([]);
   const [notifyUser, setNotifyUser] = useState(false);
   const [tempIdCounter, setTempIdCounter] = useState(1000);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [conflictInfo, setConflictInfo] = useState<{
+    conflicts: ConflictInfo[];
+    classroom: Classroom | null;
+    scheduleId?: number;
+    tempId?: number;
+  } | null>(null);
 
   // Check if enrollment is read-only (status is not "cursando")
   const isReadOnly = enrollment?.status !== "cursando";
+
+  // Fetch classrooms on mount
+  const fetchClassrooms = async () => {
+    try {
+      const response = await axiosPrivate.get<{ classrooms: Classroom[] }>("courses/classrooms");
+      setClassrooms(response.data.classrooms);
+    } catch (err) {
+      console.error("Error fetching classrooms:", err);
+    }
+  };
+
+  // Check for classroom conflicts
+  const checkClassroomConflicts = async (
+    classroomId: number,
+    day: string,
+    excludeScheduleId?: number
+  ): Promise<{ hasConflicts: boolean; conflicts: ConflictInfo[]; classroom: Classroom | null }> => {
+    try {
+      const params: any = { classroom_id: classroomId, day };
+      if (excludeScheduleId) {
+        params.exclude_schedule_id = excludeScheduleId;
+      }
+      const response = await axiosPrivate.get<{
+        has_conflicts: boolean;
+        conflicts: ConflictInfo[];
+        classroom: Classroom;
+      }>("courses/classroom-conflicts", { params });
+      return {
+        hasConflicts: response.data.has_conflicts,
+        conflicts: response.data.conflicts,
+        classroom: response.data.classroom,
+      };
+    } catch (err) {
+      console.error("Error checking conflicts:", err);
+      return { hasConflicts: false, conflicts: [], classroom: null };
+    }
+  };
+
+  // Handle classroom selection with conflict check for existing schedules
+  const handleClassroomSelectForExisting = async (
+    scheduleId: number,
+    classroomId: number | null,
+    day: string
+  ) => {
+    handleEditScheduleChange(scheduleId, "classroom_id", classroomId);
+    
+    if (classroomId && day) {
+      const { hasConflicts, conflicts, classroom } = await checkClassroomConflicts(classroomId, day, scheduleId);
+      if (hasConflicts) {
+        setConflictInfo({ conflicts, classroom, scheduleId });
+        setShowConflictDialog(true);
+      }
+    }
+  };
+
+  // Handle classroom selection with conflict check for new schedules
+  const handleClassroomSelectForNew = async (
+    tempId: number,
+    classroomId: number | null,
+    day: string
+  ) => {
+    handleNewScheduleChange(tempId, "classroom_id", classroomId);
+    
+    if (classroomId && day) {
+      const { hasConflicts, conflicts, classroom } = await checkClassroomConflicts(classroomId, day);
+      if (hasConflicts) {
+        setConflictInfo({ conflicts, classroom, tempId });
+        setShowConflictDialog(true);
+      }
+    }
+  };
 
   // Fetch schedules and enrollment data
   useEffect(() => {
     if (isOpen && enrollmentId) {
       fetchSchedules();
+      fetchClassrooms();
     } else {
       setSchedules([]);
       setEnrollment(null);
@@ -159,7 +262,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
   const handleEditScheduleChange = (
     id: number,
     field: string,
-    value: string
+    value: string | number | null
   ) => {
     setEditingSchedules((prev) => ({
       ...prev,
@@ -179,7 +282,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
     }
     setNewSchedules((prev) => [
       ...prev,
-      { day: "", hour: "", end_hour: "", classroom: "", tempId: tempIdCounter },
+      { day: "", hour: "", end_hour: "", classroom_id: null, tempId: tempIdCounter },
     ]);
     setTempIdCounter((prev) => prev + 1);
   };
@@ -187,7 +290,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
   const handleNewScheduleChange = (
     tempId: number,
     field: string,
-    value: string
+    value: string | number | null
   ) => {
     setNewSchedules((prev) =>
       prev.map((s) => (s.tempId === tempId ? { ...s, [field]: value } : s))
@@ -256,7 +359,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
           editingSchedule.day !== originalSchedule.day ||
           editingSchedule.hour !== originalSchedule.hour ||
           editingSchedule.end_hour !== originalSchedule.end_hour ||
-          editingSchedule.classroom !== originalSchedule.classroom;
+          editingSchedule.classroom_id !== originalSchedule.classroom_id;
 
         if (wasModified) {
           try {
@@ -273,8 +376,8 @@ const CourseEnrollmentScheduleDrawer: React.FC<
             if (editingSchedule.end_hour !== undefined) {
               updateData.end_hour = editingSchedule.end_hour || null;
             }
-            if (editingSchedule.classroom !== undefined) {
-              updateData.classroom = editingSchedule.classroom || null;
+            if (editingSchedule.classroom_id !== undefined) {
+              updateData.classroom_id = editingSchedule.classroom_id;
             }
 
             await axiosPrivate.put<ScheduleResponse>(
@@ -305,8 +408,8 @@ const CourseEnrollmentScheduleDrawer: React.FC<
             createData.end_hour = newSchedule.end_hour;
           }
 
-          if (newSchedule.classroom) {
-            createData.classroom = newSchedule.classroom;
+          if (newSchedule.classroom_id) {
+            createData.classroom_id = newSchedule.classroom_id;
           }
 
           await axiosPrivate.post<ScheduleResponse>(
@@ -499,7 +602,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                           <label className="block text-xs font-medium text-gray-700 mb-1">
                                             Día
                                           </label>
-                                          <div className="mt-2 grid grid-cols-1">
+                                          <div className="grid grid-cols-1">
                                             <select
                                               value={editingSchedule.day}
                                               onChange={(e) =>
@@ -510,14 +613,11 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                                 )
                                               }
                                               disabled={isReadOnly}
-                                              className={`col-start-1 row-start-1 w-full appearance-none rounded-md py-1.5 pr-8 pl-3 text-sm outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 ${
+                                              className={`col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 ${
                                                 isReadOnly
                                                   ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                                  : "bg-white text-gray-900 focus-visible:outline-gray-900"
+                                                  : ""
                                               }`}
-                                              style={{
-                                                boxSizing: "border-box",
-                                              }}
                                             >
                                               {DAY_OPTIONS.map((option) => (
                                                 <option
@@ -533,10 +633,10 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                               fill="currentColor"
                                               data-slot="icon"
                                               aria-hidden="true"
-                                              className={`pointer-events-none col-start-1 row-start-1 mr-2 size-4 self-center justify-self-end ${
+                                              className={`pointer-events-none col-start-1 row-start-1 mr-2 size-4 self-center justify-self-end text-gray-500 ${
                                                 isReadOnly
                                                   ? "text-gray-400"
-                                                  : "text-gray-500"
+                                                  : ""
                                               }`}
                                             >
                                               <path
@@ -625,29 +725,48 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                           <label className="block text-xs font-medium text-gray-700 mb-1">
                                             Aula
                                           </label>
-                                          <input
-                                            type="text"
-                                            value={
-                                              editingSchedule.classroom || ""
-                                            }
-                                            onChange={(e) =>
-                                              handleEditScheduleChange(
-                                                schedule.id,
-                                                "classroom",
-                                                e.target.value
-                                              )
-                                            }
-                                            disabled={isReadOnly}
-                                            placeholder="Ej: Aula 1"
-                                            className={`block w-full max-w-full min-w-0 rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 ${
-                                              isReadOnly
-                                                ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                                : "bg-white text-gray-900 focus-visible:outline-gray-900"
-                                            }`}
-                                            style={{
-                                              boxSizing: "border-box",
-                                            }}
-                                          />
+                                          <div className="grid grid-cols-1">
+                                            <select
+                                              value={editingSchedule.classroom_id ?? ""}
+                                              onChange={(e) =>
+                                                handleClassroomSelectForExisting(
+                                                  schedule.id,
+                                                  e.target.value ? Number(e.target.value) : null,
+                                                  editingSchedule.day
+                                                )
+                                              }
+                                              disabled={isReadOnly}
+                                              className={`col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 ${
+                                                isReadOnly
+                                                  ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                                                  : ""
+                                              }`}
+                                            >
+                                              <option value="">Sin aula</option>
+                                              {classrooms.map((classroom) => (
+                                                <option key={classroom.id} value={classroom.id}>
+                                                  Aula {classroom.number}
+                                                </option>
+                                              ))}
+                                            </select>
+                                            <svg
+                                              viewBox="0 0 16 16"
+                                              fill="currentColor"
+                                              data-slot="icon"
+                                              aria-hidden="true"
+                                              className={`pointer-events-none col-start-1 row-start-1 mr-2 size-4 self-center justify-self-end text-gray-500 ${
+                                                isReadOnly
+                                                  ? "text-gray-400"
+                                                  : ""
+                                              }`}
+                                            >
+                                              <path
+                                                d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                                                clipRule="evenodd"
+                                                fillRule="evenodd"
+                                              />
+                                            </svg>
+                                          </div>
                                         </div>
                                         <div className="flex items-end gap-2">
                                           {!isReadOnly && (
@@ -708,32 +827,44 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                             *
                                           </span>
                                         </label>
-                                        <select
-                                          value={newSchedule.day}
-                                          onChange={(e) =>
-                                            handleNewScheduleChange(
-                                              newSchedule.tempId,
-                                              "day",
-                                              e.target.value
-                                            )
-                                          }
-                                          className="block w-full max-w-full min-w-0 rounded-md bg-white px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900"
-                                          style={{
-                                            boxSizing: "border-box",
-                                          }}
-                                        >
-                                          <option value="">
-                                            Seleccionar día
-                                          </option>
-                                          {DAY_OPTIONS.map((option) => (
-                                            <option
-                                              key={option.value}
-                                              value={option.value}
-                                            >
-                                              {option.label}
+                                        <div className="grid grid-cols-1">
+                                          <select
+                                            value={newSchedule.day}
+                                            onChange={(e) =>
+                                              handleNewScheduleChange(
+                                                newSchedule.tempId,
+                                                "day",
+                                                e.target.value
+                                              )
+                                            }
+                                            className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900"
+                                          >
+                                            <option value="">
+                                              Seleccionar día
                                             </option>
-                                          ))}
-                                        </select>
+                                            {DAY_OPTIONS.map((option) => (
+                                              <option
+                                                key={option.value}
+                                                value={option.value}
+                                              >
+                                                {option.label}
+                                              </option>
+                                            ))}
+                                          </select>
+                                          <svg
+                                            viewBox="0 0 16 16"
+                                            fill="currentColor"
+                                            data-slot="icon"
+                                            aria-hidden="true"
+                                            className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                                          >
+                                            <path
+                                              d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                                              clipRule="evenodd"
+                                              fillRule="evenodd"
+                                            />
+                                          </svg>
+                                        </div>
                                       </div>
                                       <div className="w-full min-w-0 flex-1">
                                         <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -801,27 +932,48 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                         <label className="block text-xs font-medium text-gray-700 mb-1">
                                           Aula
                                         </label>
-                                        <input
-                                          type="text"
-                                          value={newSchedule.classroom}
-                                          onChange={(e) =>
-                                            handleNewScheduleChange(
-                                              newSchedule.tempId,
-                                              "classroom",
-                                              e.target.value
-                                            )
-                                          }
-                                          disabled={isReadOnly}
-                                          placeholder="Ej: Aula 1"
-                                          className={`block w-full max-w-full min-w-0 rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 ${
-                                            isReadOnly
-                                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                              : "bg-white text-gray-900 focus-visible:outline-gray-900"
-                                          }`}
-                                          style={{
-                                            boxSizing: "border-box",
-                                          }}
-                                        />
+                                        <div className="grid grid-cols-1">
+                                          <select
+                                            value={newSchedule.classroom_id ?? ""}
+                                            onChange={(e) =>
+                                              handleClassroomSelectForNew(
+                                                newSchedule.tempId,
+                                                e.target.value ? Number(e.target.value) : null,
+                                                newSchedule.day
+                                              )
+                                            }
+                                            disabled={isReadOnly}
+                                            className={`col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 ${
+                                              isReadOnly
+                                                ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                                                : ""
+                                            }`}
+                                          >
+                                            <option value="">Sin aula</option>
+                                            {classrooms.map((classroom) => (
+                                              <option key={classroom.id} value={classroom.id}>
+                                                Aula {classroom.number}
+                                              </option>
+                                            ))}
+                                          </select>
+                                          <svg
+                                            viewBox="0 0 16 16"
+                                            fill="currentColor"
+                                            data-slot="icon"
+                                            aria-hidden="true"
+                                            className={`pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4 ${
+                                              isReadOnly
+                                                ? "text-gray-400"
+                                                : ""
+                                            }`}
+                                          >
+                                            <path
+                                              d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                                              clipRule="evenodd"
+                                              fillRule="evenodd"
+                                            />
+                                          </svg>
+                                        </div>
                                       </div>
                                       <div className="flex items-end gap-2">
                                         {!isReadOnly && (
@@ -896,6 +1048,87 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                 </div>
               </DialogPanel>
             </div>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Conflict Warning Dialog */}
+      <Dialog
+        open={showConflictDialog}
+        onClose={() => setShowConflictDialog(false)}
+        className="relative z-50"
+      >
+        <DialogBackdrop className="fixed inset-0 bg-gray-500/75" />
+        <div className="fixed inset-0 z-50 w-screen overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <DialogPanel className="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+              <div className="sm:flex sm:items-start">
+                <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-yellow-100 sm:mx-0 sm:size-10">
+                  <ExclamationTriangleIcon className="size-6 text-yellow-600" />
+                </div>
+                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                  <DialogTitle as="h3" className="text-base font-semibold text-gray-900">
+                    Conflicto de Horario Detectado
+                  </DialogTitle>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      {conflictInfo?.classroom?.display_name} ya tiene horarios asignados en este día:
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      {conflictInfo?.conflicts.map((conflict) => (
+                        <div
+                          key={conflict.schedule_id}
+                          className="bg-yellow-50 border border-yellow-200 rounded-md p-3 text-sm"
+                        >
+                          <p className="font-medium text-gray-900">
+                            {conflict.course_name} ({conflict.course_code})
+                          </p>
+                          <p className="text-gray-600">
+                            Estudiante: {conflict.student_name}
+                          </p>
+                          {conflict.professor_name && (
+                            <p className="text-gray-600">
+                              Profesor: {conflict.professor_name}
+                            </p>
+                          )}
+                          <p className="text-gray-600">
+                            Horario: {conflict.hour || "Sin hora"}{" "}
+                            {conflict.end_hour && `- ${conflict.end_hour}`}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-sm text-gray-500">
+                      Puedes continuar con la asignación si así lo deseas.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={() => setShowConflictDialog(false)}
+                  className="inline-flex w-full justify-center rounded-md bg-yellow-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-yellow-500 sm:ml-3 sm:w-auto"
+                >
+                  Entendido, continuar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Reset the classroom selection
+                    if (conflictInfo?.scheduleId !== undefined) {
+                      handleEditScheduleChange(conflictInfo.scheduleId, "classroom_id", null);
+                    } else if (conflictInfo?.tempId !== undefined) {
+                      handleNewScheduleChange(conflictInfo.tempId, "classroom_id", null);
+                    }
+                    setShowConflictDialog(false);
+                  }}
+                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                >
+                  Cancelar selección
+                </button>
+              </div>
+            </DialogPanel>
           </div>
         </div>
       </Dialog>

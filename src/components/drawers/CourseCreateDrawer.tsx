@@ -62,7 +62,7 @@ const validationSchema = Yup.object({
     .min(1, "El nombre no puede estar vacío"),
   career_id: Yup.number()
     .nullable()
-    .positive("Debe seleccionar una cátedra válida"),
+    .positive("Debe seleccionar una carrera válida"),
   course_type_id: Yup.number()
     .required("El tipo de curso es obligatorio")
     .positive("Debe seleccionar un tipo de curso"),
@@ -504,7 +504,7 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
                             htmlFor="career"
                             className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
                           >
-                            Cátedra
+                            Carrera
                           </label>
                         </div>
                         <div className="sm:col-span-2">

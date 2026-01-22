@@ -31,6 +31,8 @@ import InstrumentLoans from "./pages/admin/InstrumentLoans";
 import Catedra from "./pages/admin/Catedra";
 import Courses from "./pages/admin/Courses";
 import CourseEnrollments from "./pages/admin/CourseEnrollments";
+import EnrollmentGrades from "./pages/admin/EnrollmentGrades";
+import Aulas from "./pages/admin/Aulas";
 import TeacherUsers from "./pages/admin/TeacherUsers";
 import Payments from "./pages/admin/Payments";
 import News from "./pages/admin/News";
@@ -150,6 +152,14 @@ export const router = createBrowserRouter([
               {
                 path: "/admin/cursos-matriculados",
                 element: <CourseEnrollments />,
+              },
+              {
+                path: "/admin/enrollment-grades/:enrollmentId",
+                element: <EnrollmentGrades />,
+              },
+              {
+                path: "/admin/aulas",
+                element: <Aulas />,
               },
               {
                 path: "/admin/centro-de-pagos",

@@ -22,13 +22,12 @@ import {
   ExclamationTriangleIcon,
   MusicalNoteIcon,
   ClipboardDocumentCheckIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { BiCalendarEdit } from "react-icons/bi";
 import AssignmentDrawer from "../../components/drawers/teacher_drawers/AssignmentDrawer";
 import ResourceDrawer from "../../components/drawers/teacher_drawers/ResourceDrawer";
 import { FaExclamation } from "react-icons/fa";
-
-
 
 interface Schedule {
   id: number;
@@ -85,6 +84,12 @@ interface CourseData {
       last_name: string;
       email: string;
     };
+    professor: {
+      id: number;
+      first_name: string | null;
+      last_name: string | null;
+      email: string | null;
+    } | null;
     period: number;
     year: number;
     week_duration: number;
@@ -120,7 +125,7 @@ const statusLabels: Record<string, { label: string; className: string }> = {
   },
 };
 
-export default function CourseDashboard() {
+export default function EnrollmentGrades() {
   const { enrollmentId } = useParams<{ enrollmentId: string }>();
   const navigate = useNavigate();
   const axiosPrivate = useAxiosPrivate();
@@ -141,22 +146,16 @@ export default function CourseDashboard() {
 
   // Form states
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
-  const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(
-    null
-  );
+  const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
-  const [gradingAssignment, setGradingAssignment] = useState<Assignment | null>(
-    null
-  );
+  const [gradingAssignment, setGradingAssignment] = useState<Assignment | null>(null);
 
   // Form fields for dialogs
   const [formGrade, setFormGrade] = useState<number | string>("");
   const [formCommentGrade, setFormCommentGrade] = useState("");
   const [formFinalGrade, setFormFinalGrade] = useState<number | string>("");
   const [formObservation, setFormObservation] = useState("");
-  const [formStatus, setFormStatus] = useState<"aprobado" | "reprobado">(
-    "aprobado"
-  );
+  const [formStatus, setFormStatus] = useState<"aprobado" | "reprobado">("aprobado");
 
   // Delete confirmation state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -173,7 +172,7 @@ export default function CourseDashboard() {
     setError(null);
     try {
       const [courseResponse, dailyWorkResponse] = await Promise.all([
-        axiosPrivate.get(`courses/teacher-course/${enrollmentId}`),
+        axiosPrivate.get(`courses/admin-course/${enrollmentId}`),
         axiosPrivate.get(`courses/daily-work/${enrollmentId}`),
       ]);
       setCourseData(courseResponse.data);
@@ -212,7 +211,6 @@ export default function CourseDashboard() {
   };
 
   const openFinalizeDialog = () => {
-    // Calculate final grade and auto-set status
     const finalGrade = calculateFinalGrade();
     setFormFinalGrade(finalGrade.toFixed(1));
     setFormObservation(courseData?.enrollment.professor_observation || "");
@@ -238,7 +236,6 @@ export default function CourseDashboard() {
         [weekKey]: formDailyWorkGrade === "" ? null : Number(formDailyWorkGrade),
       });
       setDailyWorkDialogOpen(false);
-      // Refresh daily work data
       const response = await axiosPrivate.get(`courses/daily-work/${enrollmentId}`);
       setDailyWork(response.data.daily_work);
     } catch (err) {
@@ -253,7 +250,6 @@ export default function CourseDashboard() {
     setSubmitting(true);
 
     try {
-      // Build object with all weeks set to 10 points
       const weekDuration = courseData.enrollment.week_duration;
       const allWeeksData: Record<string, number> = {};
       for (let i = 1; i <= weekDuration; i++) {
@@ -261,8 +257,6 @@ export default function CourseDashboard() {
       }
 
       await axiosPrivate.put(`courses/daily-work/${enrollmentId}`, allWeeksData);
-      
-      // Refresh daily work data
       const response = await axiosPrivate.get(`courses/daily-work/${enrollmentId}`);
       setDailyWork(response.data.daily_work);
     } catch (err) {
@@ -278,11 +272,7 @@ export default function CourseDashboard() {
     return dailyWork[weekKey] as number | null;
   };
 
-  const openDeleteDialog = (
-    type: "assignment" | "resource",
-    id: number,
-    title: string
-  ) => {
+  const openDeleteDialog = (type: "assignment" | "resource", id: number, title: string) => {
     setDeletingItem({ type, id, title });
     setDeleteDialogOpen(true);
   };
@@ -353,19 +343,15 @@ export default function CourseDashboard() {
     if (!dailyWork || !courseData) return 0;
     const weekDuration = courseData.enrollment.week_duration;
     let totalPoints = 0;
-    let gradedWeeks = 0;
     
     for (let i = 1; i <= weekDuration; i++) {
       const weekKey = `week${i}_points` as keyof DailyWork;
       const points = dailyWork[weekKey] as number | null;
       if (points !== null) {
         totalPoints += points;
-        gradedWeeks++;
       }
     }
     
-    if (gradedWeeks === 0) return 0;
-    // 50% of final grade: (points obtained / max possible points) * 50
     const maxPossible = weekDuration * 10;
     return (totalPoints / maxPossible) * 50;
   };
@@ -374,7 +360,6 @@ export default function CourseDashboard() {
     if (!courseData) return 0;
     const examAssignment = courseData.assignments.find(a => a.is_exam);
     if (!examAssignment || examAssignment.grade === null || examAssignment.points === null) return 0;
-    // 40% of final grade
     return (examAssignment.grade / examAssignment.points) * 40;
   };
 
@@ -387,7 +372,6 @@ export default function CourseDashboard() {
     const maxConcertPoints = concertAssignments.reduce((sum, a) => sum + (a.points ?? 0), 0);
     
     if (maxConcertPoints === 0) return 0;
-    // 10% of final grade
     return (totalConcertPoints / maxConcertPoints) * 10;
   };
 
@@ -407,9 +391,7 @@ export default function CourseDashboard() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <p className="text-red-600 text-lg">
-            {error || "Curso no encontrado"}
-          </p>
+          <p className="text-red-600 text-lg">{error || "Curso no encontrado"}</p>
           <button
             onClick={() => navigate(-1)}
             className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90"
@@ -422,28 +404,39 @@ export default function CourseDashboard() {
   }
 
   const { enrollment, assignments, resources, stats } = courseData;
-  const weeks = Array.from(
-    { length: enrollment.week_duration },
-    (_, i) => i + 1
-  );
+  const weeks = Array.from({ length: enrollment.week_duration }, (_, i) => i + 1);
 
-  // Regular assignments (not exam or concert) for weekly content
   const getAssignmentsForWeek = (week: number) =>
     assignments.filter((a) => a.week === week && !a.is_exam && !a.is_concert);
   const getResourcesForWeek = (week: number) =>
     resources.filter((r) => r.week === week);
   
-  // Exam and concert assignments for "Evaluaciones del curso" section
   const evaluationAssignments = assignments.filter((a) => a.is_exam || a.is_concert);
+
+  const professorName = enrollment.professor
+    ? `${enrollment.professor.first_name || ""} ${enrollment.professor.last_name || ""}`.trim()
+    : "Sin profesor asignado";
 
   return (
     <div className="min-h-full bg-gray-50">
+      {/* Admin Notice Banner */}
+      <div className="bg-blue-50 border-b border-blue-200">
+        <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <InformationCircleIcon className="h-5 w-5 text-blue-600" />
+            <p className="text-sm text-blue-800">
+              <span className="font-semibold">Vista de Administrador:</span> Esta es una vista del portal del profesor para calificar al estudiante. Puedes realizar todas las acciones que el profesor puede hacer. El estudiante ve la misma información pero sin opciones de edición.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate("/admin/course-enrollments")}
               className="rounded-full p-2 hover:bg-gray-100"
             >
               <ArrowLeftIcon className="h-5 w-5 text-gray-500" />
@@ -453,14 +446,12 @@ export default function CourseDashboard() {
                 {enrollment.course.name}
               </h1>
               <p className="text-sm text-gray-500">
-                {enrollment.course.code} - {enrollment.student.first_name}{" "}
-                {enrollment.student.last_name}
+                {enrollment.course.code} - {enrollment.student.first_name} {enrollment.student.last_name}
               </p>
             </div>
             <div
               className={`rounded-md px-3 py-1 text-sm font-medium ring-1 ring-inset ${
-                statusLabels[enrollment.status]?.className ||
-                "bg-gray-50 text-gray-600 ring-gray-500/10"
+                statusLabels[enrollment.status]?.className || "bg-gray-50 text-gray-600 ring-gray-500/10"
               }`}
             >
               {statusLabels[enrollment.status]?.label || enrollment.status}
@@ -471,53 +462,42 @@ export default function CourseDashboard() {
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Enrollment Info Cards */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <dt className="text-sm font-medium text-gray-500">Estudiante</dt>
-            <dd className="mt-1 text-lg font-semibold text-gray-900 ">
+            <dd className="mt-1 text-lg font-semibold text-gray-900">
               {enrollment.student.first_name} {enrollment.student.last_name}
             </dd>
-            <dd className="text-sm text-gray-500">
-              {enrollment.student.email}
-            </dd>
+            <dd className="text-sm text-gray-500">{enrollment.student.email}</dd>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <dt className="text-sm font-medium text-gray-500">Profesor</dt>
+            <dd className="mt-1 text-lg font-semibold text-gray-900">{professorName}</dd>
+            <dd className="text-sm text-gray-500">{enrollment.professor?.email || "Sin correo"}</dd>
           </div>
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <dt className="text-sm font-medium text-gray-500">Periodo</dt>
             <dd className="mt-1 text-lg font-semibold text-gray-900">
               Periodo {enrollment.period} - {enrollment.year}
             </dd>
-            <dd className="text-sm text-gray-500">
-              {enrollment.week_duration} semanas
-            </dd>
+            <dd className="text-sm text-gray-500">{enrollment.week_duration} semanas</dd>
           </div>
           <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <dt className="text-sm font-medium text-gray-500">Tareas</dt>
+            <dt className="text-sm font-medium text-gray-500">Evaluaciones</dt>
             <dd className="mt-1 text-lg font-semibold text-gray-900">
               {stats.graded_assignments} / {stats.total_assignments}
             </dd>
             <dd className="text-sm text-gray-500">calificadas</dd>
           </div>
-          {/* <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <dt className="text-sm font-medium text-gray-500">Promedio</dt>
-            <dd className="mt-1 text-lg font-semibold text-gray-900">
-              {stats.average_grade ?? "--"}
-            </dd>
-            <dd className="text-sm text-gray-500">de tareas</dd>
-          </div> */}
         </div>
 
         {/* Schedules */}
         {enrollment.schedules.length > 0 && (
           <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">
-              Horario
-            </h2>
+            <h2 className="text-base font-semibold text-gray-900 mb-4">Horario</h2>
             <div className="flex flex-wrap gap-4">
               {enrollment.schedules.map((schedule) => (
-                <div
-                  key={schedule.id}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-lg"
-                >
+                <div key={schedule.id} className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-lg">
                   <CalendarDaysIcon className="h-5 w-5 text-gray-400" />
                   <span className="font-medium">{schedule.day_name}</span>
                   <span className="text-gray-500">
@@ -525,9 +505,7 @@ export default function CourseDashboard() {
                     {schedule.end_hour && ` - ${schedule.end_hour}`}
                   </span>
                   {schedule.classroom && (
-                    <span className="text-xs bg-gray-200 px-2 py-0.5 rounded">
-                      {schedule.classroom}
-                    </span>
+                    <span className="text-xs bg-gray-200 px-2 py-0.5 rounded">{schedule.classroom}</span>
                   )}
                 </div>
               ))}
@@ -538,9 +516,7 @@ export default function CourseDashboard() {
         {/* Weeks List */}
         <div className="bg-white rounded-lg border border-gray-200 mb-8">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-base font-semibold text-gray-900">
-              Contenido del Curso
-            </h2>
+            <h2 className="text-base font-semibold text-gray-900">Contenido del Curso</h2>
             <p className="mt-1 text-xs text-gray-500">
               Las tareas son evaluadas solo como referencia para el estudiante. Los puntos que afectan la nota final son los de "Trabajo Cotidiano" junto a cada semana.
             </p>
@@ -549,8 +525,7 @@ export default function CourseDashboard() {
             {weeks.map((week) => {
               const weekAssignments = getAssignmentsForWeek(week);
               const weekResources = getResourcesForWeek(week);
-              const hasContent =
-                weekAssignments.length > 0 || weekResources.length > 0;
+              const hasContent = weekAssignments.length > 0 || weekResources.length > 0;
 
               return (
                 <li key={week} className="px-6 py-5">
@@ -559,19 +534,14 @@ export default function CourseDashboard() {
                       <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white text-sm font-semibold">
                         {week}
                       </span>
-                      <h3 className="text-sm font-semibold text-gray-900">
-                        Semana {week}
-                      </h3>
-                      {/* Trabajo Cotidiano Button */}
+                      <h3 className="text-sm font-semibold text-gray-900">Semana {week}</h3>
                       <button
                         onClick={() => openDailyWorkDialog(week)}
                         className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium border border-gray-300 hover:bg-gray-50"
                       >
                         <BiCalendarEdit className={`size-4 ${getDailyWorkGrade(week) !== null ? "text-green-700" : "text-amber-600"}`} />
                         {getDailyWorkGrade(week) !== null ? (
-                          <span className="text-green-700">
-                            {getDailyWorkGrade(week)}/10
-                          </span>
+                          <span className="text-green-700">{getDailyWorkGrade(week)}/10</span>
                         ) : (
                           <span className="text-black">Calificar semana</span>
                         )}
@@ -596,58 +566,28 @@ export default function CourseDashboard() {
                   </div>
 
                   {!hasContent && (
-                    <p className="text-sm text-gray-500 italic">
-                      Sin contenido para esta semana
-                    </p>
+                    <p className="text-sm text-gray-500 italic">Sin contenido para esta semana</p>
                   )}
 
                   {/* Assignments */}
                   {weekAssignments.map((assignment) => (
-                    <div
-                      key={assignment.id}
-                      className={`flex items-center justify-between gap-x-6 py-4 border-t border-gray-100 ${
-                        assignment.is_concert ? "" : assignment.is_exam ? "" : ""
-                      }`}
-                    >
+                    <div key={assignment.id} className="flex items-center justify-between gap-x-6 py-4 border-t border-gray-100">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start gap-x-3">
-                          {assignment.is_concert ? (
-                            <MusicalNoteIcon className="h-5 w-5 text-purple-500 mt-0.5" />
-                          ) : assignment.is_exam ? (
-                            <ClipboardDocumentCheckIcon className="h-5 w-5 text-amber-600 mt-0.5" />
-                          ) : (
-                            <DocumentTextIcon className="h-5 w-5 text-blue-500 mt-0.5" />
-                          )}
+                          <DocumentTextIcon className="h-5 w-5 text-blue-500 mt-0.5" />
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-semibold text-gray-900">
-                                {assignment.title}
-                              </p>
+                              <p className="text-sm font-semibold text-gray-900">{assignment.title}</p>
                               {assignment.grade !== null ? (
-                              <p className="mt-0.5 inline-flex rounded-md px-1.5 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                                {assignment.grade}
-                                {assignment.points !== null &&
-                                  ` / ${assignment.points}`}{" "}
-                                pts
-                              </p>
-                            ) : (
-                              <p className="mt-0.5 inline-flex items-center  rounded-md  px-1.5 py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
-                                <FaExclamation className="size-3 mr-0" /> Pendiente calificar -                            {assignment.points !== null &&
-                                  ` ${assignment.points} pts`}
-                              </p>
-                            )}
+                                <p className="mt-0.5 inline-flex rounded-md px-1.5 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                                  {assignment.grade}{assignment.points !== null && ` / ${assignment.points}`} pts
+                                </p>
+                              ) : (
+                                <p className="mt-0.5 inline-flex items-center rounded-md px-1.5 py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
+                                  <FaExclamation className="size-3 mr-0" /> Pendiente calificar - {assignment.points !== null && `${assignment.points} pts`}
+                                </p>
+                              )}
                             </div>
-                            
-                            {assignment.is_concert && (
-                                <span className="inline-flex rounded-md bg-gray-50 px-1.5 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-600/20">
-                                  Recital
-                                </span>
-                              )}
-                              {assignment.is_exam && (
-                                <span className="inline-flex rounded-md bg-gray-50 px-1.5 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-600/20">
-                                  Examen
-                                </span>
-                              )}
                           </div>
                         </div>
                       </div>
@@ -670,84 +610,41 @@ export default function CourseDashboard() {
                             Calificar
                           </button>
                         )}
-                        <Link
-                          to={`/teacher/assignment/${assignment.id}`}
-                          className=" hidden sm:block rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                        >
-                          Ver
-                        </Link>
                         <Menu as="div" className="relative">
                           <Menu.Button className="block rounded-md p-2 text-gray-500 hover:text-gray-900">
                             <EllipsisVerticalIcon className="h-5 w-5" />
                           </Menu.Button>
-
                           <Menu.Items className="absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
                             <Menu.Item>
                               {({ active }) => (
                                 <button
-                                  onClick={() =>
-                                    navigate(
-                                      `/teacher/assignment/${assignment.id}`
-                                    )
-                                  }
-                                  className={`${
-                                    active ? "bg-gray-50" : ""
-                                  } block w-full px-3 py-1 text-left text-sm text-gray-900`}
+                                  onClick={() => openAssignmentDrawer(week, assignment)}
+                                  className={`${active ? "bg-gray-50" : ""} block w-full px-3 py-1 text-left text-sm text-gray-900`}
                                 >
-                                  Ver
+                                  Editar
                                 </button>
                               )}
                             </Menu.Item>
-                            {/* Only show Edit for non-concert assignments */}
-                            {!assignment.is_concert && (
-                              <Menu.Item>
-                                {({ active }) => (
-                                  <button
-                                    onClick={() =>
-                                      openAssignmentDrawer(week, assignment)
-                                    }
-                                    className={`${
-                                      active ? "bg-gray-50" : ""
-                                    } block w-full px-3 py-1 text-left text-sm text-gray-900`}
-                                  >
-                                    Editar
-                                  </button>
-                                )}
-                              </Menu.Item>
-                            )}
                             <Menu.Item>
                               {({ active }) => (
                                 <button
                                   onClick={() => openGradeDialog(assignment)}
-                                  className={`${
-                                    active ? "bg-gray-50" : ""
-                                  } block w-full px-3 py-1 text-left text-sm text-gray-900`}
+                                  className={`${active ? "bg-gray-50" : ""} block w-full px-3 py-1 text-left text-sm text-gray-900`}
                                 >
                                   Calificar
                                 </button>
                               )}
                             </Menu.Item>
-                            {/* Only show Delete for normal assignments (not concert or exam) */}
-                            {!assignment.is_concert && !assignment.is_exam && (
-                              <Menu.Item>
-                                {({ active }) => (
-                                  <button
-                                    onClick={() =>
-                                      openDeleteDialog(
-                                        "assignment",
-                                        assignment.id,
-                                        assignment.title
-                                      )
-                                    }
-                                    className={`${
-                                      active ? "bg-gray-50" : ""
-                                    } block w-full px-3 py-1 text-left text-sm text-red-600`}
-                                  >
-                                    Eliminar
-                                  </button>
-                                )}
-                              </Menu.Item>
-                            )}
+                            <Menu.Item>
+                              {({ active }) => (
+                                <button
+                                  onClick={() => openDeleteDialog("assignment", assignment.id, assignment.title)}
+                                  className={`${active ? "bg-gray-50" : ""} block w-full px-3 py-1 text-left text-sm text-red-600`}
+                                >
+                                  Eliminar
+                                </button>
+                              )}
+                            </Menu.Item>
                           </Menu.Items>
                         </Menu>
                       </div>
@@ -756,27 +653,17 @@ export default function CourseDashboard() {
 
                   {/* Resources */}
                   {weekResources.map((resource) => (
-                    <div
-                      key={resource.id}
-                      className="flex items-center justify-between gap-x-6 py-4 border-t border-gray-100"
-                    >
+                    <div key={resource.id} className="flex items-center justify-between gap-x-6 py-4 border-t border-gray-100">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start gap-x-3">
                           <FolderIcon className="h-5 w-5 text-amber-500 mt-0.5" />
                           <div>
-                            <p className="text-sm font-semibold text-gray-900">
-                              {resource.title}
-                            </p>
+                            <p className="text-sm font-semibold text-gray-900">{resource.title}</p>
                             <p className="mt-0.5 inline-flex rounded-md bg-gray-50 px-1.5 py-0.5 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
                               Recurso
                             </p>
                           </div>
                         </div>
-                        {/* {resource.description && (
-                          <p className="mt-1 text-xs text-gray-500 pl-8 line-clamp-2">
-                            {resource.description}
-                          </p>
-                        )} */}
                       </div>
                       <div className="flex flex-none items-center gap-x-2">
                         {resource.resource_file_url && (
@@ -789,12 +676,6 @@ export default function CourseDashboard() {
                             <DocumentArrowDownIcon className="h-4 w-4" />
                           </a>
                         )}
-                        <Link
-                          to={`/teacher/resource/${resource.id}`}
-                          className="hidden sm:block rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                        >
-                          Ver
-                        </Link>
                         <Menu as="div" className="relative">
                           <Menu.Button className="block rounded-md p-2 text-gray-500 hover:text-gray-900">
                             <EllipsisVerticalIcon className="h-5 w-5" />
@@ -803,26 +684,8 @@ export default function CourseDashboard() {
                             <Menu.Item>
                               {({ active }) => (
                                 <button
-                                  onClick={() =>
-                                    navigate(`/teacher/resource/${resource.id}`)
-                                  }
-                                  className={`${
-                                    active ? "bg-gray-50" : ""
-                                  } block w-full px-3 py-1 text-left text-sm text-gray-900`}
-                                >
-                                  Ver
-                                </button>
-                              )}
-                            </Menu.Item>
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  onClick={() =>
-                                    openResourceDrawer(week, resource)
-                                  }
-                                  className={`${
-                                    active ? "bg-gray-50" : ""
-                                  } block w-full px-3 py-1 text-left text-sm text-gray-900`}
+                                  onClick={() => openResourceDrawer(week, resource)}
+                                  className={`${active ? "bg-gray-50" : ""} block w-full px-3 py-1 text-left text-sm text-gray-900`}
                                 >
                                   Editar
                                 </button>
@@ -831,16 +694,8 @@ export default function CourseDashboard() {
                             <Menu.Item>
                               {({ active }) => (
                                 <button
-                                  onClick={() =>
-                                    openDeleteDialog(
-                                      "resource",
-                                      resource.id,
-                                      resource.title
-                                    )
-                                  }
-                                  className={`${
-                                    active ? "bg-gray-50" : ""
-                                  } block w-full px-3 py-1 text-left text-sm text-red-600`}
+                                  onClick={() => openDeleteDialog("resource", resource.id, resource.title)}
+                                  className={`${active ? "bg-gray-50" : ""} block w-full px-3 py-1 text-left text-sm text-red-600`}
                                 >
                                   Eliminar
                                 </button>
@@ -857,13 +712,11 @@ export default function CourseDashboard() {
           </ul>
         </div>
 
-        {/* Evaluaciones del curso Section - Exams and Concerts */}
+        {/* Evaluaciones del curso Section */}
         {evaluationAssignments.length > 0 && (
           <div className="bg-white rounded-lg border border-gray-200 mb-8">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-base font-semibold text-gray-900">
-                Evaluaciones del curso
-              </h2>
+              <h2 className="text-base font-semibold text-gray-900">Evaluaciones del curso</h2>
             </div>
             <ul role="list" className="divide-y divide-gray-100">
               {evaluationAssignments.map((assignment) => (
@@ -878,20 +731,14 @@ export default function CourseDashboard() {
                         )}
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold text-gray-900">
-                              {assignment.title}
-                            </p>
+                            <p className="text-sm font-semibold text-gray-900">{assignment.title}</p>
                             {assignment.grade !== null ? (
                               <p className="mt-0.5 inline-flex rounded-md px-1.5 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                                {assignment.grade}
-                                {assignment.points !== null &&
-                                  ` / ${assignment.points}`}{" "}
-                                pts
+                                {assignment.grade}{assignment.points !== null && ` / ${assignment.points}`} pts
                               </p>
                             ) : (
                               <p className="mt-0.5 inline-flex items-center rounded-md px-1.5 py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
-                                <FaExclamation className="size-3 mr-0" /> Pendiente calificar -
-                                {assignment.points !== null && ` ${assignment.points} pts`}
+                                <FaExclamation className="size-3 mr-0" /> Pendiente calificar - {assignment.points !== null && `${assignment.points} pts`}
                               </p>
                             )}
                           </div>
@@ -909,16 +756,6 @@ export default function CourseDashboard() {
                       </div>
                     </div>
                     <div className="flex flex-none items-center gap-x-2">
-                      {assignment.assignment_file_url && (
-                        <a
-                          href={assignment.assignment_file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-md bg-white p-2 text-gray-500 hover:text-gray-700 ring-1 ring-inset ring-gray-300"
-                        >
-                          <DocumentArrowDownIcon className="h-4 w-4" />
-                        </a>
-                      )}
                       {assignment.grade === null && (
                         <button
                           onClick={() => openGradeDialog(assignment)}
@@ -927,47 +764,16 @@ export default function CourseDashboard() {
                           Calificar
                         </button>
                       )}
-                      <Link
-                        to={`/teacher/assignment/${assignment.id}`}
-                        className="hidden sm:block rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                      >
-                        Ver
-                      </Link>
-                      <Menu as="div" className="relative">
-                        <Menu.Button className="block rounded-md p-2 text-gray-500 hover:text-gray-900">
-                          <EllipsisVerticalIcon className="h-5 w-5" />
-                        </Menu.Button>
-                        <Menu.Items className="absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
-                          <Menu.Item>
-                            {({ active }) => (
-                              <button
-                                onClick={() =>
-                                  navigate(`/teacher/assignment/${assignment.id}`)
-                                }
-                                className={`${
-                                  active ? "bg-gray-50" : ""
-                                } block w-full px-3 py-1 text-left text-sm text-gray-900`}
-                              >
-                                Ver
-                              </button>
-                            )}
-                          </Menu.Item>
-                        </Menu.Items>
-                      </Menu>
                     </div>
                   </div>
                 </li>
               ))}
             </ul>
-            
-            {/* Assign All Daily Work Points Button */}
             <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-900">Asignar puntos de Trabajo Cotidiano</p>
-                  <p className="text-xs text-gray-500">
-                    Asigna automáticamente 10 puntos a todas las semanas del curso
-                  </p>
+                  <p className="text-xs text-gray-500">Asigna automáticamente 10 puntos a todas las semanas del curso</p>
                 </div>
                 <button
                   onClick={handleAssignAllDailyWorkPoints}
@@ -985,9 +791,7 @@ export default function CourseDashboard() {
         {/* Final Grade Section */}
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-10">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-900">
-              Resumen y Calificación Final
-            </h2>
+            <h2 className="text-base font-semibold text-gray-900">Resumen y Calificación Final</h2>
             {enrollment.status === "cursando" && (
               <button
                 onClick={openFinalizeDialog}
@@ -999,58 +803,35 @@ export default function CourseDashboard() {
             )}
           </div>
 
-          {/* Grade Breakdown */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-4 mb-4">
             <div className="shadow-md rounded-lg p-4">
-              <dt className="text-sm font-medium text-blue-700">
-                Trabajo Cotidiano (50%)
-              </dt>
-              <dd className="mt-1 text-2xl font-semibold text-blue-900">
-                {calculateDailyWorkPercentage().toFixed(1)}%
-              </dd>
+              <dt className="text-sm font-medium text-blue-700">Trabajo Cotidiano (50%)</dt>
+              <dd className="mt-1 text-2xl font-semibold text-blue-900">{calculateDailyWorkPercentage().toFixed(1)}%</dd>
             </div>
             <div className="shadow-md rounded-lg p-4">
-              <dt className="text-sm font-medium text-amber-700">
-                Examen Final (40%)
-              </dt>
-              <dd className="mt-1 text-2xl font-semibold text-amber-900">
-                {calculateExamPercentage().toFixed(1)}%
-              </dd>
+              <dt className="text-sm font-medium text-amber-700">Examen Final (40%)</dt>
+              <dd className="mt-1 text-2xl font-semibold text-amber-900">{calculateExamPercentage().toFixed(1)}%</dd>
             </div>
             <div className="shadow-md rounded-lg p-4">
-              <dt className="text-sm font-medium text-purple-700">
-                Recitales (10%)
-              </dt>
-              <dd className="mt-1 text-2xl font-semibold text-purple-900">
-                {calculateConcertPercentage().toFixed(1)}%
-              </dd>
+              <dt className="text-sm font-medium text-purple-700">Recitales (10%)</dt>
+              <dd className="mt-1 text-2xl font-semibold text-purple-900">{calculateConcertPercentage().toFixed(1)}%</dd>
             </div>
             <div className="shadow-md rounded-lg p-4">
-              <dt className="text-sm font-medium text-green-700">
-                Calificación Final
-              </dt>
-              <dd className="mt-1 text-2xl font-semibold text-green-900">
-                {calculateFinalGrade().toFixed(1)}
-              </dd>
+              <dt className="text-sm font-medium text-green-700">Calificación Final</dt>
+              <dd className="mt-1 text-2xl font-semibold text-green-900">{calculateFinalGrade().toFixed(1)}</dd>
             </div>
           </div>
 
-
-
           {enrollment.professor_observation && (
             <div className="mt-4 bg-gray-50 rounded-lg p-4">
-              <dt className="text-sm font-medium text-gray-500">
-                Observación del Profesor
-              </dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {enrollment.professor_observation}
-              </dd>
+              <dt className="text-sm font-medium text-gray-500">Observación del Profesor</dt>
+              <dd className="mt-1 text-sm text-gray-900">{enrollment.professor_observation}</dd>
             </div>
           )}
         </div>
       </div>
 
-      {/* Assignment Drawer */}
+      {/* Drawers and Dialogs */}
       <AssignmentDrawer
         isOpen={assignmentDrawerOpen}
         onClose={() => setAssignmentDrawerOpen(false)}
@@ -1062,7 +843,6 @@ export default function CourseDashboard() {
         studentName={`${enrollment.student.first_name} ${enrollment.student.last_name}`}
       />
 
-      {/* Resource Drawer */}
       <ResourceDrawer
         isOpen={resourceDrawerOpen}
         onClose={() => setResourceDrawerOpen(false)}
@@ -1075,54 +855,27 @@ export default function CourseDashboard() {
       />
 
       {/* Grade Dialog */}
-      <Dialog
-        open={gradeDialogOpen}
-        onClose={() => setGradeDialogOpen(false)}
-        className="relative z-50"
-      >
-        <DialogBackdrop
-          transition
-          className="fixed inset-0 bg-gray-500/75 transition-opacity data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
-        />
-
-        <div className="fixed  inset-0 z-50 w-screen overflow-y-auto">
-          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-            <DialogPanel
-              transition
-              className="relative w-full transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in sm:my-8 sm:w-full sm:max-w-lg sm:p-6 data-closed:sm:translate-y-0 data-closed:sm:scale-95"
-            >
+      <Dialog open={gradeDialogOpen} onClose={() => setGradeDialogOpen(false)} className="relative z-50">
+        <DialogBackdrop className="fixed inset-0 bg-gray-500/75" />
+        <div className="fixed inset-0 z-50 w-screen overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <DialogPanel className="relative w-full max-w-lg transform overflow-hidden rounded-lg bg-white p-6 shadow-xl">
               <div className="absolute right-0 top-0 pr-4 pt-4">
-                <button
-                  type="button"
-                  className="rounded-md bg-white text-gray-400 hover:text-gray-500"
-                  onClick={() => setGradeDialogOpen(false)}
-                >
+                <button onClick={() => setGradeDialogOpen(false)} className="rounded-md bg-white text-gray-400 hover:text-gray-500">
                   <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
               <div className="sm:flex sm:items-start">
                 <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-green-100 sm:mx-0 sm:size-10">
-                  <CheckCircleIcon
-                    className="size-6 text-green-600"
-                    aria-hidden="true"
-                  />
+                  <CheckCircleIcon className="size-6 text-green-600" />
                 </div>
                 <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
-                  <DialogTitle
-                    as="h3"
-                    className="text-base font-semibold text-gray-900"
-                  >
-                    Calificar Tarea
-                  </DialogTitle>
-                  <p className="mt-1 text-sm text-gray-500">
-                    {gradingAssignment?.title}
-                  </p>
+                  <DialogTitle as="h3" className="text-base font-semibold text-gray-900">Calificar Tarea</DialogTitle>
+                  <p className="mt-1 text-sm text-gray-500">{gradingAssignment?.title}</p>
                   <div className="mt-4 space-y-4">
                     <div>
-                      <label className=" block text-start text-sm/6 font-medium text-gray-900">
-                        Puntos Obtenidos
-                        {gradingAssignment?.points !== null &&
-                          ` (máx. ${gradingAssignment?.points})`}
+                      <label className="block text-start text-sm font-medium text-gray-900">
+                        Puntos Obtenidos{gradingAssignment?.points !== null && ` (máx. ${gradingAssignment?.points})`}
                       </label>
                       <input
                         type="number"
@@ -1130,42 +883,36 @@ export default function CourseDashboard() {
                         max={gradingAssignment?.points ?? undefined}
                         value={formGrade}
                         onChange={(e) => setFormGrade(e.target.value)}
-                        className="mt-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
-                        placeholder={
-                          gradingAssignment?.points !== null
-                            ? `0-${gradingAssignment?.points}`
-                            : "Puntos obtenidos"
-                        }
+                        className="mt-1 block w-full rounded-md border-gray-300 px-3 py-1.5 text-sm"
+                        placeholder={gradingAssignment?.points !== null ? `0-${gradingAssignment?.points}` : "Puntos obtenidos"}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm/6 text-start font-medium text-gray-900">
-                        Comentario
-                      </label>
+                      <label className="block text-sm font-medium text-gray-900">Comentario</label>
                       <textarea
                         rows={3}
                         value={formCommentGrade}
                         onChange={(e) => setFormCommentGrade(e.target.value)}
-                        className="mt-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                        className="mt-1 block w-full rounded-md border-gray-300 px-3 py-1.5 text-sm"
                         placeholder="Comentario sobre la calificación..."
                       />
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+              <div className="mt-5 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"
                   disabled={submitting}
                   onClick={handleSaveGrade}
-                  className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
+                  className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50 sm:ml-3 sm:w-auto"
                 >
                   {submitting ? "Guardando..." : "Guardar Calificación"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setGradeDialogOpen(false)}
-                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
                 >
                   Cancelar
                 </button>
@@ -1176,121 +923,63 @@ export default function CourseDashboard() {
       </Dialog>
 
       {/* Finalize Dialog */}
-      <Dialog
-        open={finalizeDialogOpen}
-        onClose={() => setFinalizeDialogOpen(false)}
-        className="relative z-50"
-      >
-        <DialogBackdrop
-          transition
-          className="fixed inset-0 bg-gray-500/75 transition-opacity data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
-        />
-
+      <Dialog open={finalizeDialogOpen} onClose={() => setFinalizeDialogOpen(false)} className="relative z-50">
+        <DialogBackdrop className="fixed inset-0 bg-gray-500/75" />
         <div className="fixed inset-0 z-50 w-screen overflow-y-auto">
-          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-            <DialogPanel
-              transition
-              className="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in sm:my-8 sm:w-full sm:max-w-lg sm:p-6 data-closed:sm:translate-y-0 data-closed:sm:scale-95"
-            >
+          <div className="flex min-h-full items-center justify-center p-4">
+            <DialogPanel className="relative w-full max-w-lg transform overflow-hidden rounded-lg bg-white p-6 shadow-xl">
               <div className="absolute right-0 top-0 pr-4 pt-4">
-                <button
-                  type="button"
-                  className="rounded-md bg-white text-gray-400 hover:text-gray-500"
-                  onClick={() => setFinalizeDialogOpen(false)}
-                >
+                <button onClick={() => setFinalizeDialogOpen(false)} className="rounded-md bg-white text-gray-400 hover:text-gray-500">
                   <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
               <div className="sm:flex sm:items-start">
                 <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-yellow-100 sm:mx-0 sm:size-10">
-                  <AcademicCapIcon
-                    className="size-6 text-yellow-600"
-                    aria-hidden="true"
-                  />
+                  <AcademicCapIcon className="size-6 text-yellow-600" />
                 </div>
                 <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
-                  <DialogTitle
-                    as="h3"
-                    className="text-base font-semibold text-gray-900"
-                  >
-                    Finalizar Curso
-                  </DialogTitle>
+                  <DialogTitle as="h3" className="text-base font-semibold text-gray-900">Finalizar Curso</DialogTitle>
                   <div className="mt-2 rounded-md bg-yellow-50 border border-yellow-200 px-3 py-2">
-                    <p className="text-sm text-yellow-800">
-                      Esta acción es solo para el final del periodo y cambiará
-                      el estado del estudiante a Aprobado o Reprobado.
-                    </p>
+                    <p className="text-sm text-yellow-800">Esta acción cambiará el estado del estudiante a Aprobado o Reprobado.</p>
                   </div>
                   <div className="mt-4 space-y-4">
                     <div>
-                      <label className="block text-sm/6 font-medium text-gray-900">
-                        Calificación Final (calculada automáticamente)
-                      </label>
-                      <input
-                        type="text"
-                        value={formFinalGrade}
-                        disabled
-                        className="mt-1 block w-full rounded-md bg-gray-100 px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 cursor-not-allowed sm:text-sm/6 font-semibold"
-                      />
-                      <p className="mt-1 text-xs text-gray-500">
-                        Basada en: 50% Trabajo Cotidiano + 40% Examen + 10% Recitales
-                      </p>
+                      <label className="block text-sm font-medium text-gray-900">Calificación Final (calculada automáticamente)</label>
+                      <input type="text" value={formFinalGrade} disabled className="mt-1 block w-full rounded-md bg-gray-100 px-3 py-1.5 text-sm font-semibold cursor-not-allowed" />
+                      <p className="mt-1 text-xs text-gray-500">Basada en: 50% Trabajo Cotidiano + 40% Examen + 10% Recitales</p>
                     </div>
                     <div>
-                      <label className="block text-sm/6 font-medium text-gray-900">
-                        Estado Final (basado en nota ≥ 70)
-                      </label>
-                      <div
-                        className={`mt-1 block w-full rounded-md px-3 py-1.5 text-base font-semibold cursor-not-allowed sm:text-sm/6 ${
-                          formStatus === "aprobado"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
+                      <label className="block text-sm font-medium text-gray-900">Estado Final (basado en nota ≥ 70)</label>
+                      <div className={`mt-1 block w-full rounded-md px-3 py-1.5 text-sm font-semibold cursor-not-allowed ${formStatus === "aprobado" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
                         {formStatus === "aprobado" ? "Aprobado" : "Reprobado"}
                       </div>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {Number(formFinalGrade) >= 70
-                          ? "El estudiante aprueba con nota mayor o igual a 70"
-                          : "El estudiante reprueba con nota menor a 70"}
-                      </p>
                     </div>
                     <div>
-                      <label className="block text-sm/6 font-medium text-gray-900">
-                        Observación del Profesor
-                      </label>
+                      <label className="block text-sm font-medium text-gray-900">Observación del Profesor</label>
                       <textarea
                         rows={3}
                         value={formObservation}
                         onChange={(e) => setFormObservation(e.target.value)}
-                        className="mt-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
-                        placeholder="Observaciones finales sobre el desempeño del estudiante..."
+                        className="mt-1 block w-full rounded-md border-gray-300 px-3 py-1.5 text-sm"
+                        placeholder="Observaciones finales..."
                       />
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+              <div className="mt-5 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"
                   disabled={submitting}
                   onClick={handleFinalize}
-                  className={`inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-white shadow-xs disabled:opacity-50 disabled:cursor-not-allowed sm:ml-3 sm:w-auto ${
-                    formStatus === "aprobado"
-                      ? "bg-green-600 hover:bg-green-500"
-                      : "bg-red-600 hover:bg-red-500"
-                  }`}
+                  className={`inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-white disabled:opacity-50 sm:ml-3 sm:w-auto ${formStatus === "aprobado" ? "bg-green-600 hover:bg-green-500" : "bg-red-600 hover:bg-red-500"}`}
                 >
-                  {submitting
-                    ? "Guardando..."
-                    : `Marcar como ${
-                        formStatus === "aprobado" ? "Aprobado" : "Reprobado"
-                      }`}
+                  {submitting ? "Guardando..." : `Marcar como ${formStatus === "aprobado" ? "Aprobado" : "Reprobado"}`}
                 </button>
                 <button
                   type="button"
                   onClick={() => setFinalizeDialogOpen(false)}
-                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
                 >
                   Cancelar
                 </button>
@@ -1301,67 +990,37 @@ export default function CourseDashboard() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => {
-          setDeleteDialogOpen(false);
-          setDeletingItem(null);
-        }}
-        className="relative z-50"
-      >
-        <DialogBackdrop
-          transition
-          className="fixed inset-0 bg-gray-500/75 transition-opacity data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
-        />
-
+      <Dialog open={deleteDialogOpen} onClose={() => { setDeleteDialogOpen(false); setDeletingItem(null); }} className="relative z-50">
+        <DialogBackdrop className="fixed inset-0 bg-gray-500/75" />
         <div className="fixed inset-0 z-50 w-screen overflow-y-auto">
-          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-            <DialogPanel
-              transition
-              className="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in sm:my-8 sm:w-full sm:max-w-lg sm:p-6 data-closed:sm:translate-y-0 data-closed:sm:scale-95"
-            >
+          <div className="flex min-h-full items-center justify-center p-4">
+            <DialogPanel className="relative w-full max-w-lg transform overflow-hidden rounded-lg bg-white p-6 shadow-xl">
               <div className="sm:flex sm:items-start">
                 <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:size-10">
-                  <ExclamationTriangleIcon
-                    className="size-6 text-red-600"
-                    aria-hidden="true"
-                  />
+                  <ExclamationTriangleIcon className="size-6 text-red-600" />
                 </div>
                 <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                  <DialogTitle
-                    as="h3"
-                    className="text-base font-semibold text-gray-900"
-                  >
-                    Eliminar{" "}
-                    {deletingItem?.type === "assignment" ? "Tarea" : "Recurso"}
+                  <DialogTitle as="h3" className="text-base font-semibold text-gray-900">
+                    Eliminar {deletingItem?.type === "assignment" ? "Tarea" : "Recurso"}
                   </DialogTitle>
-                  <div className="mt-2">
-                    <p className="text-sm text-gray-500">
-                      ¿Estás seguro de que deseas eliminar{" "}
-                      <span className="font-medium text-gray-900">
-                        "{deletingItem?.title}"
-                      </span>
-                      ? Esta acción no se puede deshacer.
-                    </p>
-                  </div>
+                  <p className="mt-2 text-sm text-gray-500">
+                    ¿Estás seguro de que deseas eliminar <span className="font-medium text-gray-900">"{deletingItem?.title}"</span>?
+                  </p>
                 </div>
               </div>
-              <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+              <div className="mt-5 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"
                   disabled={submitting}
                   onClick={handleConfirmDelete}
-                  className="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
+                  className="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50 sm:ml-3 sm:w-auto"
                 >
                   {submitting ? "Eliminando..." : "Eliminar"}
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setDeleteDialogOpen(false);
-                    setDeletingItem(null);
-                  }}
-                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                  onClick={() => { setDeleteDialogOpen(false); setDeletingItem(null); }}
+                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
                 >
                   Cancelar
                 </button>
@@ -1372,77 +1031,52 @@ export default function CourseDashboard() {
       </Dialog>
 
       {/* Daily Work Dialog */}
-      <Dialog
-        open={dailyWorkDialogOpen}
-        onClose={() => setDailyWorkDialogOpen(false)}
-        className="relative z-50"
-      >
-        <DialogBackdrop
-          transition
-          className="fixed inset-0 bg-gray-500/75 transition-opacity data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
-        />
-
+      <Dialog open={dailyWorkDialogOpen} onClose={() => setDailyWorkDialogOpen(false)} className="relative z-50">
+        <DialogBackdrop className="fixed inset-0 bg-gray-500/75" />
         <div className="fixed inset-0 z-50 w-screen overflow-y-auto">
-          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-            <DialogPanel
-              transition
-              className="relative w-full transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in sm:my-8 sm:w-full sm:max-w-lg sm:p-6 data-closed:sm:translate-y-0 data-closed:sm:scale-95"
-            >
+          <div className="flex min-h-full items-center justify-center p-4">
+            <DialogPanel className="relative w-full max-w-lg transform overflow-hidden rounded-lg bg-white p-6 shadow-xl">
               <div className="absolute right-0 top-0 pr-4 pt-4">
-                <button
-                  type="button"
-                  className="rounded-md bg-white text-gray-400 hover:text-gray-500"
-                  onClick={() => setDailyWorkDialogOpen(false)}
-                >
+                <button onClick={() => setDailyWorkDialogOpen(false)} className="rounded-md bg-white text-gray-400 hover:text-gray-500">
                   <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
               <div className="sm:flex sm:items-start">
                 <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-blue-100 sm:mx-0 sm:size-10">
-                  <BiCalendarEdit
-                    className="size-6 text-blue-600"
-                    aria-hidden="true"
-                  />
+                  <BiCalendarEdit className="size-6 text-blue-600" />
                 </div>
                 <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
-                  <DialogTitle
-                    as="h3"
-                    className="text-base font-semibold text-gray-900"
-                  >
+                  <DialogTitle as="h3" className="text-base font-semibold text-gray-900">
                     Trabajo Cotidiano - Semana {selectedDailyWorkWeek}
                   </DialogTitle>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Califica el trabajo cotidiano del estudiante (máximo 10 puntos)
-                  </p>
+                  <p className="mt-1 text-sm text-gray-500">Califica el trabajo cotidiano del estudiante (máximo 10 puntos)</p>
                   <div className="mt-4">
-                    <label className="block text-start text-sm/6 font-medium text-gray-900">
-                      Puntos (0-10)
-                    </label>
+                    <label className="block text-start text-sm font-medium text-gray-900">Puntos (0-10)</label>
                     <input
                       type="number"
                       min="0"
                       max="10"
                       value={formDailyWorkGrade}
                       onChange={(e) => setFormDailyWorkGrade(e.target.value)}
-                      className="mt-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                      className="mt-1 block w-full rounded-md border-gray-300 px-3 py-1.5 text-sm"
                       placeholder="0-10"
                     />
                   </div>
                 </div>
               </div>
-              <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+              <div className="mt-5 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"
                   disabled={submitting}
                   onClick={handleSaveDailyWork}
-                  className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
+                  className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50 sm:ml-3 sm:w-auto"
                 >
                   {submitting ? "Guardando..." : "Guardar"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setDailyWorkDialogOpen(false)}
-                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
                 >
                   Cancelar
                 </button>

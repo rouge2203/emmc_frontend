@@ -11,7 +11,10 @@ import {
   ChevronDownIcon,
   AcademicCapIcon,
   ChatBubbleLeftRightIcon,
+  MusicalNoteIcon,
+  ClipboardDocumentCheckIcon,
 } from "@heroicons/react/24/outline";
+import { BiCalendarEdit } from "react-icons/bi";
 import ContentPreviewDrawer from "../../components/drawers/student_drawers/ContentPreviewDrawer";
 
 interface Schedule {
@@ -33,7 +36,15 @@ interface Assignment {
   grade: number | null;
   comment_grade: string | null;
   assignment_file_url: string | null;
+  is_exam: boolean;
+  is_concert: boolean;
   created_at: string | null;
+}
+
+interface DailyWork {
+  id: number | null;
+  course_enrollment_id: number;
+  [key: `week${number}_points`]: number | null;
 }
 
 interface Resource {
@@ -110,25 +121,35 @@ export default function CourseDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [courseData, setCourseData] = useState<CourseData | null>(null);
-  const [previewItem, setPreviewItem] = useState<{
-    type: "assignment" | "resource";
-    data: Assignment | Resource;
-  } | null>(null);
+  const [dailyWork, setDailyWork] = useState<DailyWork | null>(null);
+  const [previewItem, setPreviewItem] = useState<
+    | { type: "assignment"; data: Assignment }
+    | { type: "resource"; data: Resource }
+    | null
+  >(null);
 
   const fetchCourseData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axiosPrivate.get(
-        `courses/student-course/${enrollmentId}`
-      );
-      setCourseData(response.data);
+      const [courseResponse, dailyWorkResponse] = await Promise.all([
+        axiosPrivate.get(`courses/student-course/${enrollmentId}`),
+        axiosPrivate.get(`courses/daily-work/${enrollmentId}`),
+      ]);
+      setCourseData(courseResponse.data);
+      setDailyWork(dailyWorkResponse.data.daily_work);
     } catch (err: unknown) {
       console.error("Error fetching course data:", err);
       setError("Error al cargar los datos del curso");
     } finally {
       setLoading(false);
     }
+  };
+
+  const getDailyWorkGrade = (week: number): number | null => {
+    if (!dailyWork) return null;
+    const weekKey = `week${week}_points` as keyof DailyWork;
+    return dailyWork[weekKey] as number | null;
   };
 
   useEffect(() => {
@@ -141,6 +162,53 @@ export default function CourseDashboard() {
     const duration = courseData?.enrollment.week_duration ?? 0;
     return Array.from({ length: Math.max(duration, 1) }, (_, i) => i + 1);
   }, [courseData?.enrollment.week_duration]);
+
+  // Grade calculations
+  const calculateDailyWorkPercentage = (): number => {
+    if (!dailyWork || !courseData) return 0;
+    const weekDuration = courseData.enrollment.week_duration;
+    let totalPoints = 0;
+    let gradedWeeks = 0;
+    
+    for (let i = 1; i <= weekDuration; i++) {
+      const weekKey = `week${i}_points` as keyof DailyWork;
+      const points = dailyWork[weekKey] as number | null;
+      if (points !== null) {
+        totalPoints += points;
+        gradedWeeks++;
+      }
+    }
+    
+    if (gradedWeeks === 0) return 0;
+    // 50% of final grade: (points obtained / max possible points) * 50
+    const maxPossible = weekDuration * 10;
+    return (totalPoints / maxPossible) * 50;
+  };
+
+  const calculateExamPercentage = (): number => {
+    if (!courseData) return 0;
+    const examAssignment = courseData.assignments.find(a => a.is_exam);
+    if (!examAssignment || examAssignment.grade === null || examAssignment.points === null) return 0;
+    // 40% of final grade
+    return (examAssignment.grade / examAssignment.points) * 40;
+  };
+
+  const calculateConcertPercentage = (): number => {
+    if (!courseData) return 0;
+    const concertAssignments = courseData.assignments.filter(a => a.is_concert);
+    if (concertAssignments.length === 0) return 0;
+    
+    const totalConcertPoints = concertAssignments.reduce((sum, a) => sum + (a.grade ?? 0), 0);
+    const maxConcertPoints = concertAssignments.reduce((sum, a) => sum + (a.points ?? 0), 0);
+    
+    if (maxConcertPoints === 0) return 0;
+    // 10% of final grade
+    return (totalConcertPoints / maxConcertPoints) * 10;
+  };
+
+  const calculateFinalGrade = (): number => {
+    return calculateDailyWorkPercentage() + calculateExamPercentage() + calculateConcertPercentage();
+  };
 
   if (loading) {
     return (
@@ -170,10 +238,14 @@ export default function CourseDashboard() {
 
   const { enrollment, assignments, resources, stats } = courseData;
 
+  // Regular assignments (not exam or concert) for weekly content
   const getAssignmentsForWeek = (week: number) =>
-    assignments.filter((a) => a.week === week);
+    assignments.filter((a) => a.week === week && !a.is_exam && !a.is_concert);
   const getResourcesForWeek = (week: number) =>
     resources.filter((r) => r.week === week);
+  
+  // Exam and concert assignments for "Evaluaciones del curso" section
+  const evaluationAssignments = assignments.filter((a) => a.is_exam || a.is_concert);
 
   const professorName = enrollment.professor
     ? `${enrollment.professor.first_name || ""} ${
@@ -294,9 +366,22 @@ export default function CourseDashboard() {
                           {week}
                         </span>
                         <div>
-                          <h3 className="text-sm font-semibold text-gray-900">
-                            Semana {week}
-                          </h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-semibold text-gray-900">
+                              Semana {week}
+                            </h3>
+                            {/* Trabajo Cotidiano Badge (view-only) */}
+                            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ring-gray-200">
+                              <BiCalendarEdit className="h-3 w-3" />
+                              {getDailyWorkGrade(week) !== null ? (
+                                <span className="text-green-700">
+                                  {getDailyWorkGrade(week)}/10
+                                </span>
+                              ) : (
+                                <span className="text-gray-500">Sin calificar</span>
+                              )}
+                            </span>
+                          </div>
                           <p className="text-xs text-gray-500 flex flex-wrap items-center gap-4">
                             <span className="inline-flex items-center gap-1">
                               <DocumentTextIcon className="h-4 w-4 text-blue-500/80" />
@@ -327,15 +412,35 @@ export default function CourseDashboard() {
                       {weekAssignments.map((assignment) => (
                         <div
                           key={assignment.id}
-                          className="flex items-center justify-between gap-x-6 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-primary/40 hover:shadow-sm"
+                          className={`flex items-center justify-between gap-x-6 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-primary/40 hover:shadow-sm ${
+                            assignment.is_concert ? "bg-purple-50/50" : assignment.is_exam ? "bg-amber-50/50" : ""
+                          }`}
                         >
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start gap-x-3">
-                              <DocumentTextIcon className="h-5 w-5 text-blue-500 mt-0.5" />
+                              {assignment.is_concert ? (
+                                <MusicalNoteIcon className="h-5 w-5 text-purple-500 mt-0.5" />
+                              ) : assignment.is_exam ? (
+                                <ClipboardDocumentCheckIcon className="h-5 w-5 text-amber-600 mt-0.5" />
+                              ) : (
+                                <DocumentTextIcon className="h-5 w-5 text-blue-500 mt-0.5" />
+                              )}
                               <div>
-                                <p className="text-sm font-semibold text-gray-900">
-                                  {assignment.title}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-semibold text-gray-900">
+                                    {assignment.title}
+                                  </p>
+                                  {assignment.is_concert && (
+                                    <span className="inline-flex rounded-md bg-purple-100 px-1.5 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-600/20">
+                                      Recital
+                                    </span>
+                                  )}
+                                  {assignment.is_exam && (
+                                    <span className="inline-flex rounded-md bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20">
+                                      Examen
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="mt-1 flex flex-wrap items-center gap-2">
                                   {assignment.grade !== null ? (
                                     <span className="inline-flex rounded-md bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
@@ -443,38 +548,130 @@ export default function CourseDashboard() {
           </ul>
         </div>
 
+        {/* Evaluaciones del curso Section - Exams and Concerts */}
+        {evaluationAssignments.length > 0 && (
+          <div className="bg-white rounded-lg border border-gray-200 mb-8">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-base font-semibold text-gray-900">
+                Evaluaciones del curso
+              </h2>
+            </div>
+            <ul role="list" className="divide-y divide-gray-100">
+              {evaluationAssignments.map((assignment) => (
+                <li key={assignment.id} className="px-6 py-5">
+                  <div className="flex items-center justify-between gap-x-6">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start gap-x-3">
+                        {assignment.is_concert ? (
+                          <MusicalNoteIcon className="h-5 w-5 text-purple-500 mt-0.5" />
+                        ) : (
+                          <ClipboardDocumentCheckIcon className="h-5 w-5 text-amber-600 mt-0.5" />
+                        )}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-gray-900">
+                              {assignment.title}
+                            </p>
+                            {assignment.grade !== null ? (
+                              <p className="mt-0.5 inline-flex rounded-md px-1.5 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                                {assignment.grade}
+                                {assignment.points !== null &&
+                                  ` / ${assignment.points}`}{" "}
+                                pts
+                              </p>
+                            ) : (
+                              <p className="mt-0.5 inline-flex items-center rounded-md px-1.5 py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
+                                Sin calificar
+                                {assignment.points !== null && ` - ${assignment.points} pts`}
+                              </p>
+                            )}
+                          </div>
+                          {assignment.is_concert && (
+                            <span className="inline-flex rounded-md bg-gray-50 px-1.5 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-600/20">
+                              Recital
+                            </span>
+                          )}
+                          {assignment.is_exam && (
+                            <span className="inline-flex rounded-md bg-gray-50 px-1.5 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-600/20">
+                              Examen
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-none items-center gap-x-2">
+                      {assignment.assignment_file_url && (
+                        <a
+                          href={assignment.assignment_file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-md bg-white p-2 text-gray-500 hover:text-gray-700 ring-1 ring-inset ring-gray-300"
+                        >
+                          <DocumentArrowDownIcon className="h-4 w-4" />
+                        </a>
+                      )}
+                      <button
+                        onClick={() =>
+                          setPreviewItem({
+                            type: "assignment",
+                            data: assignment,
+                          })
+                        }
+                        className="rounded-md bg-primary/10 px-2.5 py-1.5 text-sm font-semibold text-primary hover:bg-primary/20"
+                      >
+                        Ver
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-gray-900">
-              Resumen y calificacion
+              Resumen y Calificación
             </h2>
             <div className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary">
               <AcademicCapIcon className="h-4 w-4" />
-              {enrollment.grade ?? "--"}
+              {calculateFinalGrade().toFixed(1)}%
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <dt className="text-sm font-medium text-gray-500">
-                Tareas totales
+          {/* Grade Breakdown */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-4 mb-4">
+            <div className="shadow-md rounded-lg p-4">
+              <dt className="text-sm font-medium text-blue-700">
+                Trabajo Cotidiano (50%)
               </dt>
-              <dd className="mt-1 text-2xl font-semibold text-gray-900">
-                {stats.total_assignments}
+              <dd className="mt-1 text-2xl font-semibold text-blue-900">
+                {calculateDailyWorkPercentage().toFixed(1)}%
               </dd>
             </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <dt className="text-sm font-medium text-gray-500">
-                Puntos obtenidos
+            <div className="shadow-md rounded-lg p-4">
+              <dt className="text-sm font-medium text-amber-700">
+                Examen Final (40%)
               </dt>
-              <dd className="mt-1 text-2xl font-semibold text-gray-900">
-                {stats.total_points_obtained} / {stats.total_points_available}
+              <dd className="mt-1 text-2xl font-semibold text-amber-900">
+                {calculateExamPercentage().toFixed(1)}%
               </dd>
             </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <dt className="text-sm font-medium text-gray-500">Promedio</dt>
-              <dd className="mt-1 text-2xl font-semibold text-gray-900">
-                {stats.average_grade ?? "--"}
+            <div className="shadow-md rounded-lg p-4">
+              <dt className="text-sm font-medium text-purple-700">
+                Recitales (10%)
+              </dt>
+              <dd className="mt-1 text-2xl font-semibold text-purple-900">
+                {calculateConcertPercentage().toFixed(1)}%
+              </dd>
+            </div>
+            <div className="shadow-md rounded-lg p-4">
+              <dt className="text-sm font-medium text-green-700">
+                Calificación Final
+              </dt>
+              <dd className="mt-1 text-2xl font-semibold text-green-900">
+                {calculateFinalGrade().toFixed(1)}
               </dd>
             </div>
           </div>

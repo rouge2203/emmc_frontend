@@ -31,6 +31,8 @@ interface Assignment {
   grade: number | null;
   comment_grade: string | null;
   assignment_file_url: string | null;
+  is_exam?: boolean;
+  is_concert?: boolean;
   created_at: string | null;
 }
 
@@ -390,6 +392,9 @@ const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
                             className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
                           >
                             Puntos disponibles
+                            {!editingAssignment?.is_exam && !editingAssignment?.is_concert && (
+                              <span className="text-xs text-gray-500 ml-1">(máx. 10)</span>
+                            )}
                           </label>
                         </div>
                         <div className="sm:col-span-2">
@@ -398,11 +403,28 @@ const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
                             name="points"
                             type="number"
                             min="0"
+                            max={editingAssignment?.is_exam ? undefined : 10}
                             value={formPoints}
-                            onChange={(e) => setFormPoints(e.target.value)}
-                            className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
-                            placeholder="Ej: 100"
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              // For non-exam assignments, limit to 10
+                              if (!editingAssignment?.is_exam && Number(value) > 10) {
+                                setFormPoints("10");
+                              } else {
+                                setFormPoints(value);
+                              }
+                            }}
+                            disabled={editingAssignment?.is_exam}
+                            className={`block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6 ${
+                              editingAssignment?.is_exam ? "bg-gray-100 cursor-not-allowed" : ""
+                            }`}
+                            placeholder={editingAssignment?.is_exam ? "Puntos fijos para examen" : "Ej: 10"}
                           />
+                          {editingAssignment?.is_exam && (
+                            <p className="mt-1 text-xs text-amber-600">
+                              Los puntos del examen final no se pueden modificar.
+                            </p>
+                          )}
                         </div>
                       </div>
 

@@ -505,7 +505,7 @@ const CourseEditDrawer: React.FC<CourseEditDrawerProps> = ({
                               htmlFor="career"
                               className="block text-sm/6 font-medium text-gray-900"
                             >
-                              Cátedra
+                              Carrera
                             </label>
                             <div className="mt-2 grid grid-cols-1">
                               <select

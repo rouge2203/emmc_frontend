@@ -199,6 +199,112 @@ const TeacherDashboard = () => {
       </div>
 
       <div className="space-y-16 py-16 xl:space-y-20">
+        
+
+        {/* Course enrollments list */}
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-none">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base/7 font-semibold text-gray-900">
+                Mis Estudiantes
+              </h2>
+            </div>
+            {dashboardData?.enrollments.length === 0 ? (
+              <div className="mt-6 py-12 text-center text-gray-500 bg-white rounded-xl border border-gray-200">
+                No tienes estudiantes asignados para este periodo
+              </div>
+            ) : (
+              <ul
+                role="list"
+                className="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-3 xl:gap-x-8"
+              >
+                {dashboardData?.enrollments.map((enrollment) => (
+                  <li
+                    key={enrollment.id}
+                    className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-md"
+                  >
+                    <div className="flex items-center gap-x-4 border-b border-gray-900/5 bg-gray-50 p-6">
+                      <div className="flex size-12 flex-none items-center justify-center rounded-lg bg-primary text-white font-semibold text-lg">
+                        {enrollment.student_name
+                          ?.split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .slice(0, 2)
+                          .toUpperCase() || "?"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm/6 font-medium text-gray-900 truncate">
+                          {enrollment.student_name || "Sin nombre"}
+                        </div>
+                        <div className="text-xs text-gray-500 truncate">
+                          {enrollment.course_code}
+                        </div>
+                      </div>
+                      <Link
+                        to={`/teacher/course/${enrollment.id}`}
+                        className="flex items-center gap-x-1 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
+                      >
+                        Ver
+                        <ArrowRightIcon className="h-4 w-4" />
+                      </Link>
+                    </div>
+                    <dl className="-my-3 divide-y divide-gray-100 px-6 py-4 text-sm/6">
+                      <div className="flex justify-between gap-x-4 py-3">
+                        <dt className="text-gray-500">Curso</dt>
+                        <dd className="text-gray-700 text-right">
+                          {enrollment.course_name}
+                        </dd>
+                      </div>
+                      {enrollment.career_name && (
+                        <div className="flex justify-between gap-x-4 py-3">
+                          <dt className="text-gray-500">Carrera</dt>
+                          <dd className="text-gray-700 text-right truncate max-w-32">
+                            {enrollment.career_name}
+                          </dd>
+                        </div>
+                      )}
+                      <div className="flex justify-between gap-x-4 py-3">
+                        <dt className="text-gray-500">Estado</dt>
+                        <dd className="flex items-start gap-x-2">
+                          <div
+                            className={`rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
+                              statusLabels[enrollment.status]?.className ||
+                              "bg-gray-50 text-gray-600 ring-gray-500/10"
+                            }`}
+                          >
+                            {statusLabels[enrollment.status]?.label ||
+                              enrollment.status}
+                          </div>
+                        </dd>
+                      </div>
+                      {enrollment.schedules.length > 0 && (
+                        <div className="flex justify-between gap-x-4 py-3">
+                          <dt className="text-gray-500">Horario</dt>
+                          <dd className="text-gray-700 text-right">
+                            {enrollment.schedules.map((s, i) => (
+                              <div key={i} className="text-xs">
+                                {s.day_name} {s.hour}
+                                {s.end_hour && ` - ${s.end_hour}`}
+                              </div>
+                            ))}
+                          </dd>
+                        </div>
+                      )}
+                      {enrollment.grade !== null && (
+                        <div className="flex justify-between gap-x-4 py-3">
+                          <dt className="text-gray-500">Nota Final</dt>
+                          <dd className="font-medium text-gray-900">
+                            {enrollment.grade}
+                          </dd>
+                        </div>
+                      )}
+                    </dl>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
         {/* Schedule table */}
         <div>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -286,111 +392,6 @@ const TeacherDashboard = () => {
                 )}
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Course enrollments list */}
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-none">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base/7 font-semibold text-gray-900">
-                Mis Estudiantes
-              </h2>
-            </div>
-            {dashboardData?.enrollments.length === 0 ? (
-              <div className="mt-6 py-12 text-center text-gray-500 bg-white rounded-xl border border-gray-200">
-                No tienes estudiantes asignados para este periodo
-              </div>
-            ) : (
-              <ul
-                role="list"
-                className="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-3 xl:gap-x-8"
-              >
-                {dashboardData?.enrollments.map((enrollment) => (
-                  <li
-                    key={enrollment.id}
-                    className="overflow-hidden rounded-xl border border-gray-200 bg-white"
-                  >
-                    <div className="flex items-center gap-x-4 border-b border-gray-900/5 bg-gray-50 p-6">
-                      <div className="flex size-12 flex-none items-center justify-center rounded-lg bg-primary text-white font-semibold text-lg">
-                        {enrollment.student_name
-                          ?.split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .slice(0, 2)
-                          .toUpperCase() || "?"}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm/6 font-medium text-gray-900 truncate">
-                          {enrollment.student_name || "Sin nombre"}
-                        </div>
-                        <div className="text-xs text-gray-500 truncate">
-                          {enrollment.course_code}
-                        </div>
-                      </div>
-                      <Link
-                        to={`/teacher/course/${enrollment.id}`}
-                        className="flex items-center gap-x-1 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
-                      >
-                        Ver
-                        <ArrowRightIcon className="h-4 w-4" />
-                      </Link>
-                    </div>
-                    <dl className="-my-3 divide-y divide-gray-100 px-6 py-4 text-sm/6">
-                      <div className="flex justify-between gap-x-4 py-3">
-                        <dt className="text-gray-500">Curso</dt>
-                        <dd className="text-gray-700 text-right">
-                          {enrollment.course_name}
-                        </dd>
-                      </div>
-                      {enrollment.career_name && (
-                        <div className="flex justify-between gap-x-4 py-3">
-                          <dt className="text-gray-500">Carrera</dt>
-                          <dd className="text-gray-700 text-right truncate max-w-32">
-                            {enrollment.career_name}
-                          </dd>
-                        </div>
-                      )}
-                      <div className="flex justify-between gap-x-4 py-3">
-                        <dt className="text-gray-500">Estado</dt>
-                        <dd className="flex items-start gap-x-2">
-                          <div
-                            className={`rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
-                              statusLabels[enrollment.status]?.className ||
-                              "bg-gray-50 text-gray-600 ring-gray-500/10"
-                            }`}
-                          >
-                            {statusLabels[enrollment.status]?.label ||
-                              enrollment.status}
-                          </div>
-                        </dd>
-                      </div>
-                      {enrollment.schedules.length > 0 && (
-                        <div className="flex justify-between gap-x-4 py-3">
-                          <dt className="text-gray-500">Horario</dt>
-                          <dd className="text-gray-700 text-right">
-                            {enrollment.schedules.map((s, i) => (
-                              <div key={i} className="text-xs">
-                                {s.day_name} {s.hour}
-                                {s.end_hour && ` - ${s.end_hour}`}
-                              </div>
-                            ))}
-                          </dd>
-                        </div>
-                      )}
-                      {enrollment.grade !== null && (
-                        <div className="flex justify-between gap-x-4 py-3">
-                          <dt className="text-gray-500">Nota Final</dt>
-                          <dd className="font-medium text-gray-900">
-                            {enrollment.grade}
-                          </dd>
-                        </div>
-                      )}
-                    </dl>
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
         </div>
       </div>
