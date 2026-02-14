@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Dialog,
   Menu,
@@ -20,7 +20,6 @@ import {
   DocumentArrowDownIcon,
   AcademicCapIcon,
   ExclamationTriangleIcon,
-  MusicalNoteIcon,
   ClipboardDocumentCheckIcon,
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";

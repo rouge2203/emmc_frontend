@@ -13,18 +13,16 @@ import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import {
   ArrowLeftIcon,
   CalendarDaysIcon,
-  DocumentTextIcon,
   FolderIcon,
   PlusIcon,
   CheckCircleIcon,
   XMarkIcon,
   EllipsisVerticalIcon,
   DocumentArrowDownIcon,
+  XCircleIcon,
   AcademicCapIcon,
   ExclamationTriangleIcon,
-  MusicalNoteIcon,
   ClipboardDocumentCheckIcon,
-  XCircleIcon,
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
@@ -461,19 +459,19 @@ export default function CourseDashboard() {
       (a) =>
         a.is_concert &&
         (a.title === "Asistencia a Recital 1" ||
-          a.title === "Asistencia a Recital 2")
+          a.title === "Asistencia a Recital 2"),
     );
-    
+
     const asistenciaPoints = asistenciaRecitals.reduce(
       (sum, a) => sum + (a.grade ?? 0),
-      0
+      0,
     );
     totalPoints += asistenciaPoints;
 
     // Max possible: all weeks (10 each) + 2 asistencia recitals (10 each)
     const maxPossible = weekDuration * 10 + 20;
     if (maxPossible === 0) return 0;
-    
+
     // 50% of final grade: (points obtained / max possible points) * 50
     return (totalPoints / maxPossible) * 50;
   };
@@ -493,17 +491,17 @@ export default function CourseDashboard() {
 
   const calculateConcertPercentage = (): number => {
     if (!courseData) return 0;
-    
+
     // Only consider "Participación en Recital" assignment
     const participacionRecital = courseData.assignments.find(
-      (a) => a.is_concert && a.title === "Participación en Recital"
+      (a) => a.is_concert && a.title === "Participación en Recital",
     );
-    
+
     if (!participacionRecital || participacionRecital.points === null) return 0;
-    
+
     const grade = participacionRecital.grade ?? 0;
     const maxPoints = participacionRecital.points;
-    
+
     if (maxPoints === 0) return 0;
     // 10% of final grade
     return (grade / maxPoints) * 10;
@@ -577,8 +575,8 @@ export default function CourseDashboard() {
                 {enrollment.status === "aprobado"
                   ? "Aprobado"
                   : enrollment.status === "reprobado"
-                  ? "Reprobado"
-                  : enrollment.status}
+                    ? "Reprobado"
+                    : enrollment.status}
                 ". Solo puedes ver la información, no puedes realizar
                 modificaciones.
               </p>
@@ -773,8 +771,8 @@ export default function CourseDashboard() {
                         assignment.is_concert
                           ? ""
                           : assignment.is_exam
-                          ? ""
-                          : ""
+                            ? ""
+                            : ""
                       }`}
                     >
                       <div className="min-w-0 flex-1">
@@ -1606,24 +1604,46 @@ export default function CourseDashboard() {
                   </DialogTitle>
                   <div className="mt-2">
                     <p className="text-sm text-gray-700">
-                      El <span className="font-semibold">Trabajo Cotidiano</span> representa el 50% de la calificación final y se calcula sumando:
+                      El{" "}
+                      <span className="font-semibold">Trabajo Cotidiano</span>{" "}
+                      representa el 50% de la calificación final y se calcula
+                      sumando:
                     </p>
                     <ul className="mt-3 space-y-2 text-sm text-gray-700">
                       <li className="flex items-start gap-2">
                         <span className="text-blue-600 font-semibold">•</span>
-                        <span>Los puntos de <span className="font-semibold">todas las semanas</span> del curso (máximo 10 puntos por semana)</span>
+                        <span>
+                          Los puntos de{" "}
+                          <span className="font-semibold">
+                            todas las semanas
+                          </span>{" "}
+                          del curso (máximo 10 puntos por semana)
+                        </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-600 font-semibold">•</span>
-                        <span>Los puntos de <span className="font-semibold">Asistencia a Recital 1</span> (máximo 10 puntos)</span>
+                        <span>
+                          Los puntos de{" "}
+                          <span className="font-semibold">
+                            Asistencia a Recital 1
+                          </span>{" "}
+                          (máximo 10 puntos)
+                        </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-600 font-semibold">•</span>
-                        <span>Los puntos de <span className="font-semibold">Asistencia a Recital 2</span> (máximo 10 puntos)</span>
+                        <span>
+                          Los puntos de{" "}
+                          <span className="font-semibold">
+                            Asistencia a Recital 2
+                          </span>{" "}
+                          (máximo 10 puntos)
+                        </span>
                       </li>
                     </ul>
                     <p className="mt-3 text-sm text-gray-600 italic">
-                      Nota: Las asistencias a recitales se califican en la sección "Evaluaciones del curso".
+                      Nota: Las asistencias a recitales se califican en la
+                      sección "Evaluaciones del curso".
                     </p>
                   </div>
                 </div>

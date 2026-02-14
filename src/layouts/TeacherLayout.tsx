@@ -1,25 +1,13 @@
 import { useState } from "react";
-import { Link, useLocation, Outlet } from "react-router-dom";
-import {
-  Dialog,
-  DialogBackdrop,
-  DialogPanel,
-} from "@headlessui/react";
-import {
-  Bars3Icon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
+import { Link, Outlet } from "react-router-dom";
+import { Dialog, DialogBackdrop, DialogPanel } from "@headlessui/react";
+import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 
 import useAuth from "../hooks/useAuth";
 import useLogout from "../hooks/useLogout";
 
-function classNames(...classes: (string | boolean | undefined)[]): string {
-  return classes.filter(Boolean).join(" ");
-}
-
 export default function TeacherLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const location = useLocation();
   const { auth } = useAuth();
   const logout = useLogout();
 
@@ -54,7 +42,6 @@ export default function TeacherLayout() {
               <Bars3Icon aria-hidden="true" className="size-6" />
             </button>
           </div>
-
 
           {/* Right side - User info */}
           <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:items-center lg:gap-x-6">

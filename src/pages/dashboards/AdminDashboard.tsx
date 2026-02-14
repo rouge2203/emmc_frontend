@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import {
-  UsersIcon,
   AcademicCapIcon,
   MusicalNoteIcon,
   CalendarDaysIcon,

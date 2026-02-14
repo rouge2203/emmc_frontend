@@ -146,7 +146,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
     try {
       setIsLoading(true);
       const response = await axiosPrivate.get<UserResponse>(
-        `users/get-user-info?id=${userId}`
+        `users/get-user-info?id=${userId}`,
       );
       const userData = response.data.user;
       setUser(userData);
@@ -191,7 +191,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
       // Show error notification instead of form error
       setErrorNotificationMessage(
         err?.response?.data?.error ||
-          "Error al cargar la información del estudiante"
+          "Error al cargar la información del estudiante",
       );
       setShowErrorNotification(true);
       setTimeout(() => {
@@ -208,7 +208,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
     // Validate: cannot change from inactive to active
     if (isActive && !originalIsActive) {
       setErrorNotificationMessage(
-        "No se puede cambiar el estado de inactivo a activo desde esta interfaz."
+        "No se puede cambiar el estado de inactivo a activo desde esta interfaz.",
       );
       setShowErrorNotification(true);
       setTimeout(() => {
@@ -318,7 +318,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
 
       const response = await axiosPrivate.put(
         "users/update-user-info",
-        updateData
+        updateData,
       );
 
       // Update local user state with response
@@ -341,14 +341,14 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
           setWork(updatedUserData.profile.work || "");
           setNameEncargado(updatedUserData.profile.name_encargado || "");
           setParentescoEncargado(
-            updatedUserData.profile.parentesco_encargado || ""
+            updatedUserData.profile.parentesco_encargado || "",
           );
           setCedulaEncargado(updatedUserData.profile.cedula_encargado || "");
           setPhoneEncargado(updatedUserData.profile.phone_encargado || "");
           setEmailEncargado(updatedUserData.profile.email_encargado || "");
           setNameSponsor(updatedUserData.profile.name_sponsor || "");
           setAmountSponsor(
-            updatedUserData.profile.amount_sponsor?.toString() || ""
+            updatedUserData.profile.amount_sponsor?.toString() || "",
           );
           setPhoneSponsor(updatedUserData.profile.phone_sponsor || "");
           setEmailSponsor(updatedUserData.profile.email_sponsor || "");
@@ -366,7 +366,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
             });
             setEmailActivationType("success");
             setEmailActivationMessage(
-              `Se ha guardado el correo electrónico y se ha enviado un correo de activación a ${updatedUserData.email}.`
+              `Se ha guardado el correo electrónico y se ha enviado un correo de activación a ${updatedUserData.email}.`,
             );
             setShowEmailActivationDialog(true);
             setOriginalEmailWasBlank(false); // Update flag since email is no longer blank
@@ -375,7 +375,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
             setEmailActivationMessage(
               err?.response?.data?.error ||
                 err?.response?.data?.detail ||
-                "Se guardó el correo electrónico, pero hubo un error al enviar el correo de activación. Puedes reenviarlo manualmente más tarde."
+                "Se guardó el correo electrónico, pero hubo un error al enviar el correo de activación. Puedes reenviarlo manualmente más tarde.",
             );
             setShowEmailActivationDialog(true);
             setOriginalEmailWasBlank(false);
@@ -469,7 +469,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
             errorString.includes("api_user_email"))
         ) {
           const emailMatch = errorString.match(
-            /Duplicate entry ['"]([^'"]+)['"]/
+            /Duplicate entry ['"]([^'"]+)['"]/,
           );
           const duplicateEmail = emailMatch ? emailMatch[1] : email;
           errorMsg = `El correo electrónico "${duplicateEmail}" ya está en uso por otro usuario. Por favor, use un correo diferente.`;
@@ -481,7 +481,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
             errorString.includes("api_user_cedula"))
         ) {
           const cedulaMatch = errorString.match(
-            /Duplicate entry ['"]([^'"]+)['"]/
+            /Duplicate entry ['"]([^'"]+)['"]/,
           );
           const duplicateCedula = cedulaMatch ? cedulaMatch[1] : cedula;
           errorMsg = `La cédula "${duplicateCedula}" ya está registrada por otro usuario. Por favor, verifique el número de cédula.`;
@@ -504,8 +504,8 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
             typeof errorMessage === "string"
               ? errorMessage
               : Array.isArray(errorMessage)
-              ? String(errorMessage[1] || errorMessage[0])
-              : "Error al guardar los cambios";
+                ? String(errorMessage[1] || errorMessage[0])
+                : "Error al guardar los cambios";
         }
       }
 
@@ -544,7 +544,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
 
       setResendEmailNotificationType("success");
       setResendEmailNotificationMessage(
-        response.data.detail || "Correo de activación reenviado exitosamente"
+        response.data.detail || "Correo de activación reenviado exitosamente",
       );
       setShowResendEmailNotification(true);
       setShowResendEmailDialog(false);
@@ -557,7 +557,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
       setResendEmailNotificationMessage(
         err?.response?.data?.error ||
           err?.response?.data?.detail ||
-          "Error al reenviar el correo de activación"
+          "Error al reenviar el correo de activación",
       );
       setShowResendEmailNotification(true);
       setShowResendEmailDialog(false);
@@ -576,14 +576,8 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
 
   const getPlaceholderImage = (name: string) => {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      name
+      name,
     )}&background=155c95&color=fff&size=128`;
-  };
-
-  const getGenderDisplay = (gender: string | null): string => {
-    if (gender === "F") return "Femenino";
-    if (gender === "M") return "Masculino";
-    return "";
   };
 
   const fullName = user
@@ -1135,7 +1129,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
                                   <p className="mt-1 text-sm text-gray-500">
                                     {user.last_login
                                       ? new Date(
-                                          user.last_login
+                                          user.last_login,
                                         ).toLocaleString("es-CR", {
                                           year: "numeric",
                                           month: "long",
@@ -1163,7 +1157,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
                                   <p className="mt-1 text-sm text-gray-500">
                                     {user.date_joined
                                       ? new Date(
-                                          user.date_joined
+                                          user.date_joined,
                                         ).toLocaleString("es-CR", {
                                           year: "numeric",
                                           month: "long",
@@ -1474,7 +1468,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
               </Transition>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {/* Error Notification - Rendered via Portal outside Dialog */}
@@ -1524,7 +1518,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
               </Transition>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {/* Resend Email Notification - Rendered via Portal outside Dialog */}
@@ -1583,7 +1577,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
               </Transition>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {/* Email Activation Dialog */}

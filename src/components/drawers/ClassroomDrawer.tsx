@@ -7,7 +7,6 @@ import {
 } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { InformationCircleIcon } from "@heroicons/react/24/outline";
-import { HiOutlineBuildingOffice2 } from "react-icons/hi2";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 
 interface Classroom {
@@ -170,7 +169,8 @@ export default function ClassroomDrawer({
                             htmlFor="classroom-number"
                             className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
                           >
-                            Número de Aula <span className="text-red-500">*</span>
+                            Número de Aula{" "}
+                            <span className="text-red-500">*</span>
                           </label>
                         </div>
                         <div className="sm:col-span-2">
@@ -212,7 +212,8 @@ export default function ClassroomDrawer({
                             className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                           />
                           <p className="mt-1 text-xs text-gray-500">
-                            Opcional. Puedes agregar una descripción para identificar mejor el aula.
+                            Opcional. Puedes agregar una descripción para
+                            identificar mejor el aula.
                           </p>
                         </div>
                       </div>
@@ -238,8 +239,8 @@ export default function ClassroomDrawer({
                         {isSaving
                           ? "Guardando..."
                           : editingClassroom
-                          ? "Actualizar"
-                          : "Crear"}
+                            ? "Actualizar"
+                            : "Crear"}
                       </button>
                     </div>
                   </div>
@@ -279,7 +280,9 @@ export default function ClassroomDrawer({
                     as="h3"
                     className="text-base font-semibold text-gray-900"
                   >
-                    {editingClassroom ? "Confirmar actualización" : "Confirmar creación"}
+                    {editingClassroom
+                      ? "Confirmar actualización"
+                      : "Confirmar creación"}
                   </DialogTitle>
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
@@ -300,8 +303,8 @@ export default function ClassroomDrawer({
                   {isSaving
                     ? "Guardando..."
                     : editingClassroom
-                    ? "Actualizar"
-                    : "Crear"}
+                      ? "Actualizar"
+                      : "Crear"}
                 </button>
                 <button
                   type="button"

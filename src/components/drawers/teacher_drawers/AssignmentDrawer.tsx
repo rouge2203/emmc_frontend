@@ -13,7 +13,6 @@ import {
   XCircleIcon,
   InformationCircleIcon,
   DocumentTextIcon,
-  FolderPlusIcon,
   PlusIcon,
   TrashIcon,
   PaperClipIcon,
@@ -64,7 +63,8 @@ const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [showErrorNotification, setShowErrorNotification] = useState(false);
   const [errorNotificationMessage, setErrorNotificationMessage] = useState("");
-  const [successNotificationMessage, setSuccessNotificationMessage] = useState("");
+  const [successNotificationMessage, setSuccessNotificationMessage] =
+    useState("");
 
   // Form state
   const [formTitle, setFormTitle] = useState("");
@@ -153,14 +153,17 @@ const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
           points: formPoints ? Number(formPoints) : null,
         });
       } else {
-        const response = await axiosPrivate.post("courses/teacher-assignments", {
-          enrollment_id: enrollmentId,
-          week: week,
-          title: formTitle,
-          description: formDescription,
-          date: formDate || null,
-          points: formPoints ? Number(formPoints) : null,
-        });
+        const response = await axiosPrivate.post(
+          "courses/teacher-assignments",
+          {
+            enrollment_id: enrollmentId,
+            week: week,
+            title: formTitle,
+            description: formDescription,
+            date: formDate || null,
+            points: formPoints ? Number(formPoints) : null,
+          },
+        );
         savedAssignmentId = response.data.assignment.id;
       }
 
@@ -183,7 +186,7 @@ const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
       setSuccessNotificationMessage(
         editingAssignment
           ? "Tarea actualizada exitosamente"
-          : "Tarea creada exitosamente"
+          : "Tarea creada exitosamente",
       );
       setShowSuccessNotification(true);
       setTimeout(() => {
@@ -202,7 +205,7 @@ const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
     } catch (err: any) {
       console.error("Error saving assignment:", err);
       setErrorNotificationMessage(
-        err?.response?.data?.error || "Error al guardar la tarea"
+        err?.response?.data?.error || "Error al guardar la tarea",
       );
       setShowErrorNotification(true);
       setTimeout(() => {
@@ -233,7 +236,7 @@ const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
     } catch (err: any) {
       console.error("Error deleting file:", err);
       setErrorNotificationMessage(
-        err?.response?.data?.error || "Error al eliminar el archivo"
+        err?.response?.data?.error || "Error al eliminar el archivo",
       );
       setShowErrorNotification(true);
       setTimeout(() => {
@@ -392,9 +395,12 @@ const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
                             className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
                           >
                             Puntos disponibles
-                            {!editingAssignment?.is_exam && !editingAssignment?.is_concert && (
-                              <span className="text-xs text-gray-500 ml-1">(máx. 10)</span>
-                            )}
+                            {!editingAssignment?.is_exam &&
+                              !editingAssignment?.is_concert && (
+                                <span className="text-xs text-gray-500 ml-1">
+                                  (máx. 10)
+                                </span>
+                              )}
                           </label>
                         </div>
                         <div className="sm:col-span-2">
@@ -408,7 +414,10 @@ const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
                             onChange={(e) => {
                               const value = e.target.value;
                               // For non-exam assignments, limit to 10
-                              if (!editingAssignment?.is_exam && Number(value) > 10) {
+                              if (
+                                !editingAssignment?.is_exam &&
+                                Number(value) > 10
+                              ) {
                                 setFormPoints("10");
                               } else {
                                 setFormPoints(value);
@@ -416,13 +425,20 @@ const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
                             }}
                             disabled={editingAssignment?.is_exam}
                             className={`block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6 ${
-                              editingAssignment?.is_exam ? "bg-gray-100 cursor-not-allowed" : ""
+                              editingAssignment?.is_exam
+                                ? "bg-gray-100 cursor-not-allowed"
+                                : ""
                             }`}
-                            placeholder={editingAssignment?.is_exam ? "Puntos fijos para examen" : "Ej: 10"}
+                            placeholder={
+                              editingAssignment?.is_exam
+                                ? "Puntos fijos para examen"
+                                : "Ej: 10"
+                            }
                           />
                           {editingAssignment?.is_exam && (
                             <p className="mt-1 text-xs text-amber-600">
-                              Los puntos del examen final no se pueden modificar.
+                              Los puntos del examen final no se pueden
+                              modificar.
                             </p>
                           )}
                         </div>
@@ -556,7 +572,9 @@ const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
                         disabled={isSubmitDisabled}
                         className="inline-flex justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isSaving || isUploadingFile ? "Guardando..." : "Guardar"}
+                        {isSaving || isUploadingFile
+                          ? "Guardando..."
+                          : "Guardar"}
                       </button>
                     </div>
                   </div>
@@ -596,7 +614,9 @@ const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
                     as="h3"
                     className="text-base font-semibold text-gray-900"
                   >
-                    {editingAssignment ? "Confirmar edición" : "Confirmar creación"}
+                    {editingAssignment
+                      ? "Confirmar edición"
+                      : "Confirmar creación"}
                   </DialogTitle>
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
@@ -606,7 +626,8 @@ const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
                     </p>
                     {selectedFile && (
                       <p className="mt-2 text-sm text-gray-500">
-                        Se subirá el archivo: <span className="font-medium">{selectedFile.name}</span>
+                        Se subirá el archivo:{" "}
+                        <span className="font-medium">{selectedFile.name}</span>
                       </p>
                     )}
                   </div>
@@ -655,7 +676,8 @@ const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
                       </div>
                       <div className="ml-3 w-0 flex-1 pt-0.5">
                         <p className="text-sm font-medium text-gray-900">
-                          {successNotificationMessage || "Guardado exitosamente"}
+                          {successNotificationMessage ||
+                            "Guardado exitosamente"}
                         </p>
                         <p className="mt-1 text-sm text-gray-500">
                           Los cambios se han guardado correctamente.
@@ -682,7 +704,7 @@ const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
               </Transition>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {/* Error Notification - Rendered via Portal outside Dialog */}
@@ -732,7 +754,7 @@ const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
               </Transition>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
     </>
   );

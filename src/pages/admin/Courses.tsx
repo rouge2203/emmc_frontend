@@ -3,11 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import { HiOutlineAcademicCap } from "react-icons/hi2";
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
-import {
-  MagnifyingGlassIcon,
-  FunnelIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
+import { MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import CourseCreateDrawer from "../../components/drawers/CourseCreateDrawer";
 import CourseEditDrawer from "../../components/drawers/CourseEditDrawer";
 import CourseTypeConfigDrawer from "../../components/drawers/CourseTypeConfigDrawer";
@@ -92,7 +88,7 @@ const Courses = () => {
   const fetchCareers = async () => {
     try {
       const response = await axiosPrivate.get<CareersResponse>(
-        "courses/manage-careers"
+        "courses/manage-careers",
       );
       setCareers(response.data.careers);
     } catch (err: any) {
@@ -103,7 +99,7 @@ const Courses = () => {
   const fetchCourseTypes = async () => {
     try {
       const response = await axiosPrivate.get<CourseTypesResponse>(
-        "courses/manage-course-types"
+        "courses/manage-course-types",
       );
       setCourseTypes(response.data.course_types);
     } catch (err: any) {
@@ -125,7 +121,7 @@ const Courses = () => {
 
       const response = await axiosPrivate.get<PaginatedResponse>(
         "courses/manage-courses",
-        { params }
+        { params },
       );
       setCourses(response.data.results);
       setPagination(response.data.pagination);
@@ -225,8 +221,8 @@ const Courses = () => {
   const handleCourseUpdated = (updatedCourse: Course) => {
     setCourses((prevCourses) =>
       prevCourses.map((course) =>
-        course.id === updatedCourse.id ? updatedCourse : course
-      )
+        course.id === updatedCourse.id ? updatedCourse : course,
+      ),
     );
   };
 
@@ -549,7 +545,7 @@ const Courses = () => {
               <span className="font-medium">
                 {Math.min(
                   pagination.page_size * pagination.page,
-                  pagination.total_count
+                  pagination.total_count,
                 )}
               </span>{" "}
               de <span className="font-medium">{pagination.total_count}</span>{" "}

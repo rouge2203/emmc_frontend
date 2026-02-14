@@ -53,10 +53,6 @@ interface CourseEnrollmentCreateDrawerProps {
   onEnrollmentCreated?: () => void;
 }
 
-interface CourseResponse {
-  course: Course;
-}
-
 interface CoursesResponse {
   courses: Course[];
 }
@@ -144,7 +140,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
       const fetchCourses = async () => {
         try {
           const response = await axiosPrivate.get<CoursesResponse>(
-            "courses/list-courses-for-enrollment"
+            "courses/list-courses-for-enrollment",
           );
           setCourses(response.data.courses);
         } catch (err: any) {
@@ -167,7 +163,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
                 role: "student",
                 search: studentSearch,
               },
-            }
+            },
           );
           setStudents(response.data.users);
         } catch (err: any) {
@@ -193,7 +189,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
                 role: "teacher",
                 search: professorSearch,
               },
-            }
+            },
           );
           setProfessors(response.data.users);
         } catch (err: any) {
@@ -251,7 +247,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
                 student_id: selectedStudent.id,
                 prerequisite_code: selectedCourse.prerequisite_code,
               },
-            }
+            },
           );
           setPrerequisiteStatus((prev) => ({
             ...prev,
@@ -310,7 +306,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
   const filteredCourses = courses.filter(
     (course) =>
       course.code.toLowerCase().includes(courseSearch.toLowerCase()) ||
-      course.name.toLowerCase().includes(courseSearch.toLowerCase())
+      course.name.toLowerCase().includes(courseSearch.toLowerCase()),
   );
 
   // Close dropdowns when clicking outside
@@ -345,7 +341,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
           price: price ? parseFloat(price) : null,
           week_duration: weekDuration,
         },
-        { abortEarly: false }
+        { abortEarly: false },
       );
       setErrors({});
       return true;
@@ -382,7 +378,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
   const handleProfessorSelect = (professor: User) => {
     setSelectedProfessor(professor);
     setProfessorSearch(
-      `${professor.last_name || ""} ${professor.first_name}`.trim()
+      `${professor.last_name || ""} ${professor.first_name}`.trim(),
     );
     setShowProfessorDropdown(false);
   };
@@ -416,7 +412,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
 
       await axiosPrivate.post<EnrollmentResponse>(
         "courses/manage-enrollments",
-        createData
+        createData,
       );
 
       // Close confirmation dialog
@@ -867,7 +863,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
                             onChange={(e) =>
                               setYear(
                                 parseInt(e.target.value) ||
-                                  new Date().getFullYear()
+                                  new Date().getFullYear(),
                               )
                             }
                             className={`block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
@@ -1198,7 +1194,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
               </Transition>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {/* Error Notification - Rendered via Portal outside Dialog */}
@@ -1248,7 +1244,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
               </Transition>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
     </>
   );

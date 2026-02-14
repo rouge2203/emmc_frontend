@@ -115,7 +115,13 @@ const CourseEnrollmentScheduleDrawer: React.FC<
     Record<number, CourseEnrollmentSchedule>
   >({});
   const [newSchedules, setNewSchedules] = useState<
-    Array<{ day: string; hour: string; end_hour: string; classroom_id: number | null; tempId: number }>
+    Array<{
+      day: string;
+      hour: string;
+      end_hour: string;
+      classroom_id: number | null;
+      tempId: number;
+    }>
   >([]);
   const [schedulesToDelete, setSchedulesToDelete] = useState<number[]>([]);
   const [notifyUser, setNotifyUser] = useState(false);
@@ -135,7 +141,9 @@ const CourseEnrollmentScheduleDrawer: React.FC<
   // Fetch classrooms on mount
   const fetchClassrooms = async () => {
     try {
-      const response = await axiosPrivate.get<{ classrooms: Classroom[] }>("courses/classrooms");
+      const response = await axiosPrivate.get<{ classrooms: Classroom[] }>(
+        "courses/classrooms",
+      );
       setClassrooms(response.data.classrooms);
     } catch (err) {
       console.error("Error fetching classrooms:", err);
@@ -146,8 +154,12 @@ const CourseEnrollmentScheduleDrawer: React.FC<
   const checkClassroomConflicts = async (
     classroomId: number,
     day: string,
-    excludeScheduleId?: number
-  ): Promise<{ hasConflicts: boolean; conflicts: ConflictInfo[]; classroom: Classroom | null }> => {
+    excludeScheduleId?: number,
+  ): Promise<{
+    hasConflicts: boolean;
+    conflicts: ConflictInfo[];
+    classroom: Classroom | null;
+  }> => {
     try {
       const params: any = { classroom_id: classroomId, day };
       if (excludeScheduleId) {
@@ -173,12 +185,13 @@ const CourseEnrollmentScheduleDrawer: React.FC<
   const handleClassroomSelectForExisting = async (
     scheduleId: number,
     classroomId: number | null,
-    day: string
+    day: string,
   ) => {
     handleEditScheduleChange(scheduleId, "classroom_id", classroomId);
-    
+
     if (classroomId && day) {
-      const { hasConflicts, conflicts, classroom } = await checkClassroomConflicts(classroomId, day, scheduleId);
+      const { hasConflicts, conflicts, classroom } =
+        await checkClassroomConflicts(classroomId, day, scheduleId);
       if (hasConflicts) {
         setConflictInfo({ conflicts, classroom, scheduleId });
         setShowConflictDialog(true);
@@ -190,12 +203,13 @@ const CourseEnrollmentScheduleDrawer: React.FC<
   const handleClassroomSelectForNew = async (
     tempId: number,
     classroomId: number | null,
-    day: string
+    day: string,
   ) => {
     handleNewScheduleChange(tempId, "classroom_id", classroomId);
-    
+
     if (classroomId && day) {
-      const { hasConflicts, conflicts, classroom } = await checkClassroomConflicts(classroomId, day);
+      const { hasConflicts, conflicts, classroom } =
+        await checkClassroomConflicts(classroomId, day);
       if (hasConflicts) {
         setConflictInfo({ conflicts, classroom, tempId });
         setShowConflictDialog(true);
@@ -254,18 +268,18 @@ const CourseEnrollmentScheduleDrawer: React.FC<
           params: {
             course_enrollment_id: enrollmentId,
           },
-        }
+        },
       );
       setSchedules(response.data.schedules);
       setEnrollment(response.data.enrollment);
       setSchedulesToDelete([]);
       setNewSchedules([]);
-      
+
       // Note: classroom_id will be set in useEffect when classrooms are loaded
     } catch (err: any) {
       console.error("Error fetching schedules:", err);
       setErrorNotificationMessage(
-        err?.response?.data?.error || "Error al cargar los horarios"
+        err?.response?.data?.error || "Error al cargar los horarios",
       );
       setShowErrorNotification(true);
       setTimeout(() => {
@@ -279,7 +293,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
   const handleEditScheduleChange = (
     id: number,
     field: string,
-    value: string | number | null
+    value: string | number | null,
   ) => {
     setEditingSchedules((prev) => ({
       ...prev,
@@ -299,7 +313,13 @@ const CourseEnrollmentScheduleDrawer: React.FC<
     }
     setNewSchedules((prev) => [
       ...prev,
-      { day: "", hour: "", end_hour: "", classroom_id: null, tempId: tempIdCounter },
+      {
+        day: "",
+        hour: "",
+        end_hour: "",
+        classroom_id: null,
+        tempId: tempIdCounter,
+      },
     ]);
     setTempIdCounter((prev) => prev + 1);
   };
@@ -307,10 +327,10 @@ const CourseEnrollmentScheduleDrawer: React.FC<
   const handleNewScheduleChange = (
     tempId: number,
     field: string,
-    value: string | number | null
+    value: string | number | null,
   ) => {
     setNewSchedules((prev) =>
-      prev.map((s) => (s.tempId === tempId ? { ...s, [field]: value } : s))
+      prev.map((s) => (s.tempId === tempId ? { ...s, [field]: value } : s)),
     );
   };
 
@@ -325,18 +345,6 @@ const CourseEnrollmentScheduleDrawer: React.FC<
       delete newEditing[id];
       return newEditing;
     });
-  };
-
-  const handleUnmarkForDeletion = (id: number) => {
-    setSchedulesToDelete((prev) => prev.filter((sid) => sid !== id));
-    // Restore original schedule data
-    const originalSchedule = schedules.find((s) => s.id === id);
-    if (originalSchedule) {
-      setEditingSchedules((prev) => ({
-        ...prev,
-        [id]: { ...originalSchedule },
-      }));
-    }
   };
 
   const handleSaveClick = () => {
@@ -399,7 +407,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
 
             await axiosPrivate.put<ScheduleResponse>(
               "courses/manage-enrollment-schedules",
-              updateData
+              updateData,
             );
           } catch (err: any) {
             console.error(`Error updating schedule ${scheduleId}:`, err);
@@ -431,7 +439,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
 
           await axiosPrivate.post<ScheduleResponse>(
             "courses/manage-enrollment-schedules",
-            createData
+            createData,
           );
         } catch (err: any) {
           console.error("Error creating schedule:", err);
@@ -468,7 +476,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
     } catch (err: any) {
       console.error("Error saving schedules:", err);
       setErrorNotificationMessage(
-        err?.response?.data?.error || "Error al guardar los horarios"
+        err?.response?.data?.error || "Error al guardar los horarios",
       );
       setShowErrorNotification(true);
       setTimeout(() => {
@@ -593,7 +601,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                             Horarios existentes
                           </h3>
                           {schedules.filter(
-                            (s) => !schedulesToDelete.includes(s.id)
+                            (s) => !schedulesToDelete.includes(s.id),
                           ).length === 0 && newSchedules.length === 0 ? (
                             <p className="text-sm text-gray-500">
                               No hay horarios registrados.
@@ -602,7 +610,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                             <div className="space-y-3">
                               {schedules
                                 .filter(
-                                  (s) => !schedulesToDelete.includes(s.id)
+                                  (s) => !schedulesToDelete.includes(s.id),
                                 )
                                 .map((schedule) => {
                                   const editingSchedule =
@@ -626,7 +634,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                                 handleEditScheduleChange(
                                                   schedule.id,
                                                   "day",
-                                                  e.target.value
+                                                  e.target.value,
                                                 )
                                               }
                                               disabled={isReadOnly}
@@ -673,7 +681,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                             value={
                                               editingSchedule.hour
                                                 ? formatTimeForInput(
-                                                    editingSchedule.hour
+                                                    editingSchedule.hour,
                                                   )
                                                 : ""
                                             }
@@ -681,7 +689,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                               handleEditScheduleChange(
                                                 schedule.id,
                                                 "hour",
-                                                e.target.value
+                                                e.target.value,
                                               )
                                             }
                                             disabled={isReadOnly}
@@ -710,7 +718,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                             value={
                                               editingSchedule.end_hour
                                                 ? formatTimeForInput(
-                                                    editingSchedule.end_hour
+                                                    editingSchedule.end_hour,
                                                   )
                                                 : ""
                                             }
@@ -718,7 +726,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                               handleEditScheduleChange(
                                                 schedule.id,
                                                 "end_hour",
-                                                e.target.value
+                                                e.target.value,
                                               )
                                             }
                                             disabled={isReadOnly}
@@ -744,12 +752,17 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                           </label>
                                           <div className="grid grid-cols-1">
                                             <select
-                                              value={editingSchedule.classroom_id ?? ""}
+                                              value={
+                                                editingSchedule.classroom_id ??
+                                                ""
+                                              }
                                               onChange={(e) =>
                                                 handleClassroomSelectForExisting(
                                                   schedule.id,
-                                                  e.target.value ? Number(e.target.value) : null,
-                                                  editingSchedule.day
+                                                  e.target.value
+                                                    ? Number(e.target.value)
+                                                    : null,
+                                                  editingSchedule.day,
                                                 )
                                               }
                                               disabled={isReadOnly}
@@ -761,7 +774,10 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                             >
                                               <option value="">Sin aula</option>
                                               {classrooms.map((classroom) => (
-                                                <option key={classroom.id} value={classroom.id}>
+                                                <option
+                                                  key={classroom.id}
+                                                  value={classroom.id}
+                                                >
                                                   Aula {classroom.number}
                                                 </option>
                                               ))}
@@ -791,7 +807,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                               type="button"
                                               onClick={() =>
                                                 handleMarkForDeletion(
-                                                  schedule.id
+                                                  schedule.id,
                                                 )
                                               }
                                               className="rounded-md bg-red-800 px-3 py-1.5 text-sm font-semibold text-white shadow-xs hover:bg-red-900"
@@ -851,7 +867,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                               handleNewScheduleChange(
                                                 newSchedule.tempId,
                                                 "day",
-                                                e.target.value
+                                                e.target.value,
                                               )
                                             }
                                             className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900"
@@ -894,7 +910,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                             handleNewScheduleChange(
                                               newSchedule.tempId,
                                               "hour",
-                                              e.target.value
+                                              e.target.value,
                                             )
                                           }
                                           disabled={isReadOnly}
@@ -925,7 +941,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                             handleNewScheduleChange(
                                               newSchedule.tempId,
                                               "end_hour",
-                                              e.target.value
+                                              e.target.value,
                                             )
                                           }
                                           disabled={isReadOnly}
@@ -951,12 +967,16 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                         </label>
                                         <div className="grid grid-cols-1">
                                           <select
-                                            value={newSchedule.classroom_id ?? ""}
+                                            value={
+                                              newSchedule.classroom_id ?? ""
+                                            }
                                             onChange={(e) =>
                                               handleClassroomSelectForNew(
                                                 newSchedule.tempId,
-                                                e.target.value ? Number(e.target.value) : null,
-                                                newSchedule.day
+                                                e.target.value
+                                                  ? Number(e.target.value)
+                                                  : null,
+                                                newSchedule.day,
                                               )
                                             }
                                             disabled={isReadOnly}
@@ -968,7 +988,10 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                           >
                                             <option value="">Sin aula</option>
                                             {classrooms.map((classroom) => (
-                                              <option key={classroom.id} value={classroom.id}>
+                                              <option
+                                                key={classroom.id}
+                                                value={classroom.id}
+                                              >
                                                 Aula {classroom.number}
                                               </option>
                                             ))}
@@ -979,9 +1002,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                             data-slot="icon"
                                             aria-hidden="true"
                                             className={`pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4 ${
-                                              isReadOnly
-                                                ? "text-gray-400"
-                                                : ""
+                                              isReadOnly ? "text-gray-400" : ""
                                             }`}
                                           >
                                             <path
@@ -998,7 +1019,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                             type="button"
                                             onClick={() =>
                                               handleRemoveNewSchedule(
-                                                newSchedule.tempId
+                                                newSchedule.tempId,
                                               )
                                             }
                                             className="rounded-md bg-red-800 px-3 py-1.5 text-sm font-semibold text-white shadow-xs hover:bg-red-900"
@@ -1084,12 +1105,16 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                   <ExclamationTriangleIcon className="size-6 text-yellow-600" />
                 </div>
                 <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
-                  <DialogTitle as="h3" className="text-base font-semibold text-gray-900">
+                  <DialogTitle
+                    as="h3"
+                    className="text-base font-semibold text-gray-900"
+                  >
                     Conflicto de Horario Detectado
                   </DialogTitle>
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
-                      {conflictInfo?.classroom?.display_name} ya tiene horarios asignados en este día:
+                      {conflictInfo?.classroom?.display_name} ya tiene horarios
+                      asignados en este día:
                     </p>
                     <div className="mt-3 space-y-2">
                       {conflictInfo?.conflicts.map((conflict) => (
@@ -1134,9 +1159,17 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                   onClick={() => {
                     // Reset the classroom selection
                     if (conflictInfo?.scheduleId !== undefined) {
-                      handleEditScheduleChange(conflictInfo.scheduleId, "classroom_id", null);
+                      handleEditScheduleChange(
+                        conflictInfo.scheduleId,
+                        "classroom_id",
+                        null,
+                      );
                     } else if (conflictInfo?.tempId !== undefined) {
-                      handleNewScheduleChange(conflictInfo.tempId, "classroom_id", null);
+                      handleNewScheduleChange(
+                        conflictInfo.tempId,
+                        "classroom_id",
+                        null,
+                      );
                     }
                     setShowConflictDialog(false);
                   }}
@@ -1265,7 +1298,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
               </Transition>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {/* Error Notification - Rendered via Portal outside Dialog */}
@@ -1315,7 +1348,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
               </Transition>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
     </>
   );

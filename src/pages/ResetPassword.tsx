@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import axios from "../api/axios";
-import { FaRegNewspaper, FaEye, FaEyeSlash } from "react-icons/fa";
-import { TbPasswordUser } from "react-icons/tb";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { ImCancelCircle } from "react-icons/im";
-import { CgPiano } from "react-icons/cg";
 import {
   Dialog,
   DialogBackdrop,
@@ -30,7 +28,7 @@ const passwordSchema = Yup.object({
     .matches(/[A-Z]/, "La contraseña debe incluir al menos una mayúscula")
     .matches(
       /[^A-Za-z0-9]/,
-      "La contraseña debe incluir al menos un carácter especial"
+      "La contraseña debe incluir al menos un carácter especial",
     )
     .required("Debes ingresar una contraseña"),
   confirmPassword: Yup.string()
@@ -57,7 +55,7 @@ const ResetPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [heroImage] = useState(
     () =>
-      instrumentsImages[Math.floor(Math.random() * instrumentsImages.length)]
+      instrumentsImages[Math.floor(Math.random() * instrumentsImages.length)],
   );
 
   const [searchParams] = useSearchParams();
@@ -129,7 +127,7 @@ const ResetPassword = () => {
     try {
       await passwordSchema.validate(
         { password, confirmPassword },
-        { abortEarly: false }
+        { abortEarly: false },
       );
       setFormErrors({});
     } catch (validationError) {
@@ -156,11 +154,11 @@ const ResetPassword = () => {
         JSON.stringify({ uid, token, password }),
         {
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
 
       setSuccessMsg(
-        "Tu contraseña se actualizó correctamente. Inicia sesión con tus nuevas credenciales."
+        "Tu contraseña se actualizó correctamente. Inicia sesión con tus nuevas credenciales.",
       );
       setIsDialogOpen(true);
       setPassword("");

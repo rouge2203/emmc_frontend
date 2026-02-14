@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
-import NewsDrawer, { NewsItem } from "../../components/drawers/NewsDrawer";
+import NewsDrawer, { type NewsItem } from "../../components/drawers/NewsDrawer";
 
 const News = () => {
   const axiosPrivate = useAxiosPrivate();

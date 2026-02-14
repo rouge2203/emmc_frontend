@@ -31,22 +31,12 @@ interface CourseType {
   price: number;
 }
 
-interface Course {
-  id: number;
-  code: string;
-  name: string;
-}
-
 interface CourseCreateDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onCourseCreated?: () => void;
   careers: Career[];
   courseTypes: CourseType[];
-}
-
-interface CourseResponse {
-  course: Course;
 }
 
 interface PrerequisiteCoursesResponse {
@@ -116,7 +106,7 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
       const fetchPrerequisiteCourses = async () => {
         try {
           const response = await axiosPrivate.get<PrerequisiteCoursesResponse>(
-            "courses/list-courses-for-prerequisite"
+            "courses/list-courses-for-prerequisite",
           );
           setPrerequisiteCourses(response.data.courses);
         } catch (err: any) {
@@ -151,7 +141,7 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
   useEffect(() => {
     if (courseTypeId) {
       const selectedCourseType = courseTypes.find(
-        (type) => type.id === courseTypeId
+        (type) => type.id === courseTypeId,
       );
       if (selectedCourseType) {
         // Only auto-set price if course type actually changed
@@ -164,7 +154,7 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
           } else {
             // Check if current price matches previous course type's price
             const previousCourseType = courseTypes.find(
-              (type) => type.id === previousCourseTypeId.current
+              (type) => type.id === previousCourseTypeId.current,
             );
             if (
               previousCourseType &&
@@ -188,7 +178,7 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
   const filteredPrerequisiteCourses = prerequisiteCourses.filter(
     (course) =>
       course.code.toLowerCase().includes(prerequisiteSearch.toLowerCase()) ||
-      course.name.toLowerCase().includes(prerequisiteSearch.toLowerCase())
+      course.name.toLowerCase().includes(prerequisiteSearch.toLowerCase()),
   );
 
   // Close dropdown when clicking outside
@@ -222,7 +212,7 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
           prerequisite_code: prerequisiteCode || null,
           description: description.trim() || null,
         },
-        { abortEarly: false }
+        { abortEarly: false },
       );
       setErrors({});
       return true;
@@ -314,11 +304,6 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
         createData.career_id = careerId;
       }
 
-      const response = await axiosPrivate.post<CourseResponse>(
-        "courses/manage-courses",
-        createData
-      );
-
       // Close confirmation dialog
       setShowConfirmDialog(false);
 
@@ -378,7 +363,7 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
     !code.trim() || !name.trim() || !courseTypeId || isCreating;
 
   const selectedCourseType = courseTypes.find(
-    (type) => type.id === courseTypeId
+    (type) => type.id === courseTypeId,
   );
 
   return (
@@ -903,7 +888,7 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
               </Transition>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {/* Error Notification - Rendered via Portal outside Dialog */}
@@ -953,7 +938,7 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
               </Transition>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
     </>
   );

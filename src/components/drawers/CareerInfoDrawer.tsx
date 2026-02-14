@@ -13,7 +13,6 @@ import {
   CheckCircleIcon,
   CalendarDaysIcon,
   ClockIcon,
-  XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { IoMdBook } from "react-icons/io";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
@@ -59,8 +58,6 @@ const CareerInfoDrawer: React.FC<CareerInfoDrawerProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
-  const [showErrorNotification, setShowErrorNotification] = useState(false);
-  const [errorNotificationMessage, setErrorNotificationMessage] = useState("");
 
   // Form state
   const [name, setName] = useState("");
@@ -81,7 +78,7 @@ const CareerInfoDrawer: React.FC<CareerInfoDrawerProps> = ({
       setIsLoading(true);
       setError(null);
       const response = await axiosPrivate.get<CareersResponse>(
-        "courses/manage-careers"
+        "courses/manage-careers",
       );
       const foundCareer = response.data.careers.find((c) => c.id === careerId);
       if (foundCareer) {
@@ -95,7 +92,7 @@ const CareerInfoDrawer: React.FC<CareerInfoDrawerProps> = ({
     } catch (err: any) {
       setError(
         err?.response?.data?.error ||
-          "Error al cargar la información de la cárrera"
+          "Error al cargar la información de la cárrera",
       );
       console.error("Error fetching career data:", err);
     } finally {
@@ -127,7 +124,7 @@ const CareerInfoDrawer: React.FC<CareerInfoDrawerProps> = ({
 
       const response = await axiosPrivate.put<CareerResponse>(
         "courses/manage-careers",
-        updateData
+        updateData,
       );
 
       // Update local state with response
@@ -156,11 +153,7 @@ const CareerInfoDrawer: React.FC<CareerInfoDrawerProps> = ({
     } catch (err: any) {
       const errorMessage =
         err?.response?.data?.error || "Error al guardar los cambios";
-      setErrorNotificationMessage(errorMessage);
-      setShowErrorNotification(true);
-      setTimeout(() => {
-        setShowErrorNotification(false);
-      }, 5000);
+      setError(errorMessage);
       console.error("Error saving career data:", err);
       setShowConfirmDialog(false);
     } finally {
@@ -330,7 +323,7 @@ const CareerInfoDrawer: React.FC<CareerInfoDrawerProps> = ({
                                 <p className="mt-1 text-sm text-gray-500">
                                   {career.created_at
                                     ? new Date(
-                                        career.created_at
+                                        career.created_at,
                                       ).toLocaleString("es-CR", {
                                         year: "numeric",
                                         month: "long",
@@ -398,7 +391,7 @@ const CareerInfoDrawer: React.FC<CareerInfoDrawerProps> = ({
                                 <p className="mt-1 text-sm text-gray-500">
                                   {career.updated_at
                                     ? new Date(
-                                        career.updated_at
+                                        career.updated_at,
                                       ).toLocaleString("es-CR", {
                                         year: "numeric",
                                         month: "long",
@@ -551,7 +544,7 @@ const CareerInfoDrawer: React.FC<CareerInfoDrawerProps> = ({
               </Transition>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
     </>
   );
