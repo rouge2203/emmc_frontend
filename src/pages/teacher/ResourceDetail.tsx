@@ -1,7 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
-import { Dialog, DialogPanel, DialogTitle, DialogBackdrop, Transition } from "@headlessui/react";
+import {
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+  DialogBackdrop,
+  Transition,
+} from "@headlessui/react";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import {
   ArrowLeftIcon,
@@ -70,13 +76,15 @@ export default function ResourceDetail() {
     setError(null);
     try {
       const response = await axiosPrivate.get(
-        `courses/teacher-resources?resource_id=${resourceId}`
+        `courses/teacher-resources?resource_id=${resourceId}`,
       );
       setResource(response.data.resource);
       setEnrollment(response.data.enrollment);
     } catch (err: unknown) {
       console.error("Error fetching resource:", err);
-      setError("Error al cargar el recurso. Intente volver y acceder de nuevo.");
+      setError(
+        "Error al cargar el recurso. Intente volver y acceder de nuevo.",
+      );
     } finally {
       setLoading(false);
     }
@@ -88,7 +96,10 @@ export default function ResourceDetail() {
     }
   }, [resourceId]);
 
-  const openEditDialog = (field: string, currentValue: string | number | null) => {
+  const openEditDialog = (
+    field: string,
+    currentValue: string | number | null,
+  ) => {
     setEditField(field);
     setEditValue(currentValue?.toString() || "");
   };
@@ -240,7 +251,7 @@ export default function ResourceDetail() {
                       onClick={() =>
                         setNotification((prev) => ({ ...prev, show: false }))
                       }
-                      className="inline-flex rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                      className="inline-flex rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                     >
                       <span className="sr-only">Close</span>
                       <XMarkIcon className="h-5 w-5" />
@@ -252,7 +263,7 @@ export default function ResourceDetail() {
           </Transition>
         </div>
       </div>,
-      document.body
+      document.body,
     );
   };
 
@@ -275,11 +286,15 @@ export default function ResourceDetail() {
             >
               <ArrowLeftIcon className="h-5 w-5 text-gray-500" />
             </button>
-            <h1 className="text-xl font-bold text-gray-900">Detalle de Recurso</h1>
+            <h1 className="text-xl font-bold text-gray-900">
+              Detalle de Recurso
+            </h1>
           </div>
           <div className="flex items-center justify-center min-h-96">
             <div className="text-center">
-              <p className="text-gray-600 text-lg">{error || "Recurso no encontrado"}</p>
+              <p className="text-gray-600 text-lg">
+                {error || "Recurso no encontrado"}
+              </p>
               <button
                 onClick={() => navigate(-1)}
                 className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90"
@@ -310,7 +325,9 @@ export default function ResourceDetail() {
               <FolderIcon className="h-6 w-6 text-amber-600" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Detalle de Recurso</h1>
+              <h1 className="text-xl font-bold text-gray-900">
+                Detalle de Recurso
+              </h1>
               {enrollment && (
                 <p className="text-sm text-gray-500">
                   {enrollment.course_code} - {enrollment.student_name}
@@ -322,7 +339,9 @@ export default function ResourceDetail() {
 
         {/* Resource Information */}
         <div className="px-4 sm:px-0">
-          <h3 className="text-base/7 font-semibold text-gray-900">Informacion del Recurso</h3>
+          <h3 className="text-base/7 font-semibold text-gray-900">
+            Informacion del Recurso
+          </h3>
           <p className="mt-1 max-w-2xl text-sm/6 text-gray-500">
             Detalles y configuracion del recurso.
           </p>
@@ -350,7 +369,9 @@ export default function ResourceDetail() {
             <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
               <dt className="text-sm/6 font-medium text-gray-900">Semana</dt>
               <dd className="mt-1 flex text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
-                <span className="grow">{resource.week ?? "No especificada"}</span>
+                <span className="grow">
+                  {resource.week ?? "No especificada"}
+                </span>
                 <span className="ml-4 shrink-0">
                   <button
                     type="button"
@@ -365,7 +386,9 @@ export default function ResourceDetail() {
 
             {/* Description */}
             <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-              <dt className="text-sm/6 font-medium text-gray-900">Descripcion</dt>
+              <dt className="text-sm/6 font-medium text-gray-900">
+                Descripcion
+              </dt>
               <dd className="mt-1 flex text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
                 <span className="grow whitespace-pre-wrap">
                   {resource.description || "Sin descripcion"}
@@ -373,7 +396,9 @@ export default function ResourceDetail() {
                 <span className="ml-4 shrink-0">
                   <button
                     type="button"
-                    onClick={() => openEditDialog("description", resource.description)}
+                    onClick={() =>
+                      openEditDialog("description", resource.description)
+                    }
                     className="rounded-md bg-white font-medium text-primary hover:text-primary/80"
                   >
                     Actualizar
@@ -384,10 +409,15 @@ export default function ResourceDetail() {
 
             {/* Attachments */}
             <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-              <dt className="text-sm/6 font-medium text-gray-900">Archivo Adjunto</dt>
+              <dt className="text-sm/6 font-medium text-gray-900">
+                Archivo Adjunto
+              </dt>
               <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
                 {resource.resource_file_url ? (
-                  <ul role="list" className="divide-y divide-gray-100 rounded-md border border-gray-200">
+                  <ul
+                    role="list"
+                    className="divide-y divide-gray-100 rounded-md border border-gray-200"
+                  >
                     <li className="flex items-center justify-between py-4 pr-5 pl-4 text-sm/6">
                       <div className="flex w-0 flex-1 items-center">
                         <PaperClipIcon className="size-5 shrink-0 text-gray-400" />
@@ -457,7 +487,8 @@ export default function ResourceDetail() {
                                 {selectedFile.name}
                               </p>
                               <p className="text-xs text-gray-500">
-                                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                                {(selectedFile.size / 1024 / 1024).toFixed(2)}{" "}
+                                MB
                               </p>
                             </div>
                           </div>
@@ -541,7 +572,10 @@ export default function ResourceDetail() {
                 </button>
               </div>
               <div>
-                <DialogTitle as="h3" className="text-base font-semibold text-gray-900">
+                <DialogTitle
+                  as="h3"
+                  className="text-base font-semibold text-gray-900"
+                >
                   Actualizar {getFieldLabel(editField || "")}
                 </DialogTitle>
                 <div className="mt-4">

@@ -77,7 +77,7 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState<number>(
-    new Date().getFullYear()
+    new Date().getFullYear(),
   );
   const [selectedPeriod, setSelectedPeriod] = useState<number | "">("");
 
@@ -94,7 +94,7 @@ const AdminDashboard = () => {
         params.append("period", selectedPeriod.toString());
       }
       const response = await axiosPrivate.get(
-        `admin-dashboard/stats?${params.toString()}`
+        `admin-dashboard/stats?${params.toString()}`,
       );
       setStats(response.data);
       if (
@@ -114,7 +114,7 @@ const AdminDashboard = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -131,17 +131,17 @@ const AdminDashboard = () => {
     stats.enrollments.by_period[1],
     stats.enrollments.by_period[2],
     stats.enrollments.by_period[3],
-    1
+    1,
   );
 
   const maxClassesByDay = Math.max(
     ...stats.schedules.by_day.map((d) => d.count),
-    1
+    1,
   );
 
   const maxEnrollmentByYear = Math.max(
     ...stats.enrollments.by_year.map((y) => y.count),
-    1
+    1,
   );
 
   return (
@@ -162,7 +162,7 @@ const AdminDashboard = () => {
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                className="rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary text-sm"
               >
                 {stats.filters.available_years.map((year) => (
                   <option key={year} value={year}>
@@ -174,10 +174,10 @@ const AdminDashboard = () => {
                 value={selectedPeriod}
                 onChange={(e) =>
                   setSelectedPeriod(
-                    e.target.value ? Number(e.target.value) : ""
+                    e.target.value ? Number(e.target.value) : "",
                   )
                 }
-                className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                className="rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary text-sm"
               >
                 <option value="">Todos los periodos</option>
                 <option value="1">Periodo I</option>
@@ -289,7 +289,7 @@ const AdminDashboard = () => {
               </h3>
               <Link
                 to="/admin/cursos-matriculados"
-                className="text-sm text-indigo-600 hover:text-indigo-800"
+                className="text-sm text-primary hover:text-primary"
               >
                 Ver todas
               </Link>
@@ -310,7 +310,7 @@ const AdminDashboard = () => {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3">
                     <div
-                      className="bg-indigo-600 h-3 rounded-full transition-all duration-500"
+                      className="bg-primary h-3 rounded-full transition-all duration-500"
                       style={{
                         width: `${
                           (stats.enrollments.by_period[
@@ -361,7 +361,7 @@ const AdminDashboard = () => {
               </h3>
               <Link
                 to="/admin/calendario-de-cursos"
-                className="text-sm text-indigo-600 hover:text-indigo-800"
+                className="text-sm text-primary hover:text-primary"
               >
                 Ver calendario
               </Link>
@@ -394,7 +394,7 @@ const AdminDashboard = () => {
               </h3>
               <Link
                 to="/admin/instrumentos/inventario"
-                className="text-sm text-indigo-600 hover:text-indigo-800"
+                className="text-sm text-primary hover:text-primary"
               >
                 Ver inventario
               </Link>
@@ -439,17 +439,17 @@ const AdminDashboard = () => {
               <h3 className="text-lg font-medium text-gray-900">Profesores</h3>
               <Link
                 to="/admin/profesores"
-                className="text-sm text-indigo-600 hover:text-indigo-800"
+                className="text-sm text-primary hover:text-primary"
               >
                 Ver todos
               </Link>
             </div>
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="bg-indigo-50 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-indigo-700">
+                <p className="text-2xl font-bold text-primary">
                   {stats.professors.total}
                 </p>
-                <p className="text-sm text-indigo-600">Total registrados</p>
+                <p className="text-sm text-primary">Total registrados</p>
               </div>
               <div className="bg-green-50 rounded-lg p-4 text-center">
                 <p className="text-2xl font-bold text-green-700">
@@ -464,7 +464,7 @@ const AdminDashboard = () => {
                   ? Math.round(
                       (stats.professors.with_active_enrollments /
                         stats.professors.total) *
-                        100
+                        100,
                     )
                   : 0}
                 % de los profesores tienen cursos asignados en el periodo
@@ -493,7 +493,7 @@ const AdminDashboard = () => {
                     <span
                       className={`${
                         item.year === selectedYear
-                          ? "font-bold text-indigo-600"
+                          ? "font-bold text-primary"
                           : "text-gray-600"
                       }`}
                     >
@@ -505,7 +505,7 @@ const AdminDashboard = () => {
                     <div
                       className={`h-2.5 rounded-full transition-all duration-500 ${
                         item.year === selectedYear
-                          ? "bg-indigo-600"
+                          ? "bg-primary"
                           : "bg-gray-400"
                       }`}
                       style={{
@@ -527,7 +527,7 @@ const AdminDashboard = () => {
               </div>
               <Link
                 to="/admin/centro-de-pagos"
-                className="text-sm text-indigo-600 hover:text-indigo-800"
+                className="text-sm text-primary hover:text-primary"
               >
                 Ver todos
               </Link>
@@ -578,7 +578,7 @@ const AdminDashboard = () => {
               </h3>
               <Link
                 to="/admin/catedra"
-                className="text-sm text-indigo-600 hover:text-indigo-800"
+                className="text-sm text-primary hover:text-primary"
               >
                 Ver carreras
               </Link>
@@ -589,8 +589,13 @@ const AdminDashboard = () => {
                   key={item.career}
                   className="bg-gray-50 rounded-lg p-4 text-center"
                 >
-                  <p className="text-xl font-bold text-gray-900">{item.count}</p>
-                  <p className="text-sm text-gray-600 truncate" title={item.career}>
+                  <p className="text-xl font-bold text-gray-900">
+                    {item.count}
+                  </p>
+                  <p
+                    className="text-sm text-gray-600 truncate"
+                    title={item.career}
+                  >
                     {item.career}
                   </p>
                 </div>
@@ -650,11 +655,14 @@ const StatCard = ({
   color: string;
   link: string;
 }) => {
-  const colorClasses: Record<string, { bg: string; text: string; iconBg: string }> = {
+  const colorClasses: Record<
+    string,
+    { bg: string; text: string; iconBg: string }
+  > = {
     indigo: {
       bg: "bg-indigo-50",
-      text: "text-indigo-700",
-      iconBg: "bg-indigo-100",
+      text: "text-primary",
+      iconBg: "bg-primary",
     },
     green: {
       bg: "bg-green-50",
@@ -729,7 +737,7 @@ const QuickActionButton = ({
   color: string;
 }) => {
   const colorClasses: Record<string, string> = {
-    indigo: "bg-indigo-600 hover:bg-indigo-700",
+    indigo: "bg-primary hover:bg-primary",
     blue: "bg-blue-600 hover:bg-blue-700",
     green: "bg-green-600 hover:bg-green-700",
     amber: "bg-amber-600 hover:bg-amber-700",

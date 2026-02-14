@@ -119,9 +119,9 @@ const eventColors = [
   },
   {
     bg: "bg-indigo-50",
-    hover: "hover:bg-indigo-100",
-    text: "text-indigo-700",
-    textLight: "text-indigo-600",
+    hover: "hover:bg-primary",
+    text: "text-primary",
+    textLight: "text-primary",
   },
   {
     bg: "bg-red-50",
@@ -208,7 +208,7 @@ const Calendar = () => {
   };
 
   const sortEventsByHour = (
-    events: CalendarScheduleEvent[]
+    events: CalendarScheduleEvent[],
   ): CalendarScheduleEvent[] => {
     return [...events].sort((a, b) => {
       if (!a.hour && !b.hour) return 0;
@@ -221,7 +221,7 @@ const Calendar = () => {
   const fetchCareers = async () => {
     try {
       const response = await axiosPrivate.get<CareersResponse>(
-        "courses/manage-careers"
+        "courses/manage-careers",
       );
       setCareers(response.data.careers);
     } catch (err: any) {
@@ -232,7 +232,7 @@ const Calendar = () => {
   const fetchProfessors = async () => {
     try {
       const response = await axiosPrivate.get<ProfessorsResponse>(
-        "courses/enrollment-professors"
+        "courses/enrollment-professors",
       );
       setProfessors(response.data.professors);
     } catch (err: any) {
@@ -253,7 +253,7 @@ const Calendar = () => {
 
       const response = await axiosPrivate.get<EnrollmentsResponse>(
         "courses/manage-enrollments",
-        { params }
+        { params },
       );
       setEnrollmentsMissingSchedule(response.data.results);
       // Update counts to keep filter buttons accurate
@@ -276,7 +276,7 @@ const Calendar = () => {
 
       const response = await axiosPrivate.get<EnrollmentsResponse>(
         "courses/manage-enrollments",
-        { params }
+        { params },
       );
       setEnrollmentsMissingProfessor(response.data.results);
       // Update counts to keep filter buttons accurate
@@ -302,7 +302,7 @@ const Calendar = () => {
 
       const response = await axiosPrivate.get<EnrollmentsResponse>(
         "courses/manage-enrollments",
-        { params }
+        { params },
       );
 
       // Filter enrollments that have schedules and schedule_set=true
@@ -310,7 +310,7 @@ const Calendar = () => {
         (enrollment) =>
           enrollment.schedule_set &&
           enrollment.schedules &&
-          enrollment.schedules.length > 0
+          enrollment.schedules.length > 0,
       );
 
       // Map schedules to calendar events
@@ -841,7 +841,7 @@ const Calendar = () => {
                             ) : (
                               dayData.events.map((event) => {
                                 const eventColorIndex = getEnrollmentColor(
-                                  event.enrollment_id
+                                  event.enrollment_id,
                                 );
                                 const eventColors_ =
                                   eventColors[
@@ -863,7 +863,7 @@ const Calendar = () => {
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             handleEventClick(
-                                              event.enrollment_id
+                                              event.enrollment_id,
                                             );
                                           }}
                                           className="p-1  rounded-md hover:bg-white/50 transition-colors"
@@ -877,7 +877,7 @@ const Calendar = () => {
                                           e.stopPropagation();
                                           handleScheduleClick(
                                             e,
-                                            event.enrollment_id
+                                            event.enrollment_id,
                                           );
                                         }}
                                         className="p-1 rounded-md hover:bg-white/50 transition-colors"

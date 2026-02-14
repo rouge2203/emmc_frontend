@@ -86,12 +86,14 @@ const TeacherDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(
-    null
+    null,
   );
-  
+
   // Local state for period selections in each section
-  const [selectedStudentsPeriod, setSelectedStudentsPeriod] = useState<string>("");
-  const [selectedSchedulePeriod, setSelectedSchedulePeriod] = useState<string>("");
+  const [selectedStudentsPeriod, setSelectedStudentsPeriod] =
+    useState<string>("");
+  const [selectedSchedulePeriod, setSelectedSchedulePeriod] =
+    useState<string>("");
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -100,7 +102,7 @@ const TeacherDashboard = () => {
       try {
         const response = await axiosPrivate.get("courses/teacher-dashboard");
         setDashboardData(response.data);
-        
+
         // Set default selected periods to the first available period
         if (response.data.available_periods?.length > 0) {
           const firstPeriod = response.data.available_periods[0];
@@ -124,7 +126,7 @@ const TeacherDashboard = () => {
     if (!dashboardData?.enrollments || !selectedStudentsPeriod) return [];
     const [period, year] = selectedStudentsPeriod.split("-").map(Number);
     return dashboardData.enrollments.filter(
-      (e) => e.period === period && e.year === year && e.status === "cursando"
+      (e) => e.period === period && e.year === year && e.status === "cursando",
     );
   }, [dashboardData?.enrollments, selectedStudentsPeriod]);
 
@@ -133,7 +135,7 @@ const TeacherDashboard = () => {
     if (!dashboardData?.schedule_table || !selectedSchedulePeriod) return [];
     const [period, year] = selectedSchedulePeriod.split("-").map(Number);
     return dashboardData.schedule_table.filter(
-      (s) => s.period === period && s.year === year
+      (s) => s.period === period && s.year === year,
     );
   }, [dashboardData?.schedule_table, selectedSchedulePeriod]);
 
@@ -222,8 +224,6 @@ const TeacherDashboard = () => {
       </div>
 
       <div className="space-y-16 py-16 xl:space-y-20">
-        
-
         {/* Course enrollments list */}
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-none">
@@ -232,10 +232,13 @@ const TeacherDashboard = () => {
                 Mis Estudiantes
               </h2>
             </div>
-            
+
             {periodOptions.length > 0 && (
               <div className="mt-6 max-w-xs">
-                <label htmlFor="students-period-select" className="block text-sm/6 font-medium text-gray-900">
+                <label
+                  htmlFor="students-period-select"
+                  className="block text-sm/6 font-medium text-gray-900"
+                >
                   Periodo
                 </label>
                 <div className="mt-2 grid grid-cols-1">
@@ -243,7 +246,7 @@ const TeacherDashboard = () => {
                     id="students-period-select"
                     value={selectedStudentsPeriod}
                     onChange={(e) => setSelectedStudentsPeriod(e.target.value)}
-                    className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-600 sm:text-sm/6"
+                    className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary sm:text-sm/6"
                   >
                     {periodOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -361,10 +364,13 @@ const TeacherDashboard = () => {
             <h2 className="mx-auto max-w-2xl text-base font-semibold text-gray-900 lg:mx-0 lg:max-w-none">
               Horario Semanal
             </h2>
-            
+
             {periodOptions.length > 0 && (
               <div className="mt-6 max-w-xs">
-                <label htmlFor="schedule-period-select" className="block text-sm/6 font-medium text-gray-900">
+                <label
+                  htmlFor="schedule-period-select"
+                  className="block text-sm/6 font-medium text-gray-900"
+                >
                   Periodo
                 </label>
                 <div className="mt-2 grid grid-cols-1">
@@ -372,7 +378,7 @@ const TeacherDashboard = () => {
                     id="schedule-period-select"
                     value={selectedSchedulePeriod}
                     onChange={(e) => setSelectedSchedulePeriod(e.target.value)}
-                    className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-600 sm:text-sm/6"
+                    className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary sm:text-sm/6"
                   >
                     {periodOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -461,7 +467,7 @@ const TeacherDashboard = () => {
                               </tr>
                             ))}
                           </>
-                        )
+                        ),
                       )}
                     </tbody>
                   </table>
