@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import {
   AcademicCapIcon,
@@ -7,6 +7,7 @@ import {
   CalendarDaysIcon,
   NewspaperIcon,
 } from "@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/16/solid";
 
 interface NewsItem {
   id: number;
@@ -28,6 +29,8 @@ interface ScheduleTableItem {
   course_code: string | null;
   professor_name: string | null;
   enrollment_id: number;
+  period: number;
+  year: number;
 }
 
 interface Schedule {
@@ -46,6 +49,8 @@ interface Enrollment {
   status: string;
   grade: number | null;
   week_duration: number;
+  period: number;
+  year: number;
   professor: {
     id: number;
     first_name: string | null;
@@ -55,9 +60,12 @@ interface Enrollment {
   schedules: Schedule[];
 }
 
-interface DashboardData {
+interface AvailablePeriod {
   period: number;
   year: number;
+}
+
+interface DashboardData {
   stats: {
     active_courses_count: number;
     past_courses_count: number;
@@ -66,6 +74,7 @@ interface DashboardData {
   schedule_table: ScheduleTableItem[];
   active_enrollments: Enrollment[];
   past_enrollments: Enrollment[];
+  available_periods: AvailablePeriod[];
 }
 
 const statusLabels: Record<string, { label: string; className: string }> = {
@@ -84,57 +93,95 @@ const statusLabels: Record<string, { label: string; className: string }> = {
 };
 
 const StudentDashboard = () => {
-  const location = useLocation();
   const axiosPrivate = useAxiosPrivate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(
-    null
+    null,
   );
   const [news, setNews] = useState<NewsItem[]>([]);
 
-  const searchParams = new URLSearchParams(location.search);
-  const currentPeriod = searchParams.get("period") || "1";
-  const currentYear = searchParams.get("year") || "2026";
-
-  const periodLabel =
-    currentPeriod === "1" ? "Periodo I" : `Periodo ${currentPeriod}`;
+  // Local state for period selections in each section
+  const [selectedActivePeriod, setSelectedActivePeriod] = useState<string>("");
+  const [selectedSchedulePeriod, setSelectedSchedulePeriod] =
+    useState<string>("");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const [dashboardResponse, newsResponse] = await Promise.all([
-        axiosPrivate.get(
-          `courses/student-dashboard?period=${currentPeriod}&year=${currentYear}`
-        ),
+        axiosPrivate.get("courses/student-dashboard"),
         axiosPrivate.get("news/manage-news"),
       ]);
       setDashboardData(dashboardResponse.data);
       setNews(newsResponse.data.news || []);
+
+      // Set default selected periods to the first available period
+      if (dashboardResponse.data.available_periods?.length > 0) {
+        const firstPeriod = dashboardResponse.data.available_periods[0];
+        const periodKey = `${firstPeriod.period}-${firstPeriod.year}`;
+        setSelectedActivePeriod(periodKey);
+        setSelectedSchedulePeriod(periodKey);
+      }
     } catch (err: unknown) {
       console.error("Error fetching student dashboard data:", err);
       setError("Error al cargar el dashboard del estudiante");
     } finally {
       setLoading(false);
     }
-  }, [axiosPrivate, currentPeriod, currentYear]);
+  }, [axiosPrivate]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
+  // Filter active enrollments by selected period
+  const filteredActiveEnrollments = useMemo(() => {
+    if (!dashboardData?.active_enrollments || !selectedActivePeriod) return [];
+    const [period, year] = selectedActivePeriod.split("-").map(Number);
+    return dashboardData.active_enrollments.filter(
+      (e) => e.period === period && e.year === year && e.status === "cursando",
+    );
+  }, [dashboardData?.active_enrollments, selectedActivePeriod]);
+
+  // Filter schedule table by selected period
+  const filteredSchedule = useMemo(() => {
+    if (!dashboardData?.schedule_table || !selectedSchedulePeriod) return [];
+    const [period, year] = selectedSchedulePeriod.split("-").map(Number);
+    return dashboardData.schedule_table.filter(
+      (s) => s.period === period && s.year === year,
+    );
+  }, [dashboardData?.schedule_table, selectedSchedulePeriod]);
+
+  // Get all past enrollments (not cursando)
+  const allPastEnrollments = useMemo(() => {
+    if (!dashboardData?.past_enrollments) return [];
+    return dashboardData.past_enrollments.filter(
+      (e) => e.status !== "cursando",
+    );
+  }, [dashboardData?.past_enrollments]);
+
   const groupedSchedule = useMemo(() => {
     const grouped: Record<string, ScheduleTableItem[]> = {};
-    if (!dashboardData?.schedule_table) return grouped;
-    dashboardData.schedule_table.forEach((schedule) => {
+    if (!filteredSchedule) return grouped;
+    filteredSchedule.forEach((schedule) => {
       if (!grouped[schedule.day_name]) {
         grouped[schedule.day_name] = [];
       }
       grouped[schedule.day_name].push(schedule);
     });
     return grouped;
-  }, [dashboardData]);
+  }, [filteredSchedule]);
+
+  // Get period options for selects
+  const periodOptions = useMemo(() => {
+    if (!dashboardData?.available_periods) return [];
+    return dashboardData.available_periods.map((p) => ({
+      value: `${p.period}-${p.year}`,
+      label: `Periodo ${p.period === 1 ? "I" : "II"} - ${p.year}`,
+    }));
+  }, [dashboardData?.available_periods]);
 
   if (loading) {
     return (
@@ -162,19 +209,6 @@ const StudentDashboard = () => {
 
   return (
     <div className="relative isolate overflow-hidden">
-      <header className="pt-6 pb-4 sm:pb-6">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-6 px-4 sm:flex-nowrap sm:px-6 lg:px-8">
-          <h1 className="text-base/7 font-semibold text-gray-900">
-            Resumen de Cuatrimestre
-          </h1>
-          <div className="order-last flex w-full gap-x-8 text-sm/6 font-semibold sm:order-0 sm:w-auto sm:border-l sm:border-gray-200 sm:pl-6 sm:text-sm/7">
-            <span className="text-primary">
-              {periodLabel} - {currentYear}
-            </span>
-          </div>
-        </div>
-      </header>
-
       <div className="space-y-16 py-6 xl:space-y-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
@@ -230,7 +264,37 @@ const StudentDashboard = () => {
               Mis cursos activos
             </h2>
           </div>
-          {dashboardData?.active_enrollments.length === 0 ? (
+
+          {periodOptions.length > 0 && (
+            <div className="mt-6 max-w-xs">
+              <label
+                htmlFor="active-period-select"
+                className="block text-sm/6 font-medium text-gray-900"
+              >
+                Periodo
+              </label>
+              <div className="mt-2 grid grid-cols-1">
+                <select
+                  id="active-period-select"
+                  value={selectedActivePeriod}
+                  onChange={(e) => setSelectedActivePeriod(e.target.value)}
+                  className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary sm:text-sm/6"
+                >
+                  {periodOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDownIcon
+                  aria-hidden="true"
+                  className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                />
+              </div>
+            </div>
+          )}
+
+          {filteredActiveEnrollments.length === 0 ? (
             <div className="mt-6 py-12 text-center text-gray-500 bg-white rounded-xl border border-gray-200 shadow-md">
               No tienes cursos activos en este periodo
             </div>
@@ -239,7 +303,7 @@ const StudentDashboard = () => {
               role="list"
               className="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-3 xl:gap-x-8"
             >
-              {dashboardData?.active_enrollments.map((enrollment) => {
+              {filteredActiveEnrollments.map((enrollment) => {
                 const professorName = enrollment.professor
                   ? `${enrollment.professor.first_name || ""} ${
                       enrollment.professor.last_name || ""
@@ -330,6 +394,35 @@ const StudentDashboard = () => {
             <h2 className="mx-auto max-w-2xl text-base font-semibold text-gray-900 lg:mx-0 lg:max-w-none">
               Horario semanal
             </h2>
+
+            {periodOptions.length > 0 && (
+              <div className="mt-6 max-w-xs">
+                <label
+                  htmlFor="schedule-period-select"
+                  className="block text-sm/6 font-medium text-gray-900"
+                >
+                  Periodo
+                </label>
+                <div className="mt-2 grid grid-cols-1">
+                  <select
+                    id="schedule-period-select"
+                    value={selectedSchedulePeriod}
+                    onChange={(e) => setSelectedSchedulePeriod(e.target.value)}
+                    className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary sm:text-sm/6"
+                  >
+                    {periodOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDownIcon
+                    aria-hidden="true"
+                    className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <div className="mt-6 overflow-hidden border-t border-gray-100">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -404,7 +497,7 @@ const StudentDashboard = () => {
                               </tr>
                             ))}
                           </>
-                        )
+                        ),
                       )}
                     </tbody>
                   </table>
@@ -420,16 +513,16 @@ const StudentDashboard = () => {
               Cursos pasados
             </h2>
           </div>
-          {dashboardData?.past_enrollments.length === 0 ? (
+          {allPastEnrollments.length === 0 ? (
             <div className="mt-6 py-12 text-center text-gray-500 bg-white rounded-xl border border-gray-200">
-              No tienes cursos pasados en este periodo
+              No tienes cursos pasados
             </div>
           ) : (
             <ul
               role="list"
               className="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-3 xl:gap-x-8"
             >
-              {dashboardData?.past_enrollments.map((enrollment) => {
+              {allPastEnrollments.map((enrollment) => {
                 const professorName = enrollment.professor
                   ? `${enrollment.professor.first_name || ""} ${
                       enrollment.professor.last_name || ""

@@ -1,18 +1,13 @@
 import { useState } from "react";
-import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
+import { Link, useLocation, Outlet } from "react-router-dom";
 import {
   Dialog,
   DialogBackdrop,
   DialogPanel,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuItems,
 } from "@headlessui/react";
 import {
   Bars3Icon,
   XMarkIcon,
-  ChevronDownIcon,
   HomeIcon,
   BanknotesIcon,
   MusicalNoteIcon,
@@ -28,7 +23,6 @@ function classNames(...classes: (string | boolean | undefined)[]): string {
 export default function StudentLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
   const { auth } = useAuth();
   const logout = useLogout();
 
@@ -46,19 +40,6 @@ export default function StudentLayout() {
       );
     }
     return location.pathname.startsWith(href);
-  };
-
-  const searchParams = new URLSearchParams(location.search);
-  const currentPeriod = searchParams.get("period") || "1";
-  const currentYear = searchParams.get("year") || "2026";
-
-  const periodOptions = [
-    { label: "Periodo I - 2026", period: "1", year: "2026" },
-    { label: "Periodo II - 2026", period: "2", year: "2026" },
-  ];
-
-  const handlePeriodChange = (period: string, year: string) => {
-    navigate(`/student/dashboard?period=${period}&year=${year}`);
   };
 
   return (
@@ -119,39 +100,6 @@ export default function StudentLayout() {
                 );
               })}
             </div>
-            <Menu as="div" className="relative">
-              <MenuButton className="flex items-center gap-x-1 text-sm/6 font-semibold text-gray-900">
-                Cuatrimestre
-                <ChevronDownIcon
-                  aria-hidden="true"
-                  className="size-5 flex-none text-gray-400"
-                />
-              </MenuButton>
-
-              <MenuItems
-                transition
-                className="absolute left-0 z-10 mt-3 w-56 origin-top-left rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 transition data-[closed]:scale-95 data-[closed]:transform data-[closed]:opacity-0 data-[enter]:duration-200 data-[enter]:ease-out data-[leave]:duration-75 data-[leave]:ease-in"
-              >
-                {periodOptions.map((option) => (
-                  <MenuItem key={`${option.period}-${option.year}`}>
-                    <button
-                      onClick={() =>
-                        handlePeriodChange(option.period, option.year)
-                      }
-                      className={classNames(
-                        option.period === currentPeriod &&
-                          option.year === currentYear
-                          ? "bg-gray-50 text-primary"
-                          : "text-gray-900",
-                        "block w-full px-4 py-2 text-left text-sm data-[focus]:bg-gray-50 data-[focus]:outline-hidden"
-                      )}
-                    >
-                      {option.label}
-                    </button>
-                  </MenuItem>
-                ))}
-              </MenuItems>
-            </Menu>
           </div>
 
           <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:items-center lg:gap-x-6">
@@ -231,30 +179,6 @@ export default function StudentLayout() {
                         </Link>
                       );
                     })}
-                  </div>
-
-                  <div className="-mx-3">
-                    <div className="px-3 py-2 text-sm font-medium text-gray-500">
-                      Cuatrimestre
-                    </div>
-                    {periodOptions.map((option) => (
-                      <button
-                        key={`${option.period}-${option.year}`}
-                        onClick={() => {
-                          handlePeriodChange(option.period, option.year);
-                          setMobileMenuOpen(false);
-                        }}
-                        className={classNames(
-                          option.period === currentPeriod &&
-                            option.year === currentYear
-                            ? "bg-gray-50 text-primary"
-                            : "text-gray-900",
-                          "block w-full rounded-lg px-3 py-2 text-left text-base/7 font-semibold hover:bg-gray-50"
-                        )}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
                   </div>
                 </div>
                 <div className="py-6">

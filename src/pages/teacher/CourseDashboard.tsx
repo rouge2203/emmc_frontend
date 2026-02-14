@@ -28,12 +28,11 @@ import {
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
+import { GiMusicalNotes, GiMusicalScore } from "react-icons/gi";
 import { BiCalendarEdit } from "react-icons/bi";
 import AssignmentDrawer from "../../components/drawers/teacher_drawers/AssignmentDrawer";
 import ResourceDrawer from "../../components/drawers/teacher_drawers/ResourceDrawer";
 import { FaExclamation } from "react-icons/fa";
-
-
 
 interface Schedule {
   id: number;
@@ -141,17 +140,20 @@ export default function CourseDashboard() {
   const [gradeDialogOpen, setGradeDialogOpen] = useState(false);
   const [finalizeDialogOpen, setFinalizeDialogOpen] = useState(false);
   const [dailyWorkDialogOpen, setDailyWorkDialogOpen] = useState(false);
-  const [selectedDailyWorkWeek, setSelectedDailyWorkWeek] = useState<number | null>(null);
+  const [selectedDailyWorkWeek, setSelectedDailyWorkWeek] = useState<
+    number | null
+  >(null);
   const [formDailyWorkGrade, setFormDailyWorkGrade] = useState<string>("");
+  const [dailyWorkInfoDialogOpen, setDailyWorkInfoDialogOpen] = useState(false);
 
   // Form states
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(
-    null
+    null,
   );
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [gradingAssignment, setGradingAssignment] = useState<Assignment | null>(
-    null
+    null,
   );
 
   // Form fields for dialogs
@@ -160,7 +162,7 @@ export default function CourseDashboard() {
   const [formFinalGrade, setFormFinalGrade] = useState<number | string>("");
   const [formObservation, setFormObservation] = useState("");
   const [formStatus, setFormStatus] = useState<"aprobado" | "reprobado">(
-    "aprobado"
+    "aprobado",
   );
 
   // Delete confirmation state
@@ -172,12 +174,12 @@ export default function CourseDashboard() {
   } | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
-  
+
   // Notification states
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [showErrorNotification, setShowErrorNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState("");
-  
+
   // Read-only mode when status is not "cursando"
   const isReadOnly = courseData?.enrollment.status !== "cursando";
 
@@ -240,7 +242,11 @@ export default function CourseDashboard() {
     setSelectedDailyWorkWeek(week);
     const weekKey = `week${week}_points` as keyof DailyWork;
     const currentValue = dailyWork?.[weekKey];
-    setFormDailyWorkGrade(currentValue !== null && currentValue !== undefined ? String(currentValue) : "");
+    setFormDailyWorkGrade(
+      currentValue !== null && currentValue !== undefined
+        ? String(currentValue)
+        : "",
+    );
     setDailyWorkDialogOpen(true);
   };
 
@@ -250,11 +256,12 @@ export default function CourseDashboard() {
 
     try {
       const weekKey = `week${selectedDailyWorkWeek}_points`;
-      const gradeValue = formDailyWorkGrade === "" ? null : Number(formDailyWorkGrade);
+      const gradeValue =
+        formDailyWorkGrade === "" ? null : Number(formDailyWorkGrade);
       await axiosPrivate.put(`courses/daily-work/${enrollmentId}`, {
         [weekKey]: gradeValue,
       });
-      
+
       // Update local state instead of refetching
       if (dailyWork) {
         setDailyWork({
@@ -262,18 +269,22 @@ export default function CourseDashboard() {
           [weekKey]: gradeValue,
         });
       }
-      
+
       setDailyWorkDialogOpen(false);
       setFormDailyWorkGrade("");
       setSelectedDailyWorkWeek(null);
-      
+
       // Show success notification
-      setNotificationMessage(`Trabajo cotidiano de la semana ${selectedDailyWorkWeek} actualizado correctamente`);
+      setNotificationMessage(
+        `Trabajo cotidiano de la semana ${selectedDailyWorkWeek} actualizado correctamente`,
+      );
       setShowSuccessNotification(true);
       setTimeout(() => setShowSuccessNotification(false), 5000);
     } catch (err: any) {
       console.error("Error saving daily work:", err);
-      setNotificationMessage(err?.response?.data?.error || "Error al guardar el trabajo cotidiano");
+      setNotificationMessage(
+        err?.response?.data?.error || "Error al guardar el trabajo cotidiano",
+      );
       setShowErrorNotification(true);
       setTimeout(() => setShowErrorNotification(false), 5000);
     } finally {
@@ -293,8 +304,11 @@ export default function CourseDashboard() {
         allWeeksData[`week${i}_points`] = 10;
       }
 
-      await axiosPrivate.put(`courses/daily-work/${enrollmentId}`, allWeeksData);
-      
+      await axiosPrivate.put(
+        `courses/daily-work/${enrollmentId}`,
+        allWeeksData,
+      );
+
       // Update local state instead of refetching
       if (dailyWork) {
         const updatedDailyWork = { ...dailyWork };
@@ -303,14 +317,18 @@ export default function CourseDashboard() {
         }
         setDailyWork(updatedDailyWork);
       }
-      
+
       // Show success notification
-      setNotificationMessage(`Se asignaron 10 puntos a todas las semanas del trabajo cotidiano`);
+      setNotificationMessage(
+        `Se asignaron 10 puntos a todas las semanas del trabajo cotidiano`,
+      );
       setShowSuccessNotification(true);
       setTimeout(() => setShowSuccessNotification(false), 5000);
     } catch (err: any) {
       console.error("Error assigning all daily work points:", err);
-      setNotificationMessage(err?.response?.data?.error || "Error al asignar los puntos");
+      setNotificationMessage(
+        err?.response?.data?.error || "Error al asignar los puntos",
+      );
       setShowErrorNotification(true);
       setTimeout(() => setShowErrorNotification(false), 5000);
     } finally {
@@ -327,7 +345,7 @@ export default function CourseDashboard() {
   const openDeleteDialog = (
     type: "assignment" | "resource",
     id: number,
-    title: string
+    title: string,
   ) => {
     if (isReadOnly) return;
     setDeletingItem({ type, id, title });
@@ -369,7 +387,7 @@ export default function CourseDashboard() {
         grade: gradeValue,
         comment_grade: formCommentGrade,
       });
-      
+
       // Update local state instead of refetching
       if (courseData) {
         setCourseData({
@@ -377,23 +395,27 @@ export default function CourseDashboard() {
           assignments: courseData.assignments.map((a) =>
             a.id === gradingAssignment.id
               ? { ...a, grade: gradeValue, comment_grade: formCommentGrade }
-              : a
+              : a,
           ),
         });
       }
-      
+
       setGradeDialogOpen(false);
       setFormGrade("");
       setFormCommentGrade("");
       setGradingAssignment(null);
-      
+
       // Show success notification
-      setNotificationMessage(`Calificación de "${gradingAssignment.title}" guardada correctamente`);
+      setNotificationMessage(
+        `Calificación de "${gradingAssignment.title}" guardada correctamente`,
+      );
       setShowSuccessNotification(true);
       setTimeout(() => setShowSuccessNotification(false), 5000);
     } catch (err: any) {
       console.error("Error saving grade:", err);
-      setNotificationMessage(err?.response?.data?.error || "Error al guardar la calificación");
+      setNotificationMessage(
+        err?.response?.data?.error || "Error al guardar la calificación",
+      );
       setShowErrorNotification(true);
       setTimeout(() => setShowErrorNotification(false), 5000);
     } finally {
@@ -424,46 +446,75 @@ export default function CourseDashboard() {
     if (!dailyWork || !courseData) return 0;
     const weekDuration = courseData.enrollment.week_duration;
     let totalPoints = 0;
-    let gradedWeeks = 0;
-    
+
+    // Sum all weekly work points
     for (let i = 1; i <= weekDuration; i++) {
       const weekKey = `week${i}_points` as keyof DailyWork;
       const points = dailyWork[weekKey] as number | null;
       if (points !== null) {
         totalPoints += points;
-        gradedWeeks++;
       }
     }
+
+    // Add points from "Asistencia a Recital 1" and "Asistencia a Recital 2"
+    const asistenciaRecitals = courseData.assignments.filter(
+      (a) =>
+        a.is_concert &&
+        (a.title === "Asistencia a Recital 1" ||
+          a.title === "Asistencia a Recital 2")
+    );
     
-    if (gradedWeeks === 0) return 0;
+    const asistenciaPoints = asistenciaRecitals.reduce(
+      (sum, a) => sum + (a.grade ?? 0),
+      0
+    );
+    totalPoints += asistenciaPoints;
+
+    // Max possible: all weeks (10 each) + 2 asistencia recitals (10 each)
+    const maxPossible = weekDuration * 10 + 20;
+    if (maxPossible === 0) return 0;
+    
     // 50% of final grade: (points obtained / max possible points) * 50
-    const maxPossible = weekDuration * 10;
     return (totalPoints / maxPossible) * 50;
   };
 
   const calculateExamPercentage = (): number => {
     if (!courseData) return 0;
-    const examAssignment = courseData.assignments.find(a => a.is_exam);
-    if (!examAssignment || examAssignment.grade === null || examAssignment.points === null) return 0;
+    const examAssignment = courseData.assignments.find((a) => a.is_exam);
+    if (
+      !examAssignment ||
+      examAssignment.grade === null ||
+      examAssignment.points === null
+    )
+      return 0;
     // 40% of final grade
     return (examAssignment.grade / examAssignment.points) * 40;
   };
 
   const calculateConcertPercentage = (): number => {
     if (!courseData) return 0;
-    const concertAssignments = courseData.assignments.filter(a => a.is_concert);
-    if (concertAssignments.length === 0) return 0;
     
-    const totalConcertPoints = concertAssignments.reduce((sum, a) => sum + (a.grade ?? 0), 0);
-    const maxConcertPoints = concertAssignments.reduce((sum, a) => sum + (a.points ?? 0), 0);
+    // Only consider "Participación en Recital" assignment
+    const participacionRecital = courseData.assignments.find(
+      (a) => a.is_concert && a.title === "Participación en Recital"
+    );
     
-    if (maxConcertPoints === 0) return 0;
+    if (!participacionRecital || participacionRecital.points === null) return 0;
+    
+    const grade = participacionRecital.grade ?? 0;
+    const maxPoints = participacionRecital.points;
+    
+    if (maxPoints === 0) return 0;
     // 10% of final grade
-    return (totalConcertPoints / maxConcertPoints) * 10;
+    return (grade / maxPoints) * 10;
   };
 
   const calculateFinalGrade = (): number => {
-    return calculateDailyWorkPercentage() + calculateExamPercentage() + calculateConcertPercentage();
+    return (
+      calculateDailyWorkPercentage() +
+      calculateExamPercentage() +
+      calculateConcertPercentage()
+    );
   };
 
   if (loading) {
@@ -495,7 +546,7 @@ export default function CourseDashboard() {
   const { enrollment, assignments, resources, stats } = courseData;
   const weeks = Array.from(
     { length: enrollment.week_duration },
-    (_, i) => i + 1
+    (_, i) => i + 1,
   );
 
   // Show read-only banner if status is not "cursando"
@@ -506,9 +557,11 @@ export default function CourseDashboard() {
     assignments.filter((a) => a.week === week && !a.is_exam && !a.is_concert);
   const getResourcesForWeek = (week: number) =>
     resources.filter((r) => r.week === week);
-  
+
   // Exam and concert assignments for "Evaluaciones del curso" section
-  const evaluationAssignments = assignments.filter((a) => a.is_exam || a.is_concert);
+  const evaluationAssignments = assignments.filter(
+    (a) => a.is_exam || a.is_concert,
+  );
 
   return (
     <div className="min-h-full bg-gray-50">
@@ -519,13 +572,21 @@ export default function CourseDashboard() {
             <div className="flex items-center gap-3">
               <InformationCircleIcon className="h-5 w-5 text-yellow-600" />
               <p className="text-sm text-yellow-800">
-                <span className="font-semibold">Modo de solo lectura:</span> Este curso tiene el estado "{enrollment.status === 'aprobado' ? 'Aprobado' : enrollment.status === 'reprobado' ? 'Reprobado' : enrollment.status}". Solo puedes ver la información, no puedes realizar modificaciones.
+                <span className="font-semibold">Modo de solo lectura:</span>{" "}
+                Este curso tiene el estado "
+                {enrollment.status === "aprobado"
+                  ? "Aprobado"
+                  : enrollment.status === "reprobado"
+                  ? "Reprobado"
+                  : enrollment.status}
+                ". Solo puedes ver la información, no puedes realizar
+                modificaciones.
               </p>
             </div>
           </div>
         </div>
       )}
-      
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -630,7 +691,9 @@ export default function CourseDashboard() {
               Contenido del Curso
             </h2>
             <p className="mt-1 text-xs text-gray-500">
-              Las tareas son evaluadas solo como referencia para el estudiante. Los puntos que afectan la nota final son los de "Trabajo Cotidiano" junto a cada semana.
+              Las tareas son evaluadas solo como referencia para el estudiante.
+              Los puntos que afectan la nota final son los de "Trabajo
+              Cotidiano" junto a cada semana.
             </p>
           </div>
           <ul role="list" className="divide-y divide-gray-100">
@@ -655,10 +718,18 @@ export default function CourseDashboard() {
                         onClick={() => openDailyWorkDialog(week)}
                         disabled={isReadOnly}
                         className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium border border-gray-300 ${
-                          isReadOnly ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"
+                          isReadOnly
+                            ? "opacity-50 cursor-not-allowed"
+                            : "hover:bg-gray-50"
                         }`}
                       >
-                        <BiCalendarEdit className={`size-4 ${getDailyWorkGrade(week) !== null ? "text-green-700" : "text-amber-600"}`} />
+                        <BiCalendarEdit
+                          className={`size-4 ${
+                            getDailyWorkGrade(week) !== null
+                              ? "text-green-700"
+                              : "text-amber-600"
+                          }`}
+                        />
                         {getDailyWorkGrade(week) !== null ? (
                           <span className="text-green-700">
                             {getDailyWorkGrade(week)}/10
@@ -699,17 +770,21 @@ export default function CourseDashboard() {
                     <div
                       key={assignment.id}
                       className={`flex items-center justify-between gap-x-6 py-4 border-t border-gray-100 ${
-                        assignment.is_concert ? "" : assignment.is_exam ? "" : ""
+                        assignment.is_concert
+                          ? ""
+                          : assignment.is_exam
+                          ? ""
+                          : ""
                       }`}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start gap-x-3">
                           {assignment.is_concert ? (
-                            <MusicalNoteIcon className="h-5 w-5 text-purple-500 mt-0.5" />
+                            <GiMusicalNotes className="size-5 text-purple-500 mt-0.5" />
                           ) : assignment.is_exam ? (
                             <ClipboardDocumentCheckIcon className="h-5 w-5 text-amber-600 mt-0.5" />
                           ) : (
-                            <DocumentTextIcon className="h-5 w-5 text-blue-500 mt-0.5" />
+                            <GiMusicalScore className="size-5 text-blue-500 mt-0.5" />
                           )}
                           <div>
                             <div className="flex items-center gap-2">
@@ -717,30 +792,32 @@ export default function CourseDashboard() {
                                 {assignment.title}
                               </p>
                               {assignment.grade !== null ? (
-                              <p className="mt-0.5 inline-flex rounded-md px-1.5 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                                {assignment.grade}
-                                {assignment.points !== null &&
-                                  ` / ${assignment.points}`}{" "}
-                                pts
-                              </p>
-                            ) : (
-                              <p className="mt-0.5 inline-flex items-center  rounded-md  px-1.5 py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
-                                <FaExclamation className="size-3 mr-0" /> Pendiente calificar -                            {assignment.points !== null &&
-                                  ` ${assignment.points} pts`}
-                              </p>
-                            )}
+                                <p className="mt-0.5 inline-flex rounded-md px-1.5 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                                  {assignment.grade}
+                                  {assignment.points !== null &&
+                                    ` / ${assignment.points}`}{" "}
+                                  pts
+                                </p>
+                              ) : (
+                                <p className="mt-0.5 inline-flex items-center  rounded-md  px-1.5 py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
+                                  <FaExclamation className="size-3 mr-0" />{" "}
+                                  Pendiente calificar -{" "}
+                                  {assignment.points !== null &&
+                                    ` ${assignment.points} pts`}
+                                </p>
+                              )}
                             </div>
-                            
+
                             {assignment.is_concert && (
-                                <span className="inline-flex rounded-md bg-gray-50 px-1.5 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-600/20">
-                                  Recital
-                                </span>
-                              )}
-                              {assignment.is_exam && (
-                                <span className="inline-flex rounded-md bg-gray-50 px-1.5 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-600/20">
-                                  Examen
-                                </span>
-                              )}
+                              <span className="inline-flex rounded-md bg-gray-50 px-1.5 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-600/20">
+                                Recital
+                              </span>
+                            )}
+                            {assignment.is_exam && (
+                              <span className="inline-flex rounded-md bg-gray-50 px-1.5 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-600/20">
+                                Examen
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -780,7 +857,7 @@ export default function CourseDashboard() {
                                 <button
                                   onClick={() =>
                                     navigate(
-                                      `/teacher/assignment/${assignment.id}`
+                                      `/teacher/assignment/${assignment.id}`,
                                     )
                                   }
                                   className={`${
@@ -823,26 +900,28 @@ export default function CourseDashboard() {
                               </Menu.Item>
                             )}
                             {/* Only show Delete for normal assignments (not concert or exam) */}
-                            {!assignment.is_concert && !assignment.is_exam && !isReadOnly && (
-                              <Menu.Item>
-                                {({ active }) => (
-                                  <button
-                                    onClick={() =>
-                                      openDeleteDialog(
-                                        "assignment",
-                                        assignment.id,
-                                        assignment.title
-                                      )
-                                    }
-                                    className={`${
-                                      active ? "bg-gray-50" : ""
-                                    } block w-full px-3 py-1 text-left text-sm text-red-600`}
-                                  >
-                                    Eliminar
-                                  </button>
-                                )}
-                              </Menu.Item>
-                            )}
+                            {!assignment.is_concert &&
+                              !assignment.is_exam &&
+                              !isReadOnly && (
+                                <Menu.Item>
+                                  {({ active }) => (
+                                    <button
+                                      onClick={() =>
+                                        openDeleteDialog(
+                                          "assignment",
+                                          assignment.id,
+                                          assignment.title,
+                                        )
+                                      }
+                                      className={`${
+                                        active ? "bg-gray-50" : ""
+                                      } block w-full px-3 py-1 text-left text-sm text-red-600`}
+                                    >
+                                      Eliminar
+                                    </button>
+                                  )}
+                                </Menu.Item>
+                              )}
                           </Menu.Items>
                         </Menu>
                       </div>
@@ -932,7 +1011,7 @@ export default function CourseDashboard() {
                                         openDeleteDialog(
                                           "resource",
                                           resource.id,
-                                          resource.title
+                                          resource.title,
                                         )
                                       }
                                       className={`${
@@ -970,10 +1049,13 @@ export default function CourseDashboard() {
                   <div className="flex items-center justify-between gap-x-6">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start gap-x-3">
-                        {assignment.is_concert ? (
-                          <MusicalNoteIcon className="h-5 w-5 text-purple-500 mt-0.5" />
-                        ) : (
+                        {assignment.is_concert &&
+                        assignment.title != "Participación en Recital" ? (
+                          <GiMusicalNotes className="size-5 text-purple-500 mt-0.5" />
+                        ) : assignment.is_exam ? (
                           <ClipboardDocumentCheckIcon className="h-5 w-5 text-amber-600 mt-0.5" />
+                        ) : (
+                          <GiMusicalScore className="h-5 w-5 text-purple-500 mt-0.5" />
                         )}
                         <div>
                           <div className="flex items-center gap-2">
@@ -989,8 +1071,10 @@ export default function CourseDashboard() {
                               </p>
                             ) : (
                               <p className="mt-0.5 inline-flex items-center rounded-md px-1.5 py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
-                                <FaExclamation className="size-3 mr-0" /> Pendiente calificar -
-                                {assignment.points !== null && ` ${assignment.points} pts`}
+                                <FaExclamation className="size-3 mr-0" />{" "}
+                                Pendiente calificar -
+                                {assignment.points !== null &&
+                                  ` ${assignment.points} pts`}
                               </p>
                             )}
                           </div>
@@ -1041,7 +1125,9 @@ export default function CourseDashboard() {
                             {({ active }) => (
                               <button
                                 onClick={() =>
-                                  navigate(`/teacher/assignment/${assignment.id}`)
+                                  navigate(
+                                    `/teacher/assignment/${assignment.id}`,
+                                  )
                                 }
                                 className={`${
                                   active ? "bg-gray-50" : ""
@@ -1058,14 +1144,17 @@ export default function CourseDashboard() {
                 </li>
               ))}
             </ul>
-            
+
             {/* Assign All Daily Work Points Button */}
             <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Asignar puntos de Trabajo Cotidiano</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    Asignar puntos de Trabajo Cotidiano
+                  </p>
                   <p className="text-xs text-gray-500">
-                    Asigna automáticamente 10 puntos a todas las semanas del curso
+                    Asigna automáticamente 10 puntos a todas las semanas del
+                    curso
                   </p>
                 </div>
                 <button
@@ -1101,8 +1190,15 @@ export default function CourseDashboard() {
           {/* Grade Breakdown */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-4 mb-4">
             <div className="shadow-md rounded-lg p-4">
-              <dt className="text-sm font-medium text-blue-700">
+              <dt className="text-sm font-medium text-blue-700 flex items-center gap-1">
                 Trabajo Cotidiano (50%)
+                <button
+                  onClick={() => setDailyWorkInfoDialogOpen(true)}
+                  className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-700"
+                  title="Información sobre Trabajo Cotidiano"
+                >
+                  <InformationCircleIcon className="w-3 h-3" />
+                </button>
               </dt>
               <dd className="mt-1 text-2xl font-semibold text-blue-900">
                 {calculateDailyWorkPercentage().toFixed(1)}%
@@ -1118,7 +1214,7 @@ export default function CourseDashboard() {
             </div>
             <div className="shadow-md rounded-lg p-4">
               <dt className="text-sm font-medium text-purple-700">
-                Recitales (10%)
+                Participación en Recital (10%)
               </dt>
               <dd className="mt-1 text-2xl font-semibold text-purple-900">
                 {calculateConcertPercentage().toFixed(1)}%
@@ -1133,8 +1229,6 @@ export default function CourseDashboard() {
               </dd>
             </div>
           </div>
-
-
 
           {enrollment.professor_observation && (
             <div className="mt-4 bg-gray-50 rounded-lg p-4">
@@ -1255,9 +1349,8 @@ export default function CourseDashboard() {
               <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"
-                  disabled={submitting}
+                  disabled={submitting || isReadOnly}
                   onClick={handleSaveGrade}
-                  disabled={isReadOnly}
                   className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
                 >
                   {submitting ? "Guardando..." : "Guardar Calificación"}
@@ -1333,7 +1426,8 @@ export default function CourseDashboard() {
                         className="mt-1 block w-full rounded-md bg-gray-100 px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 cursor-not-allowed sm:text-sm/6 font-semibold"
                       />
                       <p className="mt-1 text-xs text-gray-500">
-                        Basada en: 50% Trabajo Cotidiano + 40% Examen + 10% Recitales
+                        Basada en: 50% Trabajo Cotidiano + 40% Examen + 10%
+                        Participación en Recital
                       </p>
                     </div>
                     <div>
@@ -1471,6 +1565,83 @@ export default function CourseDashboard() {
         </div>
       </Dialog>
 
+      {/* Daily Work Info Dialog */}
+      <Dialog
+        open={dailyWorkInfoDialogOpen}
+        onClose={() => setDailyWorkInfoDialogOpen(false)}
+        className="relative z-50"
+      >
+        <DialogBackdrop
+          transition
+          className="fixed inset-0 bg-gray-500/75 transition-opacity data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
+        />
+        <div className="fixed inset-0 z-50 w-screen overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <DialogPanel
+              transition
+              className="relative w-full transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in sm:my-8 sm:w-full sm:max-w-lg sm:p-6 data-closed:sm:translate-y-0 data-closed:sm:scale-95"
+            >
+              <div className="absolute right-0 top-0 pr-4 pt-4">
+                <button
+                  type="button"
+                  className="rounded-md bg-white text-gray-400 hover:text-gray-500"
+                  onClick={() => setDailyWorkInfoDialogOpen(false)}
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="sm:flex sm:items-start">
+                <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-blue-100 sm:mx-0 sm:size-10">
+                  <InformationCircleIcon
+                    className="size-6 text-blue-600"
+                    aria-hidden="true"
+                  />
+                </div>
+                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                  <DialogTitle
+                    as="h3"
+                    className="text-base font-semibold text-gray-900"
+                  >
+                    Trabajo Cotidiano (50%)
+                  </DialogTitle>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-700">
+                      El <span className="font-semibold">Trabajo Cotidiano</span> representa el 50% de la calificación final y se calcula sumando:
+                    </p>
+                    <ul className="mt-3 space-y-2 text-sm text-gray-700">
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-600 font-semibold">•</span>
+                        <span>Los puntos de <span className="font-semibold">todas las semanas</span> del curso (máximo 10 puntos por semana)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-600 font-semibold">•</span>
+                        <span>Los puntos de <span className="font-semibold">Asistencia a Recital 1</span> (máximo 10 puntos)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-600 font-semibold">•</span>
+                        <span>Los puntos de <span className="font-semibold">Asistencia a Recital 2</span> (máximo 10 puntos)</span>
+                      </li>
+                    </ul>
+                    <p className="mt-3 text-sm text-gray-600 italic">
+                      Nota: Las asistencias a recitales se califican en la sección "Evaluaciones del curso".
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={() => setDailyWorkInfoDialogOpen(false)}
+                  className="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-blue-500 sm:ml-3 sm:w-auto"
+                >
+                  Entendido
+                </button>
+              </div>
+            </DialogPanel>
+          </div>
+        </div>
+      </Dialog>
+
       {/* Daily Work Dialog */}
       <Dialog
         open={dailyWorkDialogOpen}
@@ -1512,7 +1683,8 @@ export default function CourseDashboard() {
                     Trabajo Cotidiano - Semana {selectedDailyWorkWeek}
                   </DialogTitle>
                   <p className="mt-1 text-sm text-gray-500">
-                    Califica el trabajo cotidiano del estudiante (máximo 10 puntos)
+                    Califica el trabajo cotidiano del estudiante (máximo 10
+                    puntos)
                   </p>
                   <div className="mt-4">
                     <label className="block text-start text-sm/6 font-medium text-gray-900">
@@ -1533,9 +1705,8 @@ export default function CourseDashboard() {
               <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"
-                  disabled={submitting}
+                  disabled={submitting || isReadOnly}
                   onClick={handleSaveDailyWork}
-                  disabled={isReadOnly}
                   className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
                 >
                   {submitting ? "Guardando..." : "Guardar"}
@@ -1588,7 +1759,10 @@ export default function CourseDashboard() {
                           className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
                         >
                           <span className="sr-only">Cerrar</span>
-                          <XMarkIconSolid aria-hidden="true" className="size-5" />
+                          <XMarkIconSolid
+                            aria-hidden="true"
+                            className="size-5"
+                          />
                         </button>
                       </div>
                     </div>
@@ -1597,7 +1771,7 @@ export default function CourseDashboard() {
               </Transition>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {/* Error Notification */}
@@ -1647,7 +1821,7 @@ export default function CourseDashboard() {
               </Transition>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
     </div>
   );

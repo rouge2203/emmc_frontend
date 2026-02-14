@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Disclosure, DisclosureButton, DisclosurePanel } from "@headlessui/react";
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogPanel,
+  DialogTitle,
+  Disclosure,
+  DisclosureButton,
+  DisclosurePanel,
+} from "@headlessui/react";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import {
   ArrowLeftIcon,
@@ -13,7 +21,10 @@ import {
   ChatBubbleLeftRightIcon,
   MusicalNoteIcon,
   ClipboardDocumentCheckIcon,
+  InformationCircleIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { GiMusicalNotes, GiMusicalScore } from "react-icons/gi";
 import { BiCalendarEdit } from "react-icons/bi";
 import ContentPreviewDrawer from "../../components/drawers/student_drawers/ContentPreviewDrawer";
 
@@ -127,6 +138,7 @@ export default function CourseDashboard() {
     | { type: "resource"; data: Resource }
     | null
   >(null);
+  const [dailyWorkInfoDialogOpen, setDailyWorkInfoDialogOpen] = useState(false);
 
   const fetchCourseData = async () => {
     setLoading(true);
@@ -168,46 +180,75 @@ export default function CourseDashboard() {
     if (!dailyWork || !courseData) return 0;
     const weekDuration = courseData.enrollment.week_duration;
     let totalPoints = 0;
-    let gradedWeeks = 0;
-    
+
+    // Sum all weekly work points
     for (let i = 1; i <= weekDuration; i++) {
       const weekKey = `week${i}_points` as keyof DailyWork;
       const points = dailyWork[weekKey] as number | null;
       if (points !== null) {
         totalPoints += points;
-        gradedWeeks++;
       }
     }
-    
-    if (gradedWeeks === 0) return 0;
+
+    // Add points from "Asistencia a Recital 1" and "Asistencia a Recital 2"
+    const asistenciaRecitals = courseData.assignments.filter(
+      (a) =>
+        a.is_concert &&
+        (a.title === "Asistencia a Recital 1" ||
+          a.title === "Asistencia a Recital 2"),
+    );
+
+    const asistenciaPoints = asistenciaRecitals.reduce(
+      (sum, a) => sum + (a.grade ?? 0),
+      0,
+    );
+    totalPoints += asistenciaPoints;
+
+    // Max possible: all weeks (10 each) + 2 asistencia recitals (10 each)
+    const maxPossible = weekDuration * 10 + 20;
+    if (maxPossible === 0) return 0;
+
     // 50% of final grade: (points obtained / max possible points) * 50
-    const maxPossible = weekDuration * 10;
     return (totalPoints / maxPossible) * 50;
   };
 
   const calculateExamPercentage = (): number => {
     if (!courseData) return 0;
-    const examAssignment = courseData.assignments.find(a => a.is_exam);
-    if (!examAssignment || examAssignment.grade === null || examAssignment.points === null) return 0;
+    const examAssignment = courseData.assignments.find((a) => a.is_exam);
+    if (
+      !examAssignment ||
+      examAssignment.grade === null ||
+      examAssignment.points === null
+    )
+      return 0;
     // 40% of final grade
     return (examAssignment.grade / examAssignment.points) * 40;
   };
 
   const calculateConcertPercentage = (): number => {
     if (!courseData) return 0;
-    const concertAssignments = courseData.assignments.filter(a => a.is_concert);
-    if (concertAssignments.length === 0) return 0;
-    
-    const totalConcertPoints = concertAssignments.reduce((sum, a) => sum + (a.grade ?? 0), 0);
-    const maxConcertPoints = concertAssignments.reduce((sum, a) => sum + (a.points ?? 0), 0);
-    
-    if (maxConcertPoints === 0) return 0;
+
+    // Only consider "Participación en Recital" assignment
+    const participacionRecital = courseData.assignments.find(
+      (a) => a.is_concert && a.title === "Participación en Recital",
+    );
+
+    if (!participacionRecital || participacionRecital.points === null) return 0;
+
+    const grade = participacionRecital.grade ?? 0;
+    const maxPoints = participacionRecital.points;
+
+    if (maxPoints === 0) return 0;
     // 10% of final grade
-    return (totalConcertPoints / maxConcertPoints) * 10;
+    return (grade / maxPoints) * 10;
   };
 
   const calculateFinalGrade = (): number => {
-    return calculateDailyWorkPercentage() + calculateExamPercentage() + calculateConcertPercentage();
+    return (
+      calculateDailyWorkPercentage() +
+      calculateExamPercentage() +
+      calculateConcertPercentage()
+    );
   };
 
   if (loading) {
@@ -243,9 +284,11 @@ export default function CourseDashboard() {
     assignments.filter((a) => a.week === week && !a.is_exam && !a.is_concert);
   const getResourcesForWeek = (week: number) =>
     resources.filter((r) => r.week === week);
-  
+
   // Exam and concert assignments for "Evaluaciones del curso" section
-  const evaluationAssignments = assignments.filter((a) => a.is_exam || a.is_concert);
+  const evaluationAssignments = assignments.filter(
+    (a) => a.is_exam || a.is_concert,
+  );
 
   const professorName = enrollment.professor
     ? `${enrollment.professor.first_name || ""} ${
@@ -378,7 +421,9 @@ export default function CourseDashboard() {
                                   {getDailyWorkGrade(week)}/10
                                 </span>
                               ) : (
-                                <span className="text-gray-500">Sin calificar</span>
+                                <span className="text-gray-500">
+                                  Sin calificar
+                                </span>
                               )}
                             </span>
                           </div>
@@ -413,15 +458,26 @@ export default function CourseDashboard() {
                         <div
                           key={assignment.id}
                           className={`flex items-center justify-between gap-x-6 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-primary/40 hover:shadow-sm ${
-                            assignment.is_concert ? "bg-purple-50/50" : assignment.is_exam ? "bg-amber-50/50" : ""
+                            assignment.is_concert
+                              ? "bg-purple-50/50"
+                              : assignment.is_exam
+                              ? "bg-amber-50/50"
+                              : ""
                           }`}
                         >
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start gap-x-3">
-                              {assignment.is_concert ? (
-                                <MusicalNoteIcon className="h-5 w-5 text-purple-500 mt-0.5" />
+                              {(assignment.is_concert &&
+                                assignment.title ===
+                                  "Asistencia a Recital 1") ||
+                              assignment.title === "Asistencia a Recital 2" ? (
+                                <GiMusicalNotes className="size-5 text-purple-500 mt-0.5" />
                               ) : assignment.is_exam ? (
-                                <ClipboardDocumentCheckIcon className="h-5 w-5 text-amber-600 mt-0.5" />
+                                <MusicalNoteIcon className="h-5 w-5 text-purple-500 mt-0.5" />
+                              ) : assignment.is_concert &&
+                                assignment.title ===
+                                  "Participación en Recital" ? (
+                                <GiMusicalNotes className="size-5 text-purple-500 mt-0.5" />
                               ) : (
                                 <DocumentTextIcon className="h-5 w-5 text-blue-500 mt-0.5" />
                               )}
@@ -562,10 +618,13 @@ export default function CourseDashboard() {
                   <div className="flex items-center justify-between gap-x-6">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start gap-x-3">
-                        {assignment.is_concert ? (
-                          <MusicalNoteIcon className="h-5 w-5 text-purple-500 mt-0.5" />
-                        ) : (
+                        {assignment.is_concert &&
+                        assignment.title === "Participación en Recital" ? (
+                          <GiMusicalScore className="size-5 text-purple-500 mt-0.5" />
+                        ) : assignment.is_exam ? (
                           <ClipboardDocumentCheckIcon className="h-5 w-5 text-amber-600 mt-0.5" />
+                        ) : (
+                          <GiMusicalNotes className="size-5 text-purple-500 mt-0.5" />
                         )}
                         <div>
                           <div className="flex items-center gap-2">
@@ -582,7 +641,8 @@ export default function CourseDashboard() {
                             ) : (
                               <p className="mt-0.5 inline-flex items-center rounded-md px-1.5 py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
                                 Sin calificar
-                                {assignment.points !== null && ` - ${assignment.points} pts`}
+                                {assignment.points !== null &&
+                                  ` - ${assignment.points} pts`}
                               </p>
                             )}
                           </div>
@@ -632,7 +692,8 @@ export default function CourseDashboard() {
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-gray-900">
-              Resumen y Calificación {enrollment.status === "cursando" ? "Parcial" : "Final"}
+              Resumen y Calificación{" "}
+              {enrollment.status === "cursando" ? "Parcial" : "Final"}
             </h2>
             <div className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary">
               <AcademicCapIcon className="h-4 w-4" />
@@ -643,8 +704,15 @@ export default function CourseDashboard() {
           {/* Grade Breakdown */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-4 mb-4">
             <div className="shadow-md rounded-lg p-4">
-              <dt className="text-sm font-medium text-blue-700">
+              <dt className="text-sm font-medium text-blue-700 flex items-center gap-1">
                 Trabajo Cotidiano (50%)
+                <button
+                  onClick={() => setDailyWorkInfoDialogOpen(true)}
+                  className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-700"
+                  title="Información sobre Trabajo Cotidiano"
+                >
+                  <InformationCircleIcon className="w-3 h-3" />
+                </button>
               </dt>
               <dd className="mt-1 text-2xl font-semibold text-blue-900">
                 {calculateDailyWorkPercentage().toFixed(1)}%
@@ -660,7 +728,7 @@ export default function CourseDashboard() {
             </div>
             <div className="shadow-md rounded-lg p-4">
               <dt className="text-sm font-medium text-purple-700">
-                Recitales (10%)
+                Participación en Recital (10%)
               </dt>
               <dd className="mt-1 text-2xl font-semibold text-purple-900">
                 {calculateConcertPercentage().toFixed(1)}%
@@ -694,6 +762,99 @@ export default function CourseDashboard() {
         onClose={() => setPreviewItem(null)}
         item={previewItem}
       />
+
+      {/* Daily Work Info Dialog */}
+      <Dialog
+        open={dailyWorkInfoDialogOpen}
+        onClose={() => setDailyWorkInfoDialogOpen(false)}
+        className="relative z-50"
+      >
+        <DialogBackdrop className="fixed inset-0 bg-gray-500/75" />
+        <div className="fixed inset-0 z-50 w-screen overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <DialogPanel className="relative w-full transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+              <div className="absolute right-0 top-0 pr-4 pt-4">
+                <button
+                  type="button"
+                  className="rounded-md bg-white text-gray-400 hover:text-gray-500"
+                  onClick={() => setDailyWorkInfoDialogOpen(false)}
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="sm:flex sm:items-start">
+                <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-blue-100 sm:mx-0 sm:size-10">
+                  <InformationCircleIcon
+                    className="size-6 text-blue-600"
+                    aria-hidden="true"
+                  />
+                </div>
+                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                  <DialogTitle
+                    as="h3"
+                    className="text-base font-semibold text-gray-900"
+                  >
+                    Trabajo Cotidiano (50%)
+                  </DialogTitle>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-700">
+                      El{" "}
+                      <span className="font-semibold">Trabajo Cotidiano</span>{" "}
+                      representa el 50% de tu calificación final y se calcula
+                      sumando:
+                    </p>
+                    <ul className="mt-3 space-y-2 text-sm text-gray-700">
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-600 font-semibold">•</span>
+                        <span>
+                          Los puntos de{" "}
+                          <span className="font-semibold">
+                            todas las semanas
+                          </span>{" "}
+                          del curso (máximo 10 puntos por semana)
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-600 font-semibold">•</span>
+                        <span>
+                          Los puntos de{" "}
+                          <span className="font-semibold">
+                            Asistencia a Recital 1
+                          </span>{" "}
+                          (máximo 10 puntos)
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-600 font-semibold">•</span>
+                        <span>
+                          Los puntos de{" "}
+                          <span className="font-semibold">
+                            Asistencia a Recital 2
+                          </span>{" "}
+                          (máximo 10 puntos)
+                        </span>
+                      </li>
+                    </ul>
+                    <p className="mt-3 text-sm text-gray-600 italic">
+                      Nota: Las asistencias a recitales se encuentran en la
+                      sección "Evaluaciones del curso".
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={() => setDailyWorkInfoDialogOpen(false)}
+                  className="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-blue-500 sm:ml-3 sm:w-auto"
+                >
+                  Entendido
+                </button>
+              </div>
+            </DialogPanel>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

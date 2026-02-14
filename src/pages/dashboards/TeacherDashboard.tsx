@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import {
   AcademicCapIcon,
@@ -7,6 +7,7 @@ import {
   CalendarDaysIcon,
   ArrowRightIcon,
 } from "@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/16/solid";
 
 interface Schedule {
   day: string;
@@ -29,6 +30,8 @@ interface ScheduleTableItem {
   student_name: string | null;
   student_id: number | null;
   enrollment_id: number;
+  period: number;
+  year: number;
 }
 
 interface Enrollment {
@@ -42,12 +45,17 @@ interface Enrollment {
   status: string;
   grade: number | null;
   week_duration: number;
+  period: number;
+  year: number;
   schedules: Schedule[];
 }
 
-interface DashboardData {
+interface AvailablePeriod {
   period: number;
   year: number;
+}
+
+interface DashboardData {
   stats: {
     courses_count: number;
     students_count: number;
@@ -55,6 +63,7 @@ interface DashboardData {
   };
   schedule_table: ScheduleTableItem[];
   enrollments: Enrollment[];
+  available_periods: AvailablePeriod[];
 }
 
 const statusLabels: Record<string, { label: string; className: string }> = {
@@ -73,31 +82,32 @@ const statusLabels: Record<string, { label: string; className: string }> = {
 };
 
 const TeacherDashboard = () => {
-  const location = useLocation();
   const axiosPrivate = useAxiosPrivate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(
     null
   );
-
-  // Get current period and year from URL params
-  const searchParams = new URLSearchParams(location.search);
-  const currentPeriod = searchParams.get("period") || "1";
-  const currentYear = searchParams.get("year") || "2026";
-
-  const periodLabel =
-    currentPeriod === "1" ? "Periodo I" : `Periodo ${currentPeriod}`;
+  
+  // Local state for period selections in each section
+  const [selectedStudentsPeriod, setSelectedStudentsPeriod] = useState<string>("");
+  const [selectedSchedulePeriod, setSelectedSchedulePeriod] = useState<string>("");
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await axiosPrivate.get(
-          `courses/teacher-dashboard?period=${currentPeriod}&year=${currentYear}`
-        );
+        const response = await axiosPrivate.get("courses/teacher-dashboard");
         setDashboardData(response.data);
+        
+        // Set default selected periods to the first available period
+        if (response.data.available_periods?.length > 0) {
+          const firstPeriod = response.data.available_periods[0];
+          const periodKey = `${firstPeriod.period}-${firstPeriod.year}`;
+          setSelectedStudentsPeriod(periodKey);
+          setSelectedSchedulePeriod(periodKey);
+        }
       } catch (err: unknown) {
         console.error("Error fetching dashboard data:", err);
         setError("Error al cargar los datos del dashboard");
@@ -107,7 +117,34 @@ const TeacherDashboard = () => {
     };
 
     fetchDashboardData();
-  }, [currentPeriod, currentYear, axiosPrivate]);
+  }, [axiosPrivate]);
+
+  // Filter enrollments by selected period
+  const filteredEnrollments = useMemo(() => {
+    if (!dashboardData?.enrollments || !selectedStudentsPeriod) return [];
+    const [period, year] = selectedStudentsPeriod.split("-").map(Number);
+    return dashboardData.enrollments.filter(
+      (e) => e.period === period && e.year === year && e.status === "cursando"
+    );
+  }, [dashboardData?.enrollments, selectedStudentsPeriod]);
+
+  // Filter schedule table by selected period
+  const filteredSchedule = useMemo(() => {
+    if (!dashboardData?.schedule_table || !selectedSchedulePeriod) return [];
+    const [period, year] = selectedSchedulePeriod.split("-").map(Number);
+    return dashboardData.schedule_table.filter(
+      (s) => s.period === period && s.year === year
+    );
+  }, [dashboardData?.schedule_table, selectedSchedulePeriod]);
+
+  // Get period options for selects
+  const periodOptions = useMemo(() => {
+    if (!dashboardData?.available_periods) return [];
+    return dashboardData.available_periods.map((p) => ({
+      value: `${p.period}-${p.year}`,
+      label: `Periodo ${p.period === 1 ? "I" : "II"} - ${p.year}`,
+    }));
+  }, [dashboardData?.available_periods]);
 
   // Group schedule by day
   const groupScheduleByDay = (schedules: ScheduleTableItem[]) => {
@@ -145,28 +182,14 @@ const TeacherDashboard = () => {
     );
   }
 
-  const groupedSchedule = dashboardData?.schedule_table
-    ? groupScheduleByDay(dashboardData.schedule_table)
+  const groupedSchedule = filteredSchedule
+    ? groupScheduleByDay(filteredSchedule)
     : {};
 
   return (
     <div className="relative isolate overflow-hidden">
-      {/* Secondary navigation header */}
-      <header className="pt-6 pb-4 sm:pb-6">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-6 px-4 sm:flex-nowrap sm:px-6 lg:px-8">
-          <h1 className="text-base/7 font-semibold text-gray-900">
-            Resumen de Cuatrimestre
-          </h1>
-          <div className="order-last flex w-full gap-x-8 text-sm/6 font-semibold sm:order-0 sm:w-auto sm:border-l sm:border-gray-200 sm:pl-6 sm:text-sm/7">
-            <span className="text-primary">
-              {periodLabel} - {currentYear}
-            </span>
-          </div>
-        </div>
-      </header>
-
       {/* Stats */}
-      <div className="border-b border-b-gray-900/10 lg:border-t lg:border-t-gray-900/5">
+      <div className="border-b border-b-gray-900/10 lg:border-t lg:border-t-gray-900/5 mt-6">
         <dl className="mx-auto grid max-w-7xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:px-2 xl:px-0">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-t border-gray-900/5 px-4 py-10 sm:px-6 lg:border-t-0 xl:px-8">
             <dt className="text-sm/6 font-medium text-gray-500 flex items-center gap-2">
@@ -209,7 +232,34 @@ const TeacherDashboard = () => {
                 Mis Estudiantes
               </h2>
             </div>
-            {dashboardData?.enrollments.length === 0 ? (
+            
+            {periodOptions.length > 0 && (
+              <div className="mt-6 max-w-xs">
+                <label htmlFor="students-period-select" className="block text-sm/6 font-medium text-gray-900">
+                  Periodo
+                </label>
+                <div className="mt-2 grid grid-cols-1">
+                  <select
+                    id="students-period-select"
+                    value={selectedStudentsPeriod}
+                    onChange={(e) => setSelectedStudentsPeriod(e.target.value)}
+                    className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-600 sm:text-sm/6"
+                  >
+                    {periodOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDownIcon
+                    aria-hidden="true"
+                    className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                  />
+                </div>
+              </div>
+            )}
+
+            {filteredEnrollments.length === 0 ? (
               <div className="mt-6 py-12 text-center text-gray-500 bg-white rounded-xl border border-gray-200">
                 No tienes estudiantes asignados para este periodo
               </div>
@@ -218,7 +268,7 @@ const TeacherDashboard = () => {
                 role="list"
                 className="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-3 xl:gap-x-8"
               >
-                {dashboardData?.enrollments.map((enrollment) => (
+                {filteredEnrollments.map((enrollment) => (
                   <li
                     key={enrollment.id}
                     className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-md"
@@ -311,6 +361,32 @@ const TeacherDashboard = () => {
             <h2 className="mx-auto max-w-2xl text-base font-semibold text-gray-900 lg:mx-0 lg:max-w-none">
               Horario Semanal
             </h2>
+            
+            {periodOptions.length > 0 && (
+              <div className="mt-6 max-w-xs">
+                <label htmlFor="schedule-period-select" className="block text-sm/6 font-medium text-gray-900">
+                  Periodo
+                </label>
+                <div className="mt-2 grid grid-cols-1">
+                  <select
+                    id="schedule-period-select"
+                    value={selectedSchedulePeriod}
+                    onChange={(e) => setSelectedSchedulePeriod(e.target.value)}
+                    className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-600 sm:text-sm/6"
+                  >
+                    {periodOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDownIcon
+                    aria-hidden="true"
+                    className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <div className="mt-6 overflow-hidden border-t border-gray-100">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
