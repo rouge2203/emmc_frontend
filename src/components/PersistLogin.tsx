@@ -21,9 +21,8 @@ const PersistLogin = () => {
     const verifyRefreshToken = async () => {
       try {
         await refresh();
-        console.info("[PersistLogin] Access token refreshed");
       } catch (error) {
-        console.error("[PersistLogin] Failed to refresh token:", error);
+        // Refresh failed — user will be redirected to login
       } finally {
         if (isMounted) {
           setIsLoading(false);

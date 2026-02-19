@@ -304,21 +304,19 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
         createData.career_id = careerId;
       }
 
-      // Close confirmation dialog
+      await axiosPrivate.post("courses/manage-courses", createData);
+
       setShowConfirmDialog(false);
 
-      // Show success notification
       setShowSuccessNotification(true);
       setTimeout(() => {
         setShowSuccessNotification(false);
       }, 5000);
 
-      // Notify parent component
       if (onCourseCreated) {
         onCourseCreated();
       }
 
-      // Reset form
       setCode("");
       setName("");
       setCareerId(null);
@@ -330,7 +328,6 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
       setErrors({});
       setPrerequisiteSearch("");
 
-      // Close drawer after a short delay
       setTimeout(() => {
         onClose();
       }, 1000);
