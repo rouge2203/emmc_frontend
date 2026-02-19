@@ -45,6 +45,7 @@ interface Course {
   course_type_name: string;
   course_type_price: number;
   special_price: number | null;
+  is_matricula: boolean;
   estudiantes_count: number;
   created_at: string;
   updated_at: string;

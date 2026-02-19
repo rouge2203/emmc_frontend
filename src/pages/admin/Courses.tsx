@@ -31,6 +31,7 @@ interface Course {
   estudiantes_count: number;
   course_type: CourseType;
   course_type_name: string;
+  is_matricula: boolean;
 }
 
 interface PaginationInfo {
@@ -77,6 +78,7 @@ const Courses = () => {
   const [courseTypeFilter, setCourseTypeFilter] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [isMatriculaFilter, setIsMatriculaFilter] = useState(false);
 
   // Drawers
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
@@ -118,6 +120,7 @@ const Courses = () => {
       if (careerFilter) params.career_id = careerFilter;
       if (courseTypeFilter) params.course_type_id = courseTypeFilter;
       if (search) params.search = search;
+      if (isMatriculaFilter) params.is_matricula = true;
 
       const response = await axiosPrivate.get<PaginatedResponse>(
         "courses/manage-courses",
@@ -171,6 +174,7 @@ const Courses = () => {
     careerFilter,
     courseTypeFilter,
     search,
+    isMatriculaFilter,
     isInitialized,
   ]);
 
@@ -190,11 +194,12 @@ const Courses = () => {
     setCourseTypeFilter(null);
     setSearch("");
     setSearchInput("");
+    setIsMatriculaFilter(false);
     setPage(1);
   };
 
   const hasActiveFilters =
-    careerFilter !== null || courseTypeFilter !== null || search !== "";
+    careerFilter !== null || courseTypeFilter !== null || search !== "" || isMatriculaFilter;
 
   const handleEdit = (course: Course) => {
     setSelectedCourseId(course.id);
@@ -256,6 +261,20 @@ const Courses = () => {
           </h1>
         </div>
         <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none flex justify-left gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setIsMatriculaFilter(!isMatriculaFilter);
+              setPage(1);
+            }}
+            className={`block rounded-md px-3 py-2 text-center text-sm font-semibold shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 ${
+              isMatriculaFilter
+                ? "bg-primary text-white hover:bg-primary/90"
+                : "bg-white text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+            }`}
+          >
+            Ver matrículas
+          </button>
           <button
             type="button"
             onClick={() => setIsCourseTypeConfigDrawerOpen(true)}

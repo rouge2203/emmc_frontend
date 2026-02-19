@@ -5,6 +5,7 @@ import {
   AcademicCapIcon,
   ArrowRightIcon,
   CalendarDaysIcon,
+  InformationCircleIcon,
   NewspaperIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/16/solid";
@@ -46,6 +47,7 @@ interface Enrollment {
   course_name: string | null;
   course_code: string | null;
   career_name: string | null;
+  is_matricula: boolean;
   status: string;
   grade: number | null;
   week_duration: number;
@@ -304,6 +306,42 @@ const StudentDashboard = () => {
               className="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-3 xl:gap-x-8"
             >
               {filteredActiveEnrollments.map((enrollment) => {
+                if (enrollment.is_matricula) {
+                  return (
+                    <li
+                      key={enrollment.id}
+                      className="overflow-hidden rounded-xl border border-gray-200 bg-white"
+                    >
+                      <div className="flex items-center gap-x-4 border-b border-gray-900/5 bg-gray-50 p-6">
+                        <div className="flex size-12 flex-none items-center justify-center rounded-lg bg-primary text-white font-semibold text-lg">
+                          {enrollment.course_name
+                            ?.split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .slice(0, 2)
+                            .toUpperCase() || "?"}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm/6 font-medium text-gray-900 truncate">
+                            {enrollment.course_name || "Matrícula"}
+                          </div>
+                          <div className="text-xs text-gray-500 truncate">
+                            {enrollment.course_code}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="px-6 py-5">
+                        <div className="flex items-start gap-x-3">
+                          <InformationCircleIcon className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                          <p className="text-sm text-gray-600">
+                            Está a la espera de que se le asigne una asignatura y un profesor.
+                          </p>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                }
+
                 const professorName = enrollment.professor
                   ? `${enrollment.professor.first_name || ""} ${
                       enrollment.professor.last_name || ""

@@ -28,6 +28,7 @@ interface CourseEnrollment {
     code: string;
     name: string;
     career_name: string | null;
+    is_matricula: boolean;
   };
   course_name: string;
   course_code: string;
@@ -121,6 +122,7 @@ const CourseEnrollments = () => {
   const [professorFilter, setProfessorFilter] = useState<number | null>(null);
   const [missingProfessorFilter, setMissingProfessorFilter] = useState(false);
   const [missingScheduleFilter, setMissingScheduleFilter] = useState(false);
+  const [isMatriculaFilter, setIsMatriculaFilter] = useState(false);
 
   // Drawers
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<
@@ -179,6 +181,7 @@ const CourseEnrollments = () => {
       if (professorFilter) params.professor_id = professorFilter;
       if (missingProfessorFilter) params.missing_professor = true;
       if (missingScheduleFilter) params.missing_schedule = true;
+      if (isMatriculaFilter) params.is_matricula = true;
 
       const response = await axiosPrivate.get<PaginatedResponse>(
         "courses/manage-enrollments",
@@ -251,6 +254,7 @@ const CourseEnrollments = () => {
     professorFilter,
     missingProfessorFilter,
     missingScheduleFilter,
+    isMatriculaFilter,
     isInitialized,
   ]);
 
@@ -273,6 +277,7 @@ const CourseEnrollments = () => {
     setProfessorFilter(null);
     setMissingProfessorFilter(false);
     setMissingScheduleFilter(false);
+    setIsMatriculaFilter(false);
     setPage(1);
   };
 
@@ -282,7 +287,8 @@ const CourseEnrollments = () => {
     careerFilter !== null ||
     professorFilter !== null ||
     missingProfessorFilter ||
-    missingScheduleFilter;
+    missingScheduleFilter ||
+    isMatriculaFilter;
 
   const handleEdit = (enrollment: CourseEnrollment) => {
     setSelectedEnrollmentId(enrollment.id);
@@ -374,7 +380,21 @@ const CourseEnrollments = () => {
             Gestión de cursos matriculados en el sistema.
           </h1>
         </div>
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setIsMatriculaFilter(!isMatriculaFilter);
+              setPage(1);
+            }}
+            className={`block rounded-md px-3 py-2 text-center text-sm font-semibold shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 ${
+              isMatriculaFilter
+                ? "bg-primary text-white hover:bg-primary/90"
+                : "bg-white text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+            }`}
+          >
+            Ver matrículas
+          </button>
           <button
             type="button"
             onClick={handleCreateEnrollment}
@@ -738,7 +758,9 @@ const CourseEnrollments = () => {
                           </td>
                           <td className="py-5 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
                             <div className="flex gap-2 justify-end">
-                              {!enrollment.professor && (
+                              {!enrollment.professor &&
+                                enrollment.status === "cursando" &&
+                                !enrollment.course.is_matricula && (
                                 <button
                                   onClick={() =>
                                     handleAssignProfessor(enrollment)
@@ -752,7 +774,9 @@ const CourseEnrollments = () => {
                                   </span>
                                 </button>
                               )}
-                              {!enrollment.schedule_set && (
+                              {!enrollment.schedule_set &&
+                                enrollment.status === "cursando" &&
+                                !enrollment.course.is_matricula && (
                                 <button
                                   onClick={() =>
                                     handleAssignSchedule(enrollment)
@@ -780,16 +804,18 @@ const CourseEnrollments = () => {
                                   </span>
                                 </button>
                               )}
-                              <Link
-                                to={`/admin/enrollment-grades/${enrollment.id}`}
-                                className="text-gray-900 flex items-center gap-1 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-medium border py-0.5 px-2 rounded-sm"
-                              >
-                                <AcademicCapIcon className="h-4 w-4 text-gray-600" />
-                                Ver Notas
-                                <span className="sr-only">
-                                  , {enrollment.course_code}
-                                </span>
-                              </Link>
+                              {!enrollment.course.is_matricula && (
+                                <Link
+                                  to={`/admin/enrollment-grades/${enrollment.id}`}
+                                  className="text-gray-900 flex items-center gap-1 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-medium border py-0.5 px-2 rounded-sm"
+                                >
+                                  <AcademicCapIcon className="h-4 w-4 text-gray-600" />
+                                  Ver Notas
+                                  <span className="sr-only">
+                                    , {enrollment.course_code}
+                                  </span>
+                                </Link>
+                              )}
                               <button
                                 onClick={() => handleEdit(enrollment)}
                                 className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm"

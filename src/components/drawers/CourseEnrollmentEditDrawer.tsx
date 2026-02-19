@@ -33,6 +33,7 @@ interface Course {
   special_price: number | null;
   course_type_price: number | null;
   week_duration: number;
+  is_matricula: boolean;
 }
 
 interface User {
@@ -48,6 +49,7 @@ interface CourseEnrollment {
     code: string;
     name: string;
     career_name: string | null;
+    is_matricula: boolean;
   };
   course_name: string;
   course_code: string;
@@ -240,6 +242,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
           special_price: null,
           course_type_price: null,
           week_duration: foundEnrollment.week_duration,
+          is_matricula: foundEnrollment.course.is_matricula,
         };
         setSelectedCourse(course);
         setCourseSearch(`${course.code} - ${course.name}`);
@@ -352,6 +355,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
           special_price: null,
           course_type_price: null,
           week_duration: updatedEnrollment.week_duration,
+          is_matricula: updatedEnrollment.course.is_matricula,
         };
         setSelectedCourse(course);
         setCourseSearch(`${course.code} - ${course.name}`);
@@ -548,63 +552,83 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                     ) : enrollment ? (
                       <div className="divide-y divide-gray-200 px-4 sm:px-6 py-6">
                         <div className="space-y-3.5">
-                          {/* Professor Alert */}
-                          {!enrollment.professor && (
-                            <div className="rounded-md bg-red-50 border border-red-200 px-2 py-4 mb-4">
+                          {selectedCourse?.is_matricula ? (
+                            <div className="rounded-md bg-primary/10 border border-primary/30 px-2 py-4 mb-4">
                               <div className="flex">
                                 <div className="flex-shrink-0">
-                                  <ExclamationTriangleIcon
-                                    className="h-5 w-5 text-red-400"
+                                  <InformationCircleIcon
+                                    className="h-5 w-5 text-primary"
                                     aria-hidden="true"
                                   />
                                 </div>
                                 <div className="ml-3 flex-1">
-                                  <h3 className="text-sm font-medium text-red-800">
-                                    Falta asignar profesor
+                                  <h3 className="text-sm font-medium text-primary">
+                                    Esto es una matrícula, no un curso en específico
                                   </h3>
-                                  <div className="mt-2 text-xs text-red-700">
-                                    <p>
-                                      Esta matrícula aún no tiene un profesor
-                                      asignado.
-                                    </p>
-                                  </div>
                                 </div>
                               </div>
                             </div>
-                          )}
+                          ) : (
+                            <>
+                              {/* Professor Alert */}
+                              {!enrollment.professor && (
+                                <div className="rounded-md bg-red-50 border border-red-200 px-2 py-4 mb-4">
+                                  <div className="flex">
+                                    <div className="flex-shrink-0">
+                                      <ExclamationTriangleIcon
+                                        className="h-5 w-5 text-red-400"
+                                        aria-hidden="true"
+                                      />
+                                    </div>
+                                    <div className="ml-3 flex-1">
+                                      <h3 className="text-sm font-medium text-red-800">
+                                        Falta asignar profesor
+                                      </h3>
+                                      <div className="mt-2 text-xs text-red-700">
+                                        <p>
+                                          Esta matrícula aún no tiene un profesor
+                                          asignado.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
 
-                          {/* Schedule Alert */}
-                          {!enrollment.schedule_set && (
-                            <div className="rounded-md bg-yellow-50 border border-yellow-200 px-2 py-4 mb-4">
-                              <div className="flex">
-                                <div className="flex-shrink-0">
-                                  <ExclamationTriangleIcon
-                                    className="h-5 w-5 text-yellow-400"
-                                    aria-hidden="true"
-                                  />
-                                </div>
-                                <div className="ml-3 flex-1">
-                                  <h3 className="text-sm font-medium text-yellow-800">
-                                    Falta asignar horario
-                                  </h3>
-                                  <div className="mt-2 text-xs text-yellow-700">
-                                    <p>
-                                      Esta matrícula aún no tiene un horario
-                                      asignado.
-                                    </p>
+                              {/* Schedule Alert */}
+                              {!enrollment.schedule_set && (
+                                <div className="rounded-md bg-yellow-50 border border-yellow-200 px-2 py-4 mb-4">
+                                  <div className="flex">
+                                    <div className="flex-shrink-0">
+                                      <ExclamationTriangleIcon
+                                        className="h-5 w-5 text-yellow-400"
+                                        aria-hidden="true"
+                                      />
+                                    </div>
+                                    <div className="ml-3 flex-1">
+                                      <h3 className="text-sm font-medium text-yellow-800">
+                                        Falta asignar horario
+                                      </h3>
+                                      <div className="mt-2 text-xs text-yellow-700">
+                                        <p>
+                                          Esta matrícula aún no tiene un horario
+                                          asignado.
+                                        </p>
+                                      </div>
+                                      <div className="mt-4">
+                                        <button
+                                          type="button"
+                                          onClick={handleAssignSchedule}
+                                          className="rounded-md bg-yellow-100 px-3 py-2 text-xs font-semibold text-yellow-800 hover:bg-yellow-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-600"
+                                        >
+                                          Asignar horario
+                                        </button>
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div className="mt-4">
-                                    <button
-                                      type="button"
-                                      onClick={handleAssignSchedule}
-                                      className="rounded-md bg-yellow-100 px-3 py-2 text-xs font-semibold text-yellow-800 hover:bg-yellow-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-600"
-                                    >
-                                      Asignar horario
-                                    </button>
-                                  </div>
                                 </div>
-                              </div>
-                            </div>
+                              )}
+                            </>
                           )}
 
                           {/* Course */}
@@ -666,6 +690,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                           </div>
 
                           {/* Professor */}
+                          {!selectedCourse?.is_matricula && (
                           <div>
                             <label
                               htmlFor="professor"
@@ -768,6 +793,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                               )}
                             </div>
                           </div>
+                          )}
 
                           {/* Year */}
                           <div>
@@ -874,12 +900,13 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                                 type="number"
                                 min="1"
                                 value={weekDuration}
+                                disabled={selectedCourse?.is_matricula}
                                 onChange={(e) =>
                                   setWeekDuration(
                                     parseInt(e.target.value) || 12
                                   )
                                 }
-                                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                                className={`block w-full rounded-md px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6 ${selectedCourse?.is_matricula ? "bg-gray-100 cursor-not-allowed" : "bg-white"}`}
                               />
                             </div>
                           </div>
@@ -921,6 +948,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                           </div>
 
                           {/* Grade */}
+                          {!selectedCourse?.is_matricula && (
                           <div>
                             <label
                               htmlFor="grade"
@@ -942,8 +970,10 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                               />
                             </div>
                           </div>
+                          )}
 
                           {/* Professor Observation */}
+                          {!selectedCourse?.is_matricula && (
                           <div>
                             <label
                               htmlFor="professor_observation"
@@ -965,6 +995,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                               />
                             </div>
                           </div>
+                          )}
 
                           {/* Account Information */}
                           <div className="space-y-4 pt-4 border-t border-gray-200">

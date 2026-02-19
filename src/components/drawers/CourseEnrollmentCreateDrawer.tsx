@@ -31,6 +31,7 @@ interface Course {
   week_duration: number;
   prerequisite_code: string | null;
   prerequisite_name: string | null;
+  is_matricula: boolean;
 }
 
 interface PrerequisiteStatus {
@@ -365,6 +366,10 @@ const CourseEnrollmentCreateDrawer: React.FC<
     setCourseSearch(`${course.code} - ${course.name}`);
     setShowCourseDropdown(false);
     priceManuallyEdited.current = false;
+    if (course.is_matricula) {
+      setSelectedProfessor(null);
+      setProfessorSearch("");
+    }
   };
 
   // Handle student select
@@ -539,7 +544,8 @@ const CourseEnrollmentCreateDrawer: React.FC<
                             htmlFor="course"
                             className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
                           >
-                            Curso <span className="text-red-500">*</span>
+                            Curso o Matrícula{" "}
+                            <span className="text-red-500">*</span>
                           </label>
                         </div>
                         <div className="sm:col-span-2 relative searchable-select-container">
@@ -570,7 +576,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
                                   ? "outline-red-500 focus-visible:outline-red-500"
                                   : "focus-visible:outline-gray-900"
                               }`}
-                              placeholder="Buscar curso..."
+                              placeholder="Buscar curso o matrícula..."
                             />
                           </div>
                           {showCourseDropdown && filteredCourses.length > 0 && (
@@ -798,6 +804,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
                               name="professor"
                               type="text"
                               value={professorSearch}
+                              disabled={selectedCourse?.is_matricula}
                               onChange={(e) => {
                                 setProfessorSearch(e.target.value);
                                 setShowProfessorDropdown(true);
@@ -810,8 +817,8 @@ const CourseEnrollmentCreateDrawer: React.FC<
                                 errors.professor_id
                                   ? "outline-red-500 focus-visible:outline-red-500"
                                   : "focus-visible:outline-gray-900"
-                              }`}
-                              placeholder="Buscar profesor..."
+                              } ${selectedCourse?.is_matricula ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                              placeholder={selectedCourse?.is_matricula ? "No aplica para matrícula" : "Buscar profesor..."}
                             />
                           </div>
                           {showProfessorDropdown && professors.length > 0 && (
@@ -988,14 +995,15 @@ const CourseEnrollmentCreateDrawer: React.FC<
                             type="number"
                             min="1"
                             value={weekDuration}
+                            disabled={selectedCourse?.is_matricula}
                             onChange={(e) =>
                               setWeekDuration(parseInt(e.target.value) || 12)
                             }
-                            className={`block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
+                            className={`block w-full rounded-md px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
                               errors.week_duration
                                 ? "outline-red-500 focus-visible:outline-red-500"
                                 : "focus-visible:outline-gray-900"
-                            }`}
+                            } ${selectedCourse?.is_matricula ? "bg-gray-100 cursor-not-allowed" : "bg-white"}`}
                           />
                           {errors.week_duration && (
                             <p className="mt-1 text-sm text-red-600">

@@ -375,8 +375,8 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
                 transition
                 className="pointer-events-auto w-screen max-w-2xl transform transition duration-500 ease-in-out data-closed:translate-x-full sm:duration-700 flex flex-col h-full max-h-screen"
               >
-                <form className="relative flex h-full flex-col overflow-y-auto bg-white shadow-xl">
-                  <div className="flex-1">
+                <form className="relative flex h-full flex-col bg-white shadow-xl">
+                  <div className="flex-1 overflow-y-auto">
                     {/* Header */}
                     <div className="bg-gray-50 px-4 py-20 sm:px-6">
                       <div className="flex items-start justify-between space-x-3">
@@ -749,25 +749,22 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
                     </div>
                   </div>
 
-                  {/* Action buttons */}
-                  <div className="shrink-0 border-t border-gray-200 px-4 py-5 sm:px-6">
-                    <div className="flex justify-end space-x-3">
-                      <button
-                        type="button"
-                        onClick={onClose}
-                        className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCreateClick}
-                        disabled={isSubmitDisabled}
-                        className="inline-flex justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isCreating ? "Creando..." : "Crear"}
-                      </button>
-                    </div>
+                  <div className="flex shrink-0 justify-end gap-3 border-t border-gray-200 bg-white px-4 py-4">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCreateClick}
+                      disabled={isSubmitDisabled}
+                      className="inline-flex justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isCreating ? "Creando..." : "Crear"}
+                    </button>
                   </div>
                 </form>
               </DialogPanel>
