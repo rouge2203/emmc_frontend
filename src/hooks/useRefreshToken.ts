@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import axios from "../api/axios";
 import useAuth from "./useAuth";
 
@@ -8,18 +9,17 @@ import useAuth from "./useAuth";
 const useRefreshToken = () => {
   const { setAuth } = useAuth();
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     try {
       console.log("[useRefreshToken] Calling refresh endpoint");
       const response = await axios.post(
         "auth/refresh",
         {},
         {
-          withCredentials: true, // Send refresh token cookie
+          withCredentials: true,
         }
       );
 
-      // Update auth state with new access token and user data
       setAuth((prev) => {
         if (!prev) {
           return {
@@ -42,11 +42,10 @@ const useRefreshToken = () => {
       return response.data.access;
     } catch (error) {
       console.error("[useRefreshToken] Refresh failed", error);
-      // Clear auth on refresh failure
       setAuth(null);
       throw error;
     }
-  };
+  }, [setAuth]);
 
   return refresh;
 };
