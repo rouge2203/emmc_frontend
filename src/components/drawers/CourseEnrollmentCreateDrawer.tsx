@@ -654,14 +654,13 @@ const CourseEnrollmentCreateDrawer: React.FC<
                                 </div>
                                 <div className="ml-3">
                                   <p className="text-sm text-blue-700">
-                                    Se creará un pago de 1 de{" "}
+                                    Se creará un pago de matrícula de{" "}
                                     <span className="font-medium">
                                       ₡
                                       {(
                                         23460 + (incluirCarnet ? 1695 : 0)
                                       ).toLocaleString("es-CR")}
-                                    </span>{" "}
-                                    con fecha de hoy.
+                                    </span>
                                   </p>
                                 </div>
                               </div>

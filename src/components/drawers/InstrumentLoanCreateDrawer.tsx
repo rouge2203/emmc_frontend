@@ -262,23 +262,23 @@ const InstrumentLoanCreateDrawer: React.FC<InstrumentLoanCreateDrawerProps> = ({
 
   // Filter instruments based on search
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !instrumentId) {
       const timeoutId = setTimeout(() => {
         fetchInstruments(instrumentSearch);
       }, 300);
       return () => clearTimeout(timeoutId);
     }
-  }, [instrumentSearch, isOpen]);
+  }, [instrumentSearch, isOpen, instrumentId]);
 
   // Filter users based on search
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !loanUserId) {
       const timeoutId = setTimeout(() => {
         fetchUsers(userSearch);
       }, 300);
       return () => clearTimeout(timeoutId);
     }
-  }, [userSearch, isOpen]);
+  }, [userSearch, isOpen, loanUserId]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
