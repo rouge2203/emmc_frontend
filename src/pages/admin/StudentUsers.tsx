@@ -8,12 +8,15 @@ import {
   XMarkIcon,
   FunnelIcon,
   BarsArrowUpIcon,
+  BanknotesIcon,
 } from "@heroicons/react/24/outline";
 import StudentInfoDrawer from "../../components/drawers/StudentInfoDrawer";
 import StudentCreateDrawer from "../../components/drawers/StudentCreateDrawer";
 import UserObservationsDrawer from "../../components/drawers/UserObservationsDrawer";
 import { RiMailCloseFill } from "react-icons/ri";
 import { HiOutlineAcademicCap } from "react-icons/hi2";
+import { LuVote } from "react-icons/lu";
+import { GiClarinet } from "react-icons/gi";
 
 interface StudentUser {
   id: number;
@@ -44,6 +47,9 @@ interface StudentUser {
     gender: string | null;
     work: string | null;
   } | null;
+  has_active_enrollment?: boolean;
+  active_enrollment_period?: number | null;
+  active_enrollment_year?: number | null;
 }
 
 interface PaginationInfo {
@@ -70,7 +76,7 @@ const StudentUsers = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(25);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
@@ -82,6 +88,7 @@ const StudentUsers = () => {
   const [orderBy, setOrderBy] = useState("-date_joined");
   const [statusFilter, setStatusFilter] = useState<boolean | null>(null);
   const [noEmailFilter, setNoEmailFilter] = useState(false);
+  const [enrollmentFilter, setEnrollmentFilter] = useState("");
 
   const fetchUsers = useCallback(
     async (pageNum: number) => {
@@ -107,29 +114,39 @@ const StudentUsers = () => {
           requestData.no_email_set = noEmailFilter;
         }
 
+        if (enrollmentFilter) {
+          requestData.enrollment_filter = enrollmentFilter;
+        }
+
         const response = await axiosPrivate.post<PaginatedResponse>(
           "users/get-users",
-          requestData
+          requestData,
         );
         setUsers(response.data.results);
         setPagination(response.data.pagination);
       } catch (err: any) {
         setError(
-          err?.response?.data?.error || "Error al cargar los estudiantes"
+          err?.response?.data?.error || "Error al cargar los estudiantes",
         );
         console.error("Error fetching student users:", err);
       } finally {
-        setTimeout(() => {
-          setIsLoading(false);
-        }, 250);
+        setIsLoading(false);
       }
     },
-    [axiosPrivate, pageSize, searchQuery, orderBy, statusFilter, noEmailFilter]
+    [
+      axiosPrivate,
+      pageSize,
+      searchQuery,
+      orderBy,
+      statusFilter,
+      noEmailFilter,
+      enrollmentFilter,
+    ],
   );
 
   useEffect(() => {
-    setPage(1); // Reset to first page when filters change
-  }, [searchQuery, orderBy, statusFilter, noEmailFilter]);
+    setPage(1);
+  }, [searchQuery, orderBy, statusFilter, noEmailFilter, enrollmentFilter]);
 
   useEffect(() => {
     fetchUsers(page);
@@ -200,18 +217,20 @@ const StudentUsers = () => {
     setOrderBy("-date_joined");
     setStatusFilter(null);
     setNoEmailFilter(false);
+    setEnrollmentFilter("");
   };
 
   const hasActiveFilters =
     searchQuery.trim() !== "" ||
     orderBy !== "-date_joined" ||
     statusFilter !== null ||
-    noEmailFilter;
+    noEmailFilter ||
+    enrollmentFilter !== "";
 
   // Placeholder image URL
   const getPlaceholderImage = (name: string) => {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      name
+      name,
     )}&background=155c95&color=fff&size=128`;
   };
 
@@ -358,7 +377,7 @@ const StudentUsers = () => {
                 className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1"
               >
                 <FunnelIcon className="h-4 w-4" />
-                Estado
+                Acceso Portal
               </label>
               <div className="mt-2 grid grid-cols-1">
                 <select
@@ -367,18 +386,56 @@ const StudentUsers = () => {
                     statusFilter === null
                       ? "all"
                       : statusFilter
-                      ? "active"
-                      : "inactive"
+                        ? "active"
+                        : "inactive"
                   }
                   onChange={(e) => {
                     const value = e.target.value;
-                    setStatusFilter(value === "all" ? null : value === "active");
+                    setStatusFilter(
+                      value === "all" ? null : value === "active",
+                    );
                   }}
                   className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                 >
-                  <option value="all">Todos los estados</option>
+                  <option value="all">Todos los accesos</option>
                   <option value="active">Solo activos</option>
                   <option value="inactive">Solo inactivos</option>
+                </select>
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  data-slot="icon"
+                  aria-hidden="true"
+                  className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                >
+                  <path
+                    d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                    clipRule="evenodd"
+                    fillRule="evenodd"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            {/* Enrollment Filter */}
+            <div className="sm:w-48">
+              <label
+                htmlFor="enrollmentFilter"
+                className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1"
+              >
+                <LuVote className="h-4 w-4" />
+                Matrículas
+              </label>
+              <div className="mt-2 grid grid-cols-1">
+                <select
+                  id="enrollmentFilter"
+                  value={enrollmentFilter}
+                  onChange={(e) => setEnrollmentFilter(e.target.value)}
+                  className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                >
+                  <option value="">Todas</option>
+                  <option value="matriculados">Matriculados</option>
+                  <option value="sin_matricula">Sin matrícula</option>
                 </select>
                 <svg
                   viewBox="0 0 16 16"
@@ -446,14 +503,15 @@ const StudentUsers = () => {
                         scope="col"
                         className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
                       >
-                        Estado
+                        Acceso Portal
                       </th>
                       <th
                         scope="col"
                         className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
                       >
-                        Carnet
+                        Matrícula
                       </th>
+
                       <th scope="col" className="py-3.5 pr-4 pl-3 sm:pr-0">
                         <span className="sr-only">Editar</span>
                       </th>
@@ -463,7 +521,7 @@ const StudentUsers = () => {
                     {users.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={4}
+                          colSpan={6}
                           className="py-5 pr-3 pl-4 text-sm text-center text-gray-500 sm:pl-0"
                         >
                           No se encontraron estudiantes
@@ -494,7 +552,7 @@ const StudentUsers = () => {
                                 </div>
                                 <div className="ml-4">
                                   <div className="font-medium text-gray-900">
-                                    {fullName}
+                                    {fullName} ({user.profile?.carnet})
                                   </div>
                                   <div className="mt-1 text-gray-500">
                                     {displayEmail}
@@ -507,15 +565,30 @@ const StudentUsers = () => {
                                 className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
                                   user.is_active
                                     ? "bg-green-50 text-green-700 ring-green-600/20"
-                                    : "bg-red-50 text-red-700 ring-red-600/20"
+                                    : "bg-red-50 text-red-400 ring-red-600/20"
                                 }`}
                               >
                                 {user.is_active ? "Activo" : "Inactivo"}
                               </span>
                             </td>
                             <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
-                              {user.profile?.carnet || "—"}
+                              {user.has_active_enrollment ? (
+                                <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary ring-1 ring-inset ring-primary/20">
+                                  Activa
+                                  {user.active_enrollment_period &&
+                                  user.active_enrollment_year
+                                    ? ` ${["I", "II", "III", "IV", "V"][user.active_enrollment_period - 1] || user.active_enrollment_period}-${user.active_enrollment_year}`
+                                    : ""}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
+                                  Inactiva
+                                </span>
+                              )}
                             </td>
+                            {/* <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
+                              {user.profile?.carnet || "—"}
+                            </td> */}
                             <td className="py-5 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
                               <div className="flex gap-2 justify-end">
                                 <button
@@ -527,14 +600,42 @@ const StudentUsers = () => {
                                       : user.first_name?.trim() || "";
                                     navigate(
                                       `/admin/cursos-matriculados?student_search=${encodeURIComponent(
-                                        searchTerm
-                                      )}`
+                                        searchTerm,
+                                      )}`,
                                     );
                                   }}
                                   className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm flex items-center gap-1"
                                 >
                                   <HiOutlineAcademicCap className="h-4 w-4" />
                                   Cursos
+                                  <span className="sr-only">, {fullName}</span>
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    navigate(
+                                      `/admin/centro-de-pagos?student_id=${user.id}`,
+                                    )
+                                  }
+                                  className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm flex items-center gap-1"
+                                >
+                                  <BanknotesIcon className="h-4 w-4" />
+                                  Pagos
+                                  <span className="sr-only">, {fullName}</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const searchTerm =
+                                      `${user.first_name || ""} ${user.last_name || ""}`.trim();
+                                    navigate(
+                                      `/admin/instrumentos/alquileres?user_search=${encodeURIComponent(
+                                        searchTerm,
+                                      )}`,
+                                    );
+                                  }}
+                                  className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm flex items-center gap-1"
+                                >
+                                  <GiClarinet className="h-4 w-4" />
+                                  Alquileres
                                   <span className="sr-only">, {fullName}</span>
                                 </button>
                                 <button
@@ -580,7 +681,7 @@ const StudentUsers = () => {
               <span className="font-medium">
                 {Math.min(
                   pagination.page_size * pagination.page,
-                  pagination.total_count
+                  pagination.total_count,
                 )}
               </span>{" "}
               de <span className="font-medium">{pagination.total_count}</span>{" "}
@@ -615,8 +716,8 @@ const StudentUsers = () => {
           // Update the specific user in the table without refetching
           setUsers((prevUsers) =>
             prevUsers.map((user) =>
-              user.id === updatedUser.id ? updatedUser : user
-            )
+              user.id === updatedUser.id ? updatedUser : user,
+            ),
           );
         }}
       />

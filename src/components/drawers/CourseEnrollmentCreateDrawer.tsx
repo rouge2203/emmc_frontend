@@ -124,6 +124,10 @@ const CourseEnrollmentCreateDrawer: React.FC<
   const [price, setPrice] = useState<string>("");
   const priceManuallyEdited = useRef(false);
   const [weekDuration, setWeekDuration] = useState<number>(12);
+  const [firstPaymentDate, setFirstPaymentDate] = useState<string>(
+    () => new Date().toISOString().split("T")[0],
+  );
+  const [incluirCarnet, setIncluirCarnet] = useState(false);
 
   // Prerequisite status state
   const [prerequisiteStatus, setPrerequisiteStatus] =
@@ -288,6 +292,8 @@ const CourseEnrollmentCreateDrawer: React.FC<
       setPeriod(1);
       setPrice("");
       setWeekDuration(12);
+      setFirstPaymentDate(new Date().toISOString().split("T")[0]);
+      setIncluirCarnet(false);
       setErrors({});
       setShowCourseDropdown(false);
       setShowStudentDropdown(false);
@@ -409,10 +415,15 @@ const CourseEnrollmentCreateDrawer: React.FC<
         period: period,
         price: parseInt(price),
         week_duration: weekDuration,
+        first_payment_date: firstPaymentDate || null,
       };
 
       if (selectedProfessor) {
         createData.professor_id = selectedProfessor.id;
+      }
+
+      if (selectedCourse.is_matricula) {
+        createData.incluir_carnet = incluirCarnet;
       }
 
       await axiosPrivate.post<EnrollmentResponse>(
@@ -445,6 +456,8 @@ const CourseEnrollmentCreateDrawer: React.FC<
       setPeriod(1);
       setPrice("");
       setWeekDuration(12);
+      setFirstPaymentDate(new Date().toISOString().split("T")[0]);
+      setIncluirCarnet(false);
       setErrors({});
       priceManuallyEdited.current = false;
 
@@ -627,6 +640,40 @@ const CourseEnrollmentCreateDrawer: React.FC<
                                   </p>
                                 </div>
                               </div>
+                            </div>
+                          )}
+                          {/* Anualidad info alert for matricula courses */}
+                          {selectedCourse?.is_matricula && (
+                            <div className="mt-2 rounded-md bg-blue-50 p-3 space-y-2">
+                              <div className="flex">
+                                <div className="shrink-0">
+                                  <InformationCircleIcon
+                                    aria-hidden="true"
+                                    className="size-5 text-blue-400"
+                                  />
+                                </div>
+                                <div className="ml-3">
+                                  <p className="text-sm text-blue-700">
+                                    Se creará un pago de anualidad de{" "}
+                                    <span className="font-medium">
+                                      ₡{(23460 + (incluirCarnet ? 1695 : 0)).toLocaleString("es-CR")}
+                                    </span>{" "}
+                                    con fecha de hoy.
+                                  </p>
+                                </div>
+                              </div>
+                              <label className="flex items-center gap-2 cursor-pointer ml-8">
+                                <input
+                                  type="checkbox"
+                                  checked={incluirCarnet}
+                                  onChange={(e) => setIncluirCarnet(e.target.checked)}
+                                  className="size-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                <span className="text-sm text-blue-700">
+                                  Incluir Carnet{" "}
+                                  <span className="font-medium">(₡1,695 extra)</span>
+                                </span>
+                              </label>
                             </div>
                           )}
                         </div>
@@ -1010,6 +1057,30 @@ const CourseEnrollmentCreateDrawer: React.FC<
                               {errors.week_duration}
                             </p>
                           )}
+                        </div>
+                      </div>
+
+                      {/* First Payment Date */}
+                      <div className="space-y-2 px-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0 sm:px-6 sm:py-5">
+                        <div>
+                          <label
+                            htmlFor="first_payment_date"
+                            className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
+                          >
+                            Fecha primer pago
+                          </label>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <input
+                            id="first_payment_date"
+                            name="first_payment_date"
+                            type="date"
+                            value={firstPaymentDate}
+                            onChange={(e) =>
+                              setFirstPaymentDate(e.target.value)
+                            }
+                            className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 focus-visible:outline-gray-900"
+                          />
                         </div>
                       </div>
                     </div>

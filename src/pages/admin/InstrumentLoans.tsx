@@ -161,15 +161,18 @@ const InstrumentLoans = () => {
   useEffect(() => {
     const action = searchParams.get("action");
     const instrumentIdParam = searchParams.get("instrument_id");
+    const userSearchParam = searchParams.get("user_search");
 
     if (instrumentIdParam && action === "view") {
       const instrumentId = parseInt(instrumentIdParam);
       if (!isNaN(instrumentId)) {
-        // Fetch loans for this instrument and find the active one (status="prestado")
         fetchLoanByInstrument(instrumentId);
-        // Clear URL params after reading them
         setSearchParams({});
       }
+    } else if (userSearchParam) {
+      setUserSearchInput(userSearchParam);
+      setUserSearch(userSearchParam);
+      setSearchParams({});
     }
   }, [searchParams, setSearchParams]);
 

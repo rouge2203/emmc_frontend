@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import { BanknotesIcon } from "@heroicons/react/24/outline";
 import {
@@ -116,6 +117,7 @@ interface UsersResponse {
 }
 
 const Payments = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const axiosPrivate = useAxiosPrivate();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
@@ -294,6 +296,27 @@ const Payments = () => {
     fetchAvailableYears();
   }, []);
 
+  useEffect(() => {
+    const studentIdParam = searchParams.get("student_id");
+    if (studentIdParam) {
+      const studentId = parseInt(studentIdParam);
+      if (!isNaN(studentId)) {
+        axiosPrivate
+          .get("users/get-user-info", { params: { id: studentId } })
+          .then((res) => {
+            const user = res.data.user;
+            handleStudentSelect({
+              id: user.id,
+              first_name: user.first_name,
+              last_name: user.last_name,
+            });
+          })
+          .catch((err) => console.error("Error fetching student info:", err));
+        setSearchParams({});
+      }
+    }
+  }, []);
+
   // Effect to fetch payments when filters change
   useEffect(() => {
     fetchPayments(page);
@@ -387,7 +410,12 @@ const Payments = () => {
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
     try {
-      return new Date(dateString).toLocaleDateString("es-CR", {
+      // Extract just the date part (YYYY-MM-DD) to avoid timezone issues
+      // Django stores datetimes in UTC, but we only need the date
+      const datePart = dateString.split('T')[0].split(' ')[0];
+      const [year, month, day] = datePart.split('-').map(Number);
+      const date = new Date(year, month - 1, day); // month is 0-indexed
+      return date.toLocaleDateString("es-CR", {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -450,7 +478,7 @@ const Payments = () => {
     } else if (paymentType === "anualidad") {
       return (
         <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-600/20">
-          Anualidad
+          Matrícula
         </span>
       );
     }
@@ -577,7 +605,7 @@ const Payments = () => {
                   <option value="">Todos</option>
                   <option value="enrollment">Mensualidades</option>
                   <option value="loan">Alquileres</option>
-                  <option value="anualidad">Anualidades</option>
+                  <option value="anualidad">Matrícula</option>
                 </select>
                 <svg
                   viewBox="0 0 16 16"
@@ -827,7 +855,7 @@ const Payments = () => {
                 <div className="flex items-center gap-2">
                   <BanknotesIcon className="h-5 w-5 text-purple-500" />
                   <h4 className="text-sm font-medium text-purple-900">
-                    Anualidades Pendientes
+                    Matrícula Pendiente
                   </h4>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">

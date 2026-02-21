@@ -299,24 +299,24 @@ export default function CourseDashboard() {
   return (
     <div className="min-h-full bg-gray-50">
       <div className="bg-white border-b border-gray-200">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:py-6 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3 sm:gap-4">
             <button
               onClick={() => navigate(-1)}
-              className="rounded-full p-2 hover:bg-gray-100"
+              className="rounded-full p-2 hover:bg-gray-100 shrink-0"
             >
               <ArrowLeftIcon className="h-5 w-5 text-gray-500" />
             </button>
-            <div className="flex-1">
-              <h1 className="text-xl font-bold text-gray-900">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">
                 {enrollment.course.name}
               </h1>
-              <p className="text-sm text-gray-500">
+              <p className="text-xs sm:text-sm text-gray-500 truncate">
                 {enrollment.course.code} - {professorName}
               </p>
             </div>
             <div
-              className={`rounded-md px-3 py-1 text-sm font-medium ring-1 ring-inset ${
+              className={`shrink-0 rounded-md px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium ring-1 ring-inset ${
                 statusLabels[enrollment.status]?.className ||
                 "bg-gray-50 text-gray-600 ring-gray-500/10"
               }`}
@@ -385,11 +385,11 @@ export default function CourseDashboard() {
         )}
 
         <div className="bg-white rounded-lg border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="px-4 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h2 className="text-base font-semibold text-gray-900">
               Contenido del curso
             </h2>
-            <span className="text-xs font-medium text-gray-500">
+            <span className="hidden sm:block text-xs font-medium text-gray-500">
               Expande cada semana para ver tareas y recursos
             </span>
           </div>
@@ -401,19 +401,18 @@ export default function CourseDashboard() {
                 weekAssignments.length > 0 || weekResources.length > 0;
 
               return (
-                <li key={week} className="px-6 py-5">
+                <li key={week} className="px-4 sm:px-6 py-5">
                   <Disclosure>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white text-sm font-semibold">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-primary text-white text-sm font-semibold">
                           {week}
                         </span>
-                        <div>
+                        <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <h3 className="text-sm font-semibold text-gray-900">
                               Semana {week}
                             </h3>
-                            {/* Trabajo Cotidiano Badge (view-only) */}
                             <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ring-gray-200">
                               <BiCalendarEdit className="h-3 w-3" />
                               {getDailyWorkGrade(week) !== null ? (
@@ -421,13 +420,13 @@ export default function CourseDashboard() {
                                   {getDailyWorkGrade(week)}/10
                                 </span>
                               ) : (
-                                <span className="text-gray-500">
+                                <span className="text-gray-500 hidden sm:inline">
                                   Sin calificar
                                 </span>
                               )}
                             </span>
                           </div>
-                          <p className="text-xs text-gray-500 flex flex-wrap items-center gap-4">
+                          <p className="text-xs text-gray-500 flex flex-wrap items-center gap-2 sm:gap-4">
                             <span className="inline-flex items-center gap-1">
                               <DocumentTextIcon className="h-4 w-4 text-blue-500/80" />
                               {weekAssignments.length} tareas
@@ -439,9 +438,9 @@ export default function CourseDashboard() {
                           </p>
                         </div>
                       </div>
-                      <DisclosureButton className="group inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-                        Ver contenido
-                        <ChevronDownIcon className="h-4 w-4 transition-transform group-data-[open]:rotate-180" />
+                      <DisclosureButton className="group inline-flex items-center gap-2 rounded-md px-2 sm:px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 shrink-0">
+                        <span className="hidden sm:inline">Ver contenido</span>
+                        <ChevronDownIcon className="h-5 w-5 sm:h-4 sm:w-4 transition-transform group-data-[open]:rotate-180" />
                       </DisclosureButton>
                     </div>
                     <DisclosurePanel
@@ -457,7 +456,7 @@ export default function CourseDashboard() {
                       {weekAssignments.map((assignment) => (
                         <div
                           key={assignment.id}
-                          className={`flex items-center justify-between gap-x-6 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-primary/40 hover:shadow-sm ${
+                          className={`flex items-center justify-between gap-x-3 sm:gap-x-6 rounded-lg border border-gray-200 px-3 sm:px-4 py-3 transition hover:border-primary/40 hover:shadow-sm ${
                             assignment.is_concert
                               ? "bg-purple-50/50"
                               : assignment.is_exam
@@ -466,24 +465,24 @@ export default function CourseDashboard() {
                           }`}
                         >
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-start gap-x-3">
+                            <div className="flex items-start gap-x-2 sm:gap-x-3">
                               {(assignment.is_concert &&
                                 assignment.title ===
                                   "Asistencia a Recital 1") ||
                               assignment.title === "Asistencia a Recital 2" ? (
-                                <GiMusicalNotes className="size-5 text-purple-500 mt-0.5" />
+                                <GiMusicalNotes className="size-5 shrink-0 text-purple-500 mt-0.5" />
                               ) : assignment.is_exam ? (
-                                <MusicalNoteIcon className="h-5 w-5 text-purple-500 mt-0.5" />
+                                <MusicalNoteIcon className="h-5 w-5 shrink-0 text-purple-500 mt-0.5" />
                               ) : assignment.is_concert &&
                                 assignment.title ===
                                   "Participación en Recital" ? (
-                                <GiMusicalNotes className="size-5 text-purple-500 mt-0.5" />
+                                <GiMusicalNotes className="size-5 shrink-0 text-purple-500 mt-0.5" />
                               ) : (
-                                <DocumentTextIcon className="h-5 w-5 text-blue-500 mt-0.5" />
+                                <DocumentTextIcon className="h-5 w-5 shrink-0 text-blue-500 mt-0.5" />
                               )}
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <p className="text-sm font-semibold text-gray-900">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                                  <p className="text-sm font-semibold text-gray-900 truncate">
                                     {assignment.title}
                                   </p>
                                   {assignment.is_concert && (
@@ -497,7 +496,7 @@ export default function CourseDashboard() {
                                     </span>
                                   )}
                                 </div>
-                                <div className="mt-1 flex flex-wrap items-center gap-2">
+                                <div className="mt-1 flex flex-wrap items-center gap-1 sm:gap-2">
                                   {assignment.grade !== null ? (
                                     <span className="inline-flex rounded-md bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
                                       {assignment.grade}
@@ -507,7 +506,8 @@ export default function CourseDashboard() {
                                     </span>
                                   ) : (
                                     <span className="inline-flex rounded-md bg-yellow-50 px-1.5 py-0.5 text-xs font-medium text-yellow-700 ring-1 ring-inset ring-yellow-600/20">
-                                      Sin calificar
+                                      <span className="hidden sm:inline">Sin calificar</span>
+                                      <span className="sm:hidden">Pend.</span>
                                       {assignment.points !== null &&
                                         ` (${assignment.points} pts)`}
                                     </span>
@@ -515,7 +515,7 @@ export default function CourseDashboard() {
                                   {assignment.comment_grade && (
                                     <span className="inline-flex items-center gap-1 rounded-md bg-gray-50 px-1.5 py-0.5 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
                                       <ChatBubbleLeftRightIcon className="h-3 w-3" />
-                                      Comentario
+                                      <span className="hidden sm:inline">Comentario</span>
                                     </span>
                                   )}
                                 </div>
@@ -527,13 +527,13 @@ export default function CourseDashboard() {
                               </div>
                             </div>
                           </div>
-                          <div className="flex flex-none items-center gap-x-2">
+                          <div className="flex flex-none items-center gap-x-1 sm:gap-x-2">
                             {assignment.assignment_file_url && (
                               <a
                                 href={assignment.assignment_file_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="rounded-md bg-white p-2 text-gray-500 hover:text-gray-700 ring-1 ring-inset ring-gray-300"
+                                className="hidden sm:block rounded-md bg-white p-2 text-gray-500 hover:text-gray-700 ring-1 ring-inset ring-gray-300"
                               >
                                 <DocumentArrowDownIcon className="h-4 w-4" />
                               </a>
@@ -545,7 +545,7 @@ export default function CourseDashboard() {
                                   data: assignment,
                                 })
                               }
-                              className="rounded-md bg-primary/10 px-2.5 py-1.5 text-sm font-semibold text-primary hover:bg-primary/20"
+                              className="rounded-md bg-primary/10 px-2 sm:px-2.5 py-1.5 text-sm font-semibold text-primary hover:bg-primary/20"
                             >
                               Ver
                             </button>
@@ -556,13 +556,13 @@ export default function CourseDashboard() {
                       {weekResources.map((resource) => (
                         <div
                           key={resource.id}
-                          className="flex items-center justify-between gap-x-6 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-amber-300/60 hover:shadow-sm"
+                          className="flex items-center justify-between gap-x-3 sm:gap-x-6 rounded-lg border border-gray-200 px-3 sm:px-4 py-3 transition hover:border-amber-300/60 hover:shadow-sm"
                         >
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-start gap-x-3">
-                              <FolderIcon className="h-5 w-5 text-amber-500 mt-0.5" />
-                              <div>
-                                <p className="text-sm font-semibold text-gray-900">
+                            <div className="flex items-start gap-x-2 sm:gap-x-3">
+                              <FolderIcon className="h-5 w-5 shrink-0 text-amber-500 mt-0.5" />
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 truncate">
                                   {resource.title}
                                 </p>
                                 <p className="mt-1 inline-flex rounded-md bg-gray-50 px-1.5 py-0.5 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
@@ -571,13 +571,13 @@ export default function CourseDashboard() {
                               </div>
                             </div>
                           </div>
-                          <div className="flex flex-none items-center gap-x-2">
+                          <div className="flex flex-none items-center gap-x-1 sm:gap-x-2">
                             {resource.resource_file_url && (
                               <a
                                 href={resource.resource_file_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="rounded-md bg-white p-2 text-gray-500 hover:text-gray-700 ring-1 ring-inset ring-gray-300"
+                                className="hidden sm:block rounded-md bg-white p-2 text-gray-500 hover:text-gray-700 ring-1 ring-inset ring-gray-300"
                               >
                                 <DocumentArrowDownIcon className="h-4 w-4" />
                               </a>
@@ -589,7 +589,7 @@ export default function CourseDashboard() {
                                   data: resource,
                                 })
                               }
-                              className="rounded-md bg-amber-100 px-2.5 py-1.5 text-sm font-semibold text-amber-800 hover:bg-amber-200"
+                              className="rounded-md bg-amber-100 px-2 sm:px-2.5 py-1.5 text-sm font-semibold text-amber-800 hover:bg-amber-200"
                             >
                               Ver
                             </button>
@@ -607,40 +607,41 @@ export default function CourseDashboard() {
         {/* Evaluaciones del curso Section - Exams and Concerts */}
         {evaluationAssignments.length > 0 && (
           <div className="bg-white rounded-lg border border-gray-200 mb-8">
-            <div className="px-6 py-4 border-b border-gray-200">
+            <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
               <h2 className="text-base font-semibold text-gray-900">
                 Evaluaciones del curso
               </h2>
             </div>
             <ul role="list" className="divide-y divide-gray-100">
               {evaluationAssignments.map((assignment) => (
-                <li key={assignment.id} className="px-6 py-5">
-                  <div className="flex items-center justify-between gap-x-6">
+                <li key={assignment.id} className="px-4 sm:px-6 py-5">
+                  <div className="flex items-center justify-between gap-x-3 sm:gap-x-6">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-start gap-x-3">
+                      <div className="flex items-start gap-x-2 sm:gap-x-3">
                         {assignment.is_concert &&
                         assignment.title === "Participación en Recital" ? (
-                          <GiMusicalScore className="size-5 text-purple-500 mt-0.5" />
+                          <GiMusicalScore className="size-5 shrink-0 text-purple-500 mt-0.5" />
                         ) : assignment.is_exam ? (
-                          <ClipboardDocumentCheckIcon className="h-5 w-5 text-amber-600 mt-0.5" />
+                          <ClipboardDocumentCheckIcon className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
                         ) : (
-                          <GiMusicalNotes className="size-5 text-purple-500 mt-0.5" />
+                          <GiMusicalNotes className="size-5 shrink-0 text-purple-500 mt-0.5" />
                         )}
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold text-gray-900">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
                               {assignment.title}
                             </p>
                             {assignment.grade !== null ? (
-                              <p className="mt-0.5 inline-flex rounded-md px-1.5 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                              <p className="inline-flex rounded-md px-1.5 py-0.5 sm:py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
                                 {assignment.grade}
                                 {assignment.points !== null &&
                                   ` / ${assignment.points}`}{" "}
                                 pts
                               </p>
                             ) : (
-                              <p className="mt-0.5 inline-flex items-center rounded-md px-1.5 py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
-                                Sin calificar
+                              <p className="inline-flex items-center rounded-md px-1.5 py-0.5 sm:py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
+                                <span className="hidden sm:inline">Sin calificar</span>
+                                <span className="sm:hidden">Pend.</span>
                                 {assignment.points !== null &&
                                   ` - ${assignment.points} pts`}
                               </p>
@@ -659,13 +660,13 @@ export default function CourseDashboard() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex flex-none items-center gap-x-2">
+                    <div className="flex flex-none items-center gap-x-1 sm:gap-x-2">
                       {assignment.assignment_file_url && (
                         <a
                           href={assignment.assignment_file_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="rounded-md bg-white p-2 text-gray-500 hover:text-gray-700 ring-1 ring-inset ring-gray-300"
+                          className="hidden sm:block rounded-md bg-white p-2 text-gray-500 hover:text-gray-700 ring-1 ring-inset ring-gray-300"
                         >
                           <DocumentArrowDownIcon className="h-4 w-4" />
                         </a>
@@ -677,7 +678,7 @@ export default function CourseDashboard() {
                             data: assignment,
                           })
                         }
-                        className="rounded-md bg-primary/10 px-2.5 py-1.5 text-sm font-semibold text-primary hover:bg-primary/20"
+                        className="rounded-md bg-primary/10 px-2 sm:px-2.5 py-1.5 text-sm font-semibold text-primary hover:bg-primary/20"
                       >
                         Ver
                       </button>
@@ -689,20 +690,20 @@ export default function CourseDashboard() {
           </div>
         )}
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-900">
+        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <h2 className="text-sm sm:text-base font-semibold text-gray-900">
               Resumen y Calificación{" "}
               {enrollment.status === "cursando" ? "Parcial" : "Final"}
             </h2>
-            <div className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary">
+            <div className="shrink-0 inline-flex items-center gap-2 rounded-md bg-primary/10 px-2 sm:px-3 py-1.5 text-sm font-semibold text-primary">
               <AcademicCapIcon className="h-4 w-4" />
               {calculateFinalGrade().toFixed(1)}%
             </div>
           </div>
 
           {/* Grade Breakdown */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-4 mb-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4 mb-4">
             <div className="shadow-md rounded-lg p-4">
               <dt className="text-sm font-medium text-blue-700 flex items-center gap-1">
                 Trabajo Cotidiano (50%)

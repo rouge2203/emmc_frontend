@@ -200,12 +200,16 @@ const PaymentViewEditDrawer: React.FC<PaymentViewEditDrawerProps> = ({
   const formatDateTime = (dateString: string | null) => {
     if (!dateString) return "N/A";
     try {
-      return new Date(dateString).toLocaleString("es-CR", {
+      // Parse datetime properly to avoid timezone issues
+      // Django sends UTC datetime, convert it properly
+      const date = new Date(dateString);
+      return date.toLocaleString("es-CR", {
         year: "numeric",
         month: "long",
         day: "numeric",
         hour: "2-digit",
         minute: "2-digit",
+        timeZone: "America/Costa_Rica",
       });
     } catch {
       return "N/A";

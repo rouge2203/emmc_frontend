@@ -587,25 +587,25 @@ export default function CourseDashboard() {
 
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:py-6 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3 sm:gap-4">
             <button
               onClick={() => navigate(-1)}
-              className="rounded-full p-2 hover:bg-gray-100"
+              className="rounded-full p-2 hover:bg-gray-100 shrink-0"
             >
               <ArrowLeftIcon className="h-5 w-5 text-gray-500" />
             </button>
-            <div className="flex-1">
-              <h1 className="text-xl font-bold text-gray-900">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">
                 {enrollment.course.name}
               </h1>
-              <p className="text-sm text-gray-500">
+              <p className="text-xs sm:text-sm text-gray-500 truncate">
                 {enrollment.course.code} - {enrollment.student.first_name}{" "}
                 {enrollment.student.last_name}
               </p>
             </div>
             <div
-              className={`rounded-md px-3 py-1 text-sm font-medium ring-1 ring-inset ${
+              className={`shrink-0 rounded-md px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium ring-1 ring-inset ${
                 statusLabels[enrollment.status]?.className ||
                 "bg-gray-50 text-gray-600 ring-gray-500/10"
               }`}
@@ -684,7 +684,7 @@ export default function CourseDashboard() {
 
         {/* Weeks List */}
         <div className="bg-white rounded-lg border border-gray-200 mb-8">
-          <div className="px-6 py-4 border-b border-gray-200">
+          <div className="px-6 py-4 border-b  border-gray-200">
             <h2 className="text-base font-semibold text-gray-900">
               Contenido del Curso
             </h2>
@@ -767,39 +767,34 @@ export default function CourseDashboard() {
                   {weekAssignments.map((assignment) => (
                     <div
                       key={assignment.id}
-                      className={`flex items-center justify-between gap-x-6 py-4 border-t border-gray-100 ${
-                        assignment.is_concert
-                          ? ""
-                          : assignment.is_exam
-                            ? ""
-                            : ""
-                      }`}
+                      className="flex items-center justify-between gap-x-3 sm:gap-x-6 py-4 border-t border-gray-100"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start gap-x-3">
                           {assignment.is_concert ? (
-                            <GiMusicalNotes className="size-5 text-purple-500 mt-0.5" />
+                            <GiMusicalNotes className="size-5 shrink-0 text-purple-500 mt-0.5" />
                           ) : assignment.is_exam ? (
-                            <ClipboardDocumentCheckIcon className="h-5 w-5 text-amber-600 mt-0.5" />
+                            <ClipboardDocumentCheckIcon className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
                           ) : (
-                            <GiMusicalScore className="size-5 text-blue-500 mt-0.5" />
+                            <GiMusicalScore className="size-5 shrink-0 text-blue-500 mt-0.5" />
                           )}
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-semibold text-gray-900">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                              <p className="text-sm font-semibold text-gray-900 truncate">
                                 {assignment.title}
                               </p>
                               {assignment.grade !== null ? (
-                                <p className="mt-0.5 inline-flex rounded-md px-1.5 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                                <p className="inline-flex rounded-md px-1.5 py-0.5 sm:py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
                                   {assignment.grade}
                                   {assignment.points !== null &&
                                     ` / ${assignment.points}`}{" "}
                                   pts
                                 </p>
                               ) : (
-                                <p className="mt-0.5 inline-flex items-center  rounded-md  px-1.5 py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
+                                <p className="inline-flex items-center rounded-md px-1.5 py-0.5 sm:py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
                                   <FaExclamation className="size-3 mr-0" />{" "}
-                                  Pendiente calificar -{" "}
+                                  <span className="hidden sm:inline">Pendiente calificar - </span>
+                                  <span className="sm:hidden">Pend. - </span>
                                   {assignment.points !== null &&
                                     ` ${assignment.points} pts`}
                                 </p>
@@ -819,13 +814,13 @@ export default function CourseDashboard() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex flex-none items-center gap-x-2">
+                      <div className="flex flex-none items-center gap-x-1 sm:gap-x-2">
                         {assignment.assignment_file_url && (
                           <a
                             href={assignment.assignment_file_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="rounded-md bg-white p-2 text-gray-500 hover:text-gray-700 ring-1 ring-inset ring-gray-300"
+                            className="hidden sm:block rounded-md bg-white p-2 text-gray-500 hover:text-gray-700 ring-1 ring-inset ring-gray-300"
                           >
                             <DocumentArrowDownIcon className="h-4 w-4" />
                           </a>
@@ -833,14 +828,14 @@ export default function CourseDashboard() {
                         {assignment.grade === null && !isReadOnly && (
                           <button
                             onClick={() => openGradeDialog(assignment)}
-                            className="rounded-md bg-primary px-2.5 py-1.5 text-sm font-semibold text-white hover:bg-primary/90"
+                            className="hidden sm:block rounded-md bg-primary px-2.5 py-1.5 text-sm font-semibold text-white hover:bg-primary/90"
                           >
                             Calificar
                           </button>
                         )}
                         <Link
                           to={`/teacher/assignment/${assignment.id}`}
-                          className=" hidden sm:block rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                          className="hidden sm:block rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
                         >
                           Ver
                         </Link>
@@ -849,7 +844,7 @@ export default function CourseDashboard() {
                             <EllipsisVerticalIcon className="h-5 w-5" />
                           </Menu.Button>
 
-                          <Menu.Items className="absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
+                          <Menu.Items className="absolute right-0 z-10 mt-2 w-36 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
                             <Menu.Item>
                               {({ active }) => (
                                 <button
@@ -866,7 +861,22 @@ export default function CourseDashboard() {
                                 </button>
                               )}
                             </Menu.Item>
-                            {/* Only show Edit for non-concert assignments */}
+                            {assignment.assignment_file_url && (
+                              <Menu.Item>
+                                {({ active }) => (
+                                  <a
+                                    href={assignment.assignment_file_url!}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`${
+                                      active ? "bg-gray-50" : ""
+                                    } block w-full px-3 py-1 text-left text-sm text-gray-900 sm:hidden`}
+                                  >
+                                    Descargar
+                                  </a>
+                                )}
+                              </Menu.Item>
+                            )}
                             {!assignment.is_concert && !isReadOnly && (
                               <Menu.Item>
                                 {({ active }) => (
@@ -897,7 +907,6 @@ export default function CourseDashboard() {
                                 )}
                               </Menu.Item>
                             )}
-                            {/* Only show Delete for normal assignments (not concert or exam) */}
                             {!assignment.is_concert &&
                               !assignment.is_exam &&
                               !isReadOnly && (
@@ -930,13 +939,13 @@ export default function CourseDashboard() {
                   {weekResources.map((resource) => (
                     <div
                       key={resource.id}
-                      className="flex items-center justify-between gap-x-6 py-4 border-t border-gray-100"
+                      className="flex items-center justify-between gap-x-3 sm:gap-x-6 py-4 border-t border-gray-100"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start gap-x-3">
-                          <FolderIcon className="h-5 w-5 text-amber-500 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">
+                          <FolderIcon className="h-5 w-5 shrink-0 text-amber-500 mt-0.5" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
                               {resource.title}
                             </p>
                             <p className="mt-0.5 inline-flex rounded-md bg-gray-50 px-1.5 py-0.5 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
@@ -950,13 +959,13 @@ export default function CourseDashboard() {
                           </p>
                         )} */}
                       </div>
-                      <div className="flex flex-none items-center gap-x-2">
+                      <div className="flex flex-none items-center gap-x-1 sm:gap-x-2">
                         {resource.resource_file_url && (
                           <a
                             href={resource.resource_file_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="rounded-md bg-white p-2 text-gray-500 hover:text-gray-700 ring-1 ring-inset ring-gray-300"
+                            className="hidden sm:block rounded-md bg-white p-2 text-gray-500 hover:text-gray-700 ring-1 ring-inset ring-gray-300"
                           >
                             <DocumentArrowDownIcon className="h-4 w-4" />
                           </a>
@@ -971,7 +980,7 @@ export default function CourseDashboard() {
                           <Menu.Button className="block rounded-md p-2 text-gray-500 hover:text-gray-900">
                             <EllipsisVerticalIcon className="h-5 w-5" />
                           </Menu.Button>
-                          <Menu.Items className="absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
+                          <Menu.Items className="absolute right-0 z-10 mt-2 w-36 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
                             <Menu.Item>
                               {({ active }) => (
                                 <button
@@ -986,6 +995,22 @@ export default function CourseDashboard() {
                                 </button>
                               )}
                             </Menu.Item>
+                            {resource.resource_file_url && (
+                              <Menu.Item>
+                                {({ active }) => (
+                                  <a
+                                    href={resource.resource_file_url!}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`${
+                                      active ? "bg-gray-50" : ""
+                                    } block w-full px-3 py-1 text-left text-sm text-gray-900 sm:hidden`}
+                                  >
+                                    Descargar
+                                  </a>
+                                )}
+                              </Menu.Item>
+                            )}
                             {!isReadOnly && (
                               <>
                                 <Menu.Item>
@@ -1043,34 +1068,35 @@ export default function CourseDashboard() {
             </div>
             <ul role="list" className="divide-y divide-gray-100">
               {evaluationAssignments.map((assignment) => (
-                <li key={assignment.id} className="px-6 py-5">
-                  <div className="flex items-center justify-between gap-x-6">
+                <li key={assignment.id} className="px-4 sm:px-6 py-5">
+                  <div className="flex items-center justify-between gap-x-3 sm:gap-x-6">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start gap-x-3">
                         {assignment.is_concert &&
                         assignment.title != "Participación en Recital" ? (
-                          <GiMusicalNotes className="size-5 text-purple-500 mt-0.5" />
+                          <GiMusicalNotes className="size-5 shrink-0 text-purple-500 mt-0.5" />
                         ) : assignment.is_exam ? (
-                          <ClipboardDocumentCheckIcon className="h-5 w-5 text-amber-600 mt-0.5" />
+                          <ClipboardDocumentCheckIcon className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
                         ) : (
-                          <GiMusicalScore className="h-5 w-5 text-purple-500 mt-0.5" />
+                          <GiMusicalScore className="h-5 w-5 shrink-0 text-purple-500 mt-0.5" />
                         )}
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold text-gray-900">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
                               {assignment.title}
                             </p>
                             {assignment.grade !== null ? (
-                              <p className="mt-0.5 inline-flex rounded-md px-1.5 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                              <p className="inline-flex rounded-md px-1.5 py-0.5 sm:py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
                                 {assignment.grade}
                                 {assignment.points !== null &&
                                   ` / ${assignment.points}`}{" "}
                                 pts
                               </p>
                             ) : (
-                              <p className="mt-0.5 inline-flex items-center rounded-md px-1.5 py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
+                              <p className="inline-flex items-center rounded-md px-1.5 py-0.5 sm:py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
                                 <FaExclamation className="size-3 mr-0" />{" "}
-                                Pendiente calificar -
+                                <span className="hidden sm:inline">Pendiente calificar - </span>
+                                <span className="sm:hidden">Pend. - </span>
                                 {assignment.points !== null &&
                                   ` ${assignment.points} pts`}
                               </p>
@@ -1089,13 +1115,13 @@ export default function CourseDashboard() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex flex-none items-center gap-x-2">
+                    <div className="flex flex-none items-center gap-x-1 sm:gap-x-2">
                       {assignment.assignment_file_url && (
                         <a
                           href={assignment.assignment_file_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="rounded-md bg-white p-2 text-gray-500 hover:text-gray-700 ring-1 ring-inset ring-gray-300"
+                          className="hidden sm:block rounded-md bg-white p-2 text-gray-500 hover:text-gray-700 ring-1 ring-inset ring-gray-300"
                         >
                           <DocumentArrowDownIcon className="h-4 w-4" />
                         </a>
@@ -1103,7 +1129,7 @@ export default function CourseDashboard() {
                       {assignment.grade === null && !isReadOnly && (
                         <button
                           onClick={() => openGradeDialog(assignment)}
-                          className="rounded-md bg-primary px-2.5 py-1.5 text-sm font-semibold text-white hover:bg-primary/90"
+                          className="hidden sm:block rounded-md bg-primary px-2.5 py-1.5 text-sm font-semibold text-white hover:bg-primary/90"
                         >
                           Calificar
                         </button>
@@ -1144,8 +1170,8 @@ export default function CourseDashboard() {
             </ul>
 
             {/* Assign All Daily Work Points Button */}
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <div className="flex items-center justify-between">
+            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-gray-900">
                     Asignar puntos de Trabajo Cotidiano
@@ -1158,7 +1184,7 @@ export default function CourseDashboard() {
                 <button
                   onClick={handleAssignAllDailyWorkPoints}
                   disabled={submitting || isReadOnly}
-                  className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                 >
                   <BiCalendarEdit className="h-4 w-4" />
                   {submitting ? "Asignando..." : "Asignar puntos"}
@@ -1170,14 +1196,14 @@ export default function CourseDashboard() {
 
         {/* Final Grade Section */}
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-10">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <h2 className="text-base font-semibold text-gray-900">
               Resumen y Calificación Final
             </h2>
             {enrollment.status === "cursando" && (
               <button
                 onClick={openFinalizeDialog}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
               >
                 <AcademicCapIcon className="h-5 w-5" />
                 Finalizar Curso
@@ -1186,7 +1212,7 @@ export default function CourseDashboard() {
           </div>
 
           {/* Grade Breakdown */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-4 mb-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4 mb-4">
             <div className="shadow-md rounded-lg p-4">
               <dt className="text-sm font-medium text-blue-700 flex items-center gap-1">
                 Trabajo Cotidiano (50%)

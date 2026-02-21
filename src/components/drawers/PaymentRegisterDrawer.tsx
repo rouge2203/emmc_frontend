@@ -211,7 +211,12 @@ const PaymentRegisterDrawer: React.FC<PaymentRegisterDrawerProps> = ({
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
     try {
-      return new Date(dateString).toLocaleDateString("es-CR", {
+      // Extract just the date part (YYYY-MM-DD) to avoid timezone issues
+      // Django stores datetimes in UTC, but we only need the date
+      const datePart = dateString.split('T')[0].split(' ')[0];
+      const [year, month, day] = datePart.split('-').map(Number);
+      const date = new Date(year, month - 1, day); // month is 0-indexed
+      return date.toLocaleDateString("es-CR", {
         year: "numeric",
         month: "short",
         day: "numeric",

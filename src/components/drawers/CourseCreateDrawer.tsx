@@ -98,6 +98,7 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
   const [specialPrice, setSpecialPrice] = useState<string>("");
   const [prerequisiteCode, setPrerequisiteCode] = useState<string>("");
   const [weekDuration, setWeekDuration] = useState<number>(12);
+  const [isMatricula, setIsMatricula] = useState(false);
   const [description, setDescription] = useState("");
 
   // Fetch prerequisite courses
@@ -128,6 +129,7 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
       specialPriceRef.current = "";
       setPrerequisiteCode("");
       setWeekDuration(12);
+      setIsMatricula(false);
       setDescription("");
       setErrors({});
       setPrerequisiteSearch("");
@@ -296,6 +298,7 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
         course_type_id: courseTypeId,
         special_price: specialPrice ? parseInt(specialPrice) : null,
         week_duration: weekDuration,
+        is_matricula: isMatricula,
         prerequisite_code: prerequisiteCode.trim() || null,
         description: description.trim() || null,
       };
@@ -324,6 +327,7 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
       setSpecialPrice("");
       setPrerequisiteCode("");
       setWeekDuration(12);
+      setIsMatricula(false);
       setDescription("");
       setErrors({});
       setPrerequisiteSearch("");
@@ -720,6 +724,61 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
                             <p className="mt-1 text-sm text-red-600">
                               {errors.week_duration}
                             </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Is Matricula */}
+                      <div className="space-y-2 px-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0 sm:px-6 sm:py-5">
+                        <div>
+                          <label
+                            htmlFor="is_matricula"
+                            className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
+                          >
+                            Es matrícula
+                          </label>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={isMatricula}
+                              onClick={() => setIsMatricula(!isMatricula)}
+                              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 ${
+                                isMatricula ? "bg-primary" : "bg-gray-200"
+                              }`}
+                            >
+                              <span
+                                className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                  isMatricula
+                                    ? "translate-x-5"
+                                    : "translate-x-0"
+                                }`}
+                              />
+                            </button>
+                            <span className="text-sm text-gray-500">
+                              {isMatricula ? "Sí" : "No"}
+                            </span>
+                          </div>
+                          {isMatricula && (
+                            <div className="mt-3 rounded-md bg-blue-50 p-3">
+                              <div className="flex">
+                                <div className="shrink-0">
+                                  <InformationCircleIcon
+                                    aria-hidden="true"
+                                    className="size-5 text-blue-400"
+                                  />
+                                </div>
+                                <div className="ml-3">
+                                  <p className="text-sm text-blue-700">
+                                    Al matricular estudiantes en este curso, se
+                                    creará un pago de anualidad de ₡21,000 con
+                                    fecha de hoy.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
                           )}
                         </div>
                       </div>

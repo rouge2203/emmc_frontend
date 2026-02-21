@@ -154,13 +154,6 @@ const InstrumentCreateDrawer: React.FC<InstrumentCreateDrawerProps> = ({
     }
   };
 
-  const handleStatusChange = (value: string) => {
-    setStatus(value);
-    if (errors.status) {
-      setErrors({ ...errors, status: "" });
-    }
-  };
-
   const handleLocationChange = (value: string) => {
     setLocation(value);
     if (errors.location) {
@@ -423,54 +416,6 @@ const InstrumentCreateDrawer: React.FC<InstrumentCreateDrawerProps> = ({
                           {errors.condition && (
                             <p className="mt-1 text-sm text-red-600">
                               {errors.condition}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Status */}
-                      <div className="space-y-2 px-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0 sm:px-6 sm:py-5">
-                        <div>
-                          <label
-                            htmlFor="status"
-                            className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
-                          >
-                            Estado
-                          </label>
-                        </div>
-                        <div className="sm:col-span-2">
-                          <div className="mt-2 grid grid-cols-1">
-                            <select
-                              id="status"
-                              name="status"
-                              value={status}
-                              onChange={(e) => handleStatusChange(e.target.value)}
-                              className={`col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
-                                errors.status
-                                  ? "outline-red-500 focus-visible:outline-red-500"
-                                  : "focus-visible:outline-gray-900"
-                              }`}
-                            >
-                              <option value="libre">Libre</option>
-                              <option value="alquilado">Alquilado</option>
-                            </select>
-                            <svg
-                              viewBox="0 0 16 16"
-                              fill="currentColor"
-                              data-slot="icon"
-                              aria-hidden="true"
-                              className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
-                            >
-                              <path
-                                d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
-                                clipRule="evenodd"
-                                fillRule="evenodd"
-                              />
-                            </svg>
-                          </div>
-                          {errors.status && (
-                            <p className="mt-1 text-sm text-red-600">
-                              {errors.status}
                             </p>
                           )}
                         </div>

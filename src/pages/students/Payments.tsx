@@ -143,7 +143,7 @@ const StudentPayments = () => {
         ? `Serie ${payment.instrument_loan_info.serial_number}`
         : "Instrumento";
     }
-    return "Anualidad o servicio";
+    return "Matrícula";
   };
 
   const PaymentCard = ({
