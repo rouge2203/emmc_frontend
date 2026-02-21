@@ -773,8 +773,7 @@ const CourseCreateDrawer: React.FC<CourseCreateDrawerProps> = ({
                                 <div className="ml-3">
                                   <p className="text-sm text-blue-700">
                                     Al matricular estudiantes en este curso, se
-                                    creará un pago de anualidad de ₡21,000 con
-                                    fecha de hoy.
+                                    creará un pago de matrícula de ₡23,460.
                                   </p>
                                 </div>
                               </div>

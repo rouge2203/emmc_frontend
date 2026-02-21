@@ -516,11 +516,11 @@ const CourseEnrollmentCreateDrawer: React.FC<
                       <div className="flex items-start justify-between space-x-3">
                         <div className="space-y-1">
                           <DialogTitle className="text-base font-semibold text-gray-900">
-                            Registrar Matrícula
+                            Registrar Matrícula o Curso
                           </DialogTitle>
                           <p className="text-sm text-gray-500">
                             Completa la información para registrar una nueva
-                            matrícula.
+                            matrícula o asignación de curso.
                           </p>
                         </div>
                         <div className="flex h-7 items-center">
@@ -654,9 +654,12 @@ const CourseEnrollmentCreateDrawer: React.FC<
                                 </div>
                                 <div className="ml-3">
                                   <p className="text-sm text-blue-700">
-                                    Se creará un pago de anualidad de{" "}
+                                    Se creará un pago de 1 de{" "}
                                     <span className="font-medium">
-                                      ₡{(23460 + (incluirCarnet ? 1695 : 0)).toLocaleString("es-CR")}
+                                      ₡
+                                      {(
+                                        23460 + (incluirCarnet ? 1695 : 0)
+                                      ).toLocaleString("es-CR")}
                                     </span>{" "}
                                     con fecha de hoy.
                                   </p>
@@ -666,12 +669,16 @@ const CourseEnrollmentCreateDrawer: React.FC<
                                 <input
                                   type="checkbox"
                                   checked={incluirCarnet}
-                                  onChange={(e) => setIncluirCarnet(e.target.checked)}
+                                  onChange={(e) =>
+                                    setIncluirCarnet(e.target.checked)
+                                  }
                                   className="size-4 rounded border-gray-300 text-primary focus:ring-primary"
                                 />
                                 <span className="text-sm text-blue-700">
                                   Incluir Carnet{" "}
-                                  <span className="font-medium">(₡1,695 extra)</span>
+                                  <span className="font-medium">
+                                    (₡1,695 extra)
+                                  </span>
                                 </span>
                               </label>
                             </div>
@@ -865,7 +872,11 @@ const CourseEnrollmentCreateDrawer: React.FC<
                                   ? "outline-red-500 focus-visible:outline-red-500"
                                   : "focus-visible:outline-gray-900"
                               } ${selectedCourse?.is_matricula ? "bg-gray-100 cursor-not-allowed" : ""}`}
-                              placeholder={selectedCourse?.is_matricula ? "No aplica para matrícula" : "Buscar profesor..."}
+                              placeholder={
+                                selectedCourse?.is_matricula
+                                  ? "No aplica para matrícula"
+                                  : "Buscar profesor..."
+                              }
                             />
                           </div>
                           {showProfessorDropdown && professors.length > 0 && (
@@ -1161,7 +1172,8 @@ const CourseEnrollmentCreateDrawer: React.FC<
                   </DialogTitle>
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
-                      ¿Está seguro de que desea registrar la matrícula para{" "}
+                      ¿Está seguro de que desea registrar la matrícula o
+                      asignación de curso para{" "}
                       {selectedStudent
                         ? `${selectedStudent.last_name || ""} ${
                             selectedStudent.first_name
