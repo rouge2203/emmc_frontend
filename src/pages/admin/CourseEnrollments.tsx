@@ -137,7 +137,7 @@ const CourseEnrollments = () => {
   const fetchCareers = async () => {
     try {
       const response = await axiosPrivate.get<CareersResponse>(
-        "courses/manage-careers"
+        "courses/manage-careers",
       );
       setCareers(response.data.careers);
     } catch (err: any) {
@@ -148,7 +148,7 @@ const CourseEnrollments = () => {
   const fetchAvailableYears = async () => {
     try {
       const response = await axiosPrivate.get<YearsResponse>(
-        "courses/enrollment-years"
+        "courses/enrollment-years",
       );
       setAvailableYears(response.data.years);
     } catch (err: any) {
@@ -159,7 +159,7 @@ const CourseEnrollments = () => {
   const fetchProfessors = async () => {
     try {
       const response = await axiosPrivate.get<ProfessorsResponse>(
-        "courses/enrollment-professors"
+        "courses/enrollment-professors",
       );
       setProfessors(response.data.professors);
     } catch (err: any) {
@@ -185,7 +185,7 @@ const CourseEnrollments = () => {
 
       const response = await axiosPrivate.get<PaginatedResponse>(
         "courses/manage-enrollments",
-        { params }
+        { params },
       );
       setEnrollments(response.data.results);
       setPagination(response.data.pagination);
@@ -212,7 +212,7 @@ const CourseEnrollments = () => {
       const courseCodeParam = searchParams.get("course_code");
       const studentSearchParam = searchParams.get("student_search");
       const professorIdParam = searchParams.get("professor_id");
-      
+
       if (courseCodeParam && !urlParamsProcessed.current) {
         setStudentSearch(courseCodeParam);
         setStudentSearchInput(courseCodeParam);
@@ -315,8 +315,8 @@ const CourseEnrollments = () => {
   const handleEnrollmentUpdated = (updatedEnrollment: CourseEnrollment) => {
     setEnrollments((prevEnrollments) =>
       prevEnrollments.map((enrollment) =>
-        enrollment.id === updatedEnrollment.id ? updatedEnrollment : enrollment
-      )
+        enrollment.id === updatedEnrollment.id ? updatedEnrollment : enrollment,
+      ),
     );
   };
 
@@ -429,7 +429,7 @@ const CourseEnrollments = () => {
                 htmlFor="studentSearch"
                 className="block text-xs font-medium text-gray-700 mb-1"
               >
-                Buscar por estudiante
+                Búsqueda
               </label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -746,8 +746,8 @@ const CourseEnrollments = () => {
                                 enrollment.status === "cursando"
                                   ? "bg-blue-100 text-blue-800"
                                   : enrollment.status === "aprobado"
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-800"
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-red-100 text-red-800"
                               }`}
                             >
                               {enrollment.status}
@@ -761,35 +761,35 @@ const CourseEnrollments = () => {
                               {!enrollment.professor &&
                                 enrollment.status === "cursando" &&
                                 !enrollment.course.is_matricula && (
-                                <button
-                                  onClick={() =>
-                                    handleAssignProfessor(enrollment)
-                                  }
-                                  className="text-gray-900 flex items-center gap-1 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-mediu hover:text-gray-70 border py-0.5 px-2 rounded-sm"
-                                >
-                                  <ExclamationCircleIcon className="h-4 w-4 text-red-500 animate-pulse" />
-                                  Asignar profesor
-                                  <span className="sr-only">
-                                    , {enrollment.course_code}
-                                  </span>
-                                </button>
-                              )}
+                                  <button
+                                    onClick={() =>
+                                      handleAssignProfessor(enrollment)
+                                    }
+                                    className="text-gray-900 flex items-center gap-1 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-mediu hover:text-gray-70 border py-0.5 px-2 rounded-sm"
+                                  >
+                                    <ExclamationCircleIcon className="h-4 w-4 text-red-500 animate-pulse" />
+                                    Asignar profesor
+                                    <span className="sr-only">
+                                      , {enrollment.course_code}
+                                    </span>
+                                  </button>
+                                )}
                               {!enrollment.schedule_set &&
                                 enrollment.status === "cursando" &&
                                 !enrollment.course.is_matricula && (
-                                <button
-                                  onClick={() =>
-                                    handleAssignSchedule(enrollment)
-                                  }
-                                  className="text-gray-900 flex items-center gap-1 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-mediu hover:text-gray-70 border py-0.5 px-2 rounded-sm"
-                                >
-                                  <ExclamationCircleIcon className="h-4 w-4 text-yellow-500 animate-pulse" />
-                                  Asignar horario
-                                  <span className="sr-only">
-                                    , {enrollment.course_code}
-                                  </span>
-                                </button>
-                              )}
+                                  <button
+                                    onClick={() =>
+                                      handleAssignSchedule(enrollment)
+                                    }
+                                    className="text-gray-900 flex items-center gap-1 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-mediu hover:text-gray-70 border py-0.5 px-2 rounded-sm"
+                                  >
+                                    <ExclamationCircleIcon className="h-4 w-4 text-yellow-500 animate-pulse" />
+                                    Asignar horario
+                                    <span className="sr-only">
+                                      , {enrollment.course_code}
+                                    </span>
+                                  </button>
+                                )}
                               {enrollment.schedule_set && (
                                 <button
                                   onClick={() =>
@@ -854,7 +854,7 @@ const CourseEnrollments = () => {
               <span className="font-medium">
                 {Math.min(
                   pagination.page_size * pagination.page,
-                  pagination.total_count
+                  pagination.total_count,
                 )}
               </span>{" "}
               de <span className="font-medium">{pagination.total_count}</span>{" "}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Dialog,
@@ -107,10 +107,6 @@ interface EnrollmentsResponse {
   pagination: any;
 }
 
-interface CoursesResponse {
-  courses: Course[];
-}
-
 interface UsersResponse {
   users: User[];
 }
@@ -147,12 +143,12 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
   const [professorSearch, setProfessorSearch] = useState("");
   const [showProfessorDropdown, setShowProfessorDropdown] = useState(false);
   const [selectedProfessor, setSelectedProfessor] = useState<User | null>(null);
+  const [professorDropdownActive, setProfessorDropdownActive] = useState(false);
 
   // Form state
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [period, setPeriod] = useState<number>(1);
   const [price, setPrice] = useState<string>("");
-  const priceManuallyEdited = useRef(false);
   const [weekDuration, setWeekDuration] = useState<number>(12);
   const [status, setStatus] = useState<string>("cursando");
   const [grade, setGrade] = useState<string>("");
@@ -165,46 +161,31 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
     }
   }, [isOpen, enrollmentId]);
 
-  // Courses are not editable, so we only fetch them when needed for price info
-
-  // Students are not editable, so we don't need to fetch them
-
-  // Fetch professors
+  // Fetch professors only when the user activates the professor dropdown
   useEffect(() => {
-    if (isOpen) {
-      const fetchProfessors = async () => {
-        try {
-          const params: any = {
-            role: "teacher",
-          };
-          if (professorSearch) {
-            params.search = professorSearch;
-          }
-          const response = await axiosPrivate.get<UsersResponse>(
-            "courses/list-users-for-enrollment",
-            {
-              params,
-            }
-          );
-          setProfessors(response.data.users);
-        } catch (err: any) {
-          console.error("Error fetching professors:", err);
+    if (!professorDropdownActive) return;
+    const fetchProfessors = async () => {
+      try {
+        const params: any = {
+          role: "teacher",
+        };
+        if (professorSearch) {
+          params.search = professorSearch;
         }
-      };
-      const timeoutId = setTimeout(fetchProfessors, 300);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isOpen, professorSearch, axiosPrivate]);
-
-  // Update price when course changes
-  useEffect(() => {
-    if (selectedCourse && !priceManuallyEdited.current && enrollment) {
-      const coursePrice =
-        selectedCourse.special_price || selectedCourse.course_type_price || 0;
-      setPrice(coursePrice.toString());
-      setWeekDuration(selectedCourse.week_duration);
-    }
-  }, [selectedCourse, enrollment]);
+        const response = await axiosPrivate.get<UsersResponse>(
+          "courses/list-users-for-enrollment",
+          {
+            params,
+          },
+        );
+        setProfessors(response.data.users);
+      } catch (err: any) {
+        console.error("Error fetching professors:", err);
+      }
+    };
+    const timeoutId = setTimeout(fetchProfessors, 300);
+    return () => clearTimeout(timeoutId);
+  }, [professorDropdownActive, professorSearch, axiosPrivate]);
 
   const fetchEnrollmentData = async () => {
     if (!enrollmentId) return;
@@ -212,29 +193,19 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
     try {
       setIsLoading(true);
       setError(null);
-      // Fetch enrollments and find the one we need
+      // Fetch the specific enrollment by ID
       const response = await axiosPrivate.get<EnrollmentsResponse>(
         "courses/manage-enrollments",
         {
           params: {
-            page: 1,
-            page_size: 1000,
+            enrollment_id: enrollmentId,
           },
-        }
+        },
       );
-      const foundEnrollment = response.data.results.find(
-        (e) => e.id === enrollmentId
-      );
+      const foundEnrollment = response.data.results?.[0] ?? null;
       if (foundEnrollment) {
         setEnrollment(foundEnrollment);
-        // Fetch course details to get price info
-        const courseResponse = await axiosPrivate.get<CoursesResponse>(
-          "courses/list-courses-for-enrollment"
-        );
-        const allCourses = courseResponse.data.courses;
-        const course = allCourses.find(
-          (c) => c.id === foundEnrollment.course.id
-        ) || {
+        const course: Course = {
           id: foundEnrollment.course.id,
           code: foundEnrollment.course.code,
           name: foundEnrollment.course.name,
@@ -258,7 +229,6 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
         setYear(foundEnrollment.year);
         setPeriod(foundEnrollment.period);
         setPrice(foundEnrollment.price.toString());
-        priceManuallyEdited.current = false;
         setWeekDuration(foundEnrollment.week_duration);
         setStatus(foundEnrollment.status);
         setGrade(foundEnrollment.grade?.toString() || "");
@@ -269,7 +239,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
     } catch (err: any) {
       setError(
         err?.response?.data?.error ||
-          "Error al cargar la información de la matrícula"
+          "Error al cargar la información de la matrícula",
       );
       console.error("Error fetching enrollment data:", err);
     } finally {
@@ -333,21 +303,13 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
 
       const response = await axiosPrivate.put<EnrollmentResponse>(
         "courses/manage-enrollments",
-        updateData
+        updateData,
       );
 
-      // Update local state with response
       const updatedEnrollment = response.data.enrollment;
       if (updatedEnrollment) {
         setEnrollment(updatedEnrollment);
-        // Fetch updated course details
-        const courseResponse = await axiosPrivate.get<CoursesResponse>(
-          "courses/list-courses-for-enrollment"
-        );
-        const allCourses = courseResponse.data.courses;
-        const course = allCourses.find(
-          (c) => c.id === updatedEnrollment.course.id
-        ) || {
+        const course: Course = {
           id: updatedEnrollment.course.id,
           code: updatedEnrollment.course.code,
           name: updatedEnrollment.course.name,
@@ -371,7 +333,6 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
         setYear(updatedEnrollment.year);
         setPeriod(updatedEnrollment.period);
         setPrice(updatedEnrollment.price.toString());
-        priceManuallyEdited.current = false;
         setWeekDuration(updatedEnrollment.week_duration);
         setStatus(updatedEnrollment.status);
         setGrade(updatedEnrollment.grade?.toString() || "");
@@ -469,9 +430,10 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
   const handleProfessorSelect = (professor: User) => {
     setSelectedProfessor(professor);
     setProfessorSearch(
-      `${professor.last_name || ""} ${professor.first_name}`.trim()
+      `${professor.last_name || ""} ${professor.first_name}`.trim(),
     );
     setShowProfessorDropdown(false);
+    setProfessorDropdownActive(false);
   };
 
   // Handle professor input blur - clear if no professor selected
@@ -489,6 +451,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
   const handleChangeProfessor = () => {
     setSelectedProfessor(null);
     setProfessorSearch("");
+    setProfessorDropdownActive(true);
     setShowProfessorDropdown(true);
   };
 
@@ -563,7 +526,8 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                                 </div>
                                 <div className="ml-3 flex-1">
                                   <h3 className="text-sm font-medium text-primary">
-                                    Esto es una matrícula, no un curso en específico
+                                    Esto es una matrícula, no un curso en
+                                    específico
                                   </h3>
                                 </div>
                               </div>
@@ -586,8 +550,8 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                                       </h3>
                                       <div className="mt-2 text-xs text-red-700">
                                         <p>
-                                          Esta matrícula aún no tiene un profesor
-                                          asignado.
+                                          Esta matrícula aún no tiene un
+                                          profesor asignado.
                                         </p>
                                       </div>
                                     </div>
@@ -691,108 +655,110 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
 
                           {/* Professor */}
                           {!selectedCourse?.is_matricula && (
-                          <div>
-                            <label
-                              htmlFor="professor"
-                              className="block text-sm/6 font-medium text-gray-900"
-                            >
-                              Profesor
-                            </label>
-                            <div className="mt-2 relative searchable-select-container">
-                              {selectedProfessor ? (
-                                <div className="flex gap-2">
-                                  <div className="relative flex-1">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                      <MagnifyingGlassIcon
-                                        className="h-5 w-5 text-gray-400"
-                                        aria-hidden="true"
+                            <div>
+                              <label
+                                htmlFor="professor"
+                                className="block text-sm/6 font-medium text-gray-900"
+                              >
+                                Profesor
+                              </label>
+                              <div className="mt-2 relative searchable-select-container">
+                                {selectedProfessor ? (
+                                  <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <MagnifyingGlassIcon
+                                          className="h-5 w-5 text-gray-400"
+                                          aria-hidden="true"
+                                        />
+                                      </div>
+                                      <input
+                                        id="professor"
+                                        name="professor"
+                                        type="text"
+                                        value={professorSearch}
+                                        readOnly
+                                        disabled
+                                        className="block rounded-md w-full pl-10 pr-3 py-1.5 text-base text-gray-500 outline-1 -outline-offset-1 outline-gray-300 bg-gray-50 cursor-not-allowed sm:text-sm/6"
                                       />
                                     </div>
-                                    <input
-                                      id="professor"
-                                      name="professor"
-                                      type="text"
-                                      value={professorSearch}
-                                      readOnly
-                                      disabled
-                                      className="block rounded-md w-full pl-10 pr-3 py-1.5 text-base text-gray-500 outline-1 -outline-offset-1 outline-gray-300 bg-gray-50 cursor-not-allowed sm:text-sm/6"
-                                    />
+                                    <button
+                                      type="button"
+                                      onClick={handleChangeProfessor}
+                                      className="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                                    >
+                                      <ArrowPathIcon className="size-5" />
+                                    </button>
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={handleChangeProfessor}
-                                    className="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                                  >
-                                    <ArrowPathIcon className="size-5" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <>
-                                  <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                      <MagnifyingGlassIcon
-                                        className="h-5 w-5 text-gray-400"
-                                        aria-hidden="true"
+                                ) : (
+                                  <>
+                                    <div className="relative">
+                                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <MagnifyingGlassIcon
+                                          className="h-5 w-5 text-gray-400"
+                                          aria-hidden="true"
+                                        />
+                                      </div>
+                                      <input
+                                        id="professor"
+                                        name="professor"
+                                        type="text"
+                                        value={professorSearch}
+                                        onChange={(e) => {
+                                          setProfessorSearch(e.target.value);
+                                          setShowProfessorDropdown(true);
+                                        }}
+                                        onFocus={() =>
+                                          setShowProfessorDropdown(true)
+                                        }
+                                        onBlur={handleProfessorBlur}
+                                        className="block rounded-md w-full pl-10 pr-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                                        placeholder="Buscar profesor..."
                                       />
                                     </div>
-                                    <input
-                                      id="professor"
-                                      name="professor"
-                                      type="text"
-                                      value={professorSearch}
-                                      onChange={(e) => {
-                                        setProfessorSearch(e.target.value);
-                                        setShowProfessorDropdown(true);
-                                      }}
-                                      onFocus={() =>
-                                        setShowProfessorDropdown(true)
-                                      }
-                                      onBlur={handleProfessorBlur}
-                                      className="block rounded-md w-full pl-10 pr-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
-                                      placeholder="Buscar profesor..."
-                                    />
-                                  </div>
-                                  {showProfessorDropdown && (
-                                    <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
-                                      {professors.length > 0 ? (
-                                        professors.map((professor) => (
+                                    {showProfessorDropdown && (
+                                      <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                                        {professors.length > 0 ? (
+                                          professors.map((professor) => (
+                                            <div
+                                              key={professor.id}
+                                              onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                handleProfessorSelect(
+                                                  professor,
+                                                );
+                                              }}
+                                              className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100"
+                                            >
+                                              <div className="flex items-center">
+                                                <span className="font-medium text-gray-900">
+                                                  {professor.last_name || ""}{" "}
+                                                  {professor.first_name}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          ))
+                                        ) : professorSearch.trim() ? (
                                           <div
-                                            key={professor.id}
                                             onMouseDown={(e) => {
                                               e.preventDefault();
-                                              handleProfessorSelect(professor);
+                                              handleCreateNewProfessor();
                                             }}
                                             className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100"
                                           >
                                             <div className="flex items-center">
-                                              <span className="font-medium text-gray-900">
-                                                {professor.last_name || ""}{" "}
-                                                {professor.first_name}
+                                              <span className="font-medium text-primary">
+                                                + Registrar nuevo profesor
                                               </span>
                                             </div>
                                           </div>
-                                        ))
-                                      ) : professorSearch.trim() ? (
-                                        <div
-                                          onMouseDown={(e) => {
-                                            e.preventDefault();
-                                            handleCreateNewProfessor();
-                                          }}
-                                          className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100"
-                                        >
-                                          <div className="flex items-center">
-                                            <span className="font-medium text-primary">
-                                              + Registrar nuevo profesor
-                                            </span>
-                                          </div>
-                                        </div>
-                                      ) : null}
-                                    </div>
-                                  )}
-                                </>
-                              )}
+                                        ) : null}
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
                             </div>
-                          </div>
                           )}
 
                           {/* Year */}
@@ -814,7 +780,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                                 onChange={(e) =>
                                   setYear(
                                     parseInt(e.target.value) ||
-                                      new Date().getFullYear()
+                                      new Date().getFullYear(),
                                   )
                                 }
                                 className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
@@ -877,7 +843,6 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                                 value={price}
                                 onChange={(e) => {
                                   setPrice(e.target.value);
-                                  priceManuallyEdited.current = true;
                                 }}
                                 className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                               />
@@ -903,7 +868,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                                 disabled={selectedCourse?.is_matricula}
                                 onChange={(e) =>
                                   setWeekDuration(
-                                    parseInt(e.target.value) || 12
+                                    parseInt(e.target.value) || 12,
                                   )
                                 }
                                 className={`block w-full rounded-md px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6 ${selectedCourse?.is_matricula ? "bg-gray-100 cursor-not-allowed" : "bg-white"}`}
@@ -949,52 +914,52 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
 
                           {/* Grade */}
                           {!selectedCourse?.is_matricula && (
-                          <div>
-                            <label
-                              htmlFor="grade"
-                              className="block text-sm/6 font-medium text-gray-900"
-                            >
-                              Calificación
-                            </label>
-                            <div className="mt-2">
-                              <input
-                                id="grade"
-                                name="grade"
-                                type="number"
-                                min="0"
-                                max="100"
-                                value={grade}
-                                onChange={(e) => setGrade(e.target.value)}
-                                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
-                                placeholder="0-100"
-                              />
+                            <div>
+                              <label
+                                htmlFor="grade"
+                                className="block text-sm/6 font-medium text-gray-900"
+                              >
+                                Calificación
+                              </label>
+                              <div className="mt-2">
+                                <input
+                                  id="grade"
+                                  name="grade"
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={grade}
+                                  onChange={(e) => setGrade(e.target.value)}
+                                  className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                                  placeholder="0-100"
+                                />
+                              </div>
                             </div>
-                          </div>
                           )}
 
                           {/* Professor Observation */}
                           {!selectedCourse?.is_matricula && (
-                          <div>
-                            <label
-                              htmlFor="professor_observation"
-                              className="block text-sm/6 font-medium text-gray-900"
-                            >
-                              Observación del profesor
-                            </label>
-                            <div className="mt-2">
-                              <textarea
-                                id="professor_observation"
-                                name="professor_observation"
-                                rows={3}
-                                value={professorObservation}
-                                onChange={(e) =>
-                                  setProfessorObservation(e.target.value)
-                                }
-                                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
-                                placeholder="Observaciones del profesor..."
-                              />
+                            <div>
+                              <label
+                                htmlFor="professor_observation"
+                                className="block text-sm/6 font-medium text-gray-900"
+                              >
+                                Observación del profesor
+                              </label>
+                              <div className="mt-2">
+                                <textarea
+                                  id="professor_observation"
+                                  name="professor_observation"
+                                  rows={3}
+                                  value={professorObservation}
+                                  onChange={(e) =>
+                                    setProfessorObservation(e.target.value)
+                                  }
+                                  className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                                  placeholder="Observaciones del profesor..."
+                                />
+                              </div>
                             </div>
-                          </div>
                           )}
 
                           {/* Account Information */}
@@ -1018,7 +983,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                                 <p className="mt-1 text-sm text-gray-500">
                                   {enrollment.created_at
                                     ? new Date(
-                                        enrollment.created_at
+                                        enrollment.created_at,
                                       ).toLocaleString("es-CR", {
                                         year: "numeric",
                                         month: "long",
@@ -1046,7 +1011,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                                 <p className="mt-1 text-sm text-gray-500">
                                   {enrollment.updated_at
                                     ? new Date(
-                                        enrollment.updated_at
+                                        enrollment.updated_at,
                                       ).toLocaleString("es-CR", {
                                         year: "numeric",
                                         month: "long",
@@ -1250,7 +1215,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
               </Transition>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {/* Delete Confirmation Dialog */}
@@ -1363,7 +1328,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
               </Transition>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
     </>
   );
