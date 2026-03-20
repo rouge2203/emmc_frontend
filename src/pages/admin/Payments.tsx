@@ -799,8 +799,8 @@ const Payments = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setIsBulkPaymentDrawerOpen(true)}
-                className="px-4 py-2 rounded-md text-sm font-medium bg-gray-900 text-white hover:bg-gray-800 flex items-center justify-center gap-2"
+                disabled
+                className="px-4 py-2 rounded-md text-sm font-medium bg-gray-300 text-gray-500 cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <PlusIcon className="h-4 w-4" />
                 Crear pagos generales
