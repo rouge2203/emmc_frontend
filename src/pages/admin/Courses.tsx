@@ -199,7 +199,10 @@ const Courses = () => {
   };
 
   const hasActiveFilters =
-    careerFilter !== null || courseTypeFilter !== null || search !== "" || isMatriculaFilter;
+    careerFilter !== null ||
+    courseTypeFilter !== null ||
+    search !== "" ||
+    isMatriculaFilter;
 
   const handleEdit = (course: Course) => {
     setSelectedCourseId(course.id);

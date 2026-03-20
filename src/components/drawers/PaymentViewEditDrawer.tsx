@@ -45,7 +45,7 @@ interface Payment {
   instrument_loan: number | null;
   course_enrollment_info: CourseEnrollmentInfo | null;
   instrument_loan_info: InstrumentLoanInfo | null;
-  payment_type: "enrollment" | "loan" | null;
+  payment_type: "enrollment" | "loan" | "anualidad" | "extra" | null;
   amount: number;
   amount_paid: number | null;
   remaining_amount: number;
@@ -113,16 +113,13 @@ const PaymentViewEditDrawer: React.FC<PaymentViewEditDrawerProps> = ({
       setIsLoading(true);
       setError(null);
 
-      // Get payment from paginated list
       const response = await axiosPrivate.get("payments/manage-payments", {
-        params: { page: 1, page_size: 1000 },
+        params: { payment_id: paymentId },
       });
 
-      const foundPayment = response.data.results.find(
-        (p: Payment) => p.id === paymentId
-      );
-
-      if (foundPayment) {
+      const results = response.data.results;
+      if (results && results.length > 0) {
+        const foundPayment = results[0];
         setPayment(foundPayment);
         setAmount(foundPayment.amount || 0);
         setAmountPaid(foundPayment.amount_paid || 0);
@@ -294,7 +291,11 @@ const PaymentViewEditDrawer: React.FC<PaymentViewEditDrawerProps> = ({
                             <p className="text-sm text-gray-700 sm:col-span-2 sm:mt-1.5">
                               {payment.payment_type === "enrollment"
                                 ? "Mensualidad de curso"
-                                : "Alquiler de instrumento"}
+                                : payment.payment_type === "extra"
+                                  ? "Extra"
+                                  : payment.payment_type === "anualidad"
+                                    ? "Matrícula"
+                                    : "Alquiler de instrumento"}
                             </p>
                           </div>
 

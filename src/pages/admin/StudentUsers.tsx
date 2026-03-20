@@ -661,50 +661,54 @@ const StudentUsers = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination Controls */}
+              {pagination && pagination.total_pages > 1 && !isLoading && (
+                <nav
+                  aria-label="Pagination"
+                  className="flex items-center justify-between sm:shadow-sm sm:border-b sm:border-x sm:border-gray-300 sm:rounded-b-md bg-white px-4 py-3 sm:px-6"
+                >
+                  <div className="hidden sm:block">
+                    <p className="text-sm text-gray-700">
+                      Mostrando{" "}
+                      <span className="font-medium">
+                        {pagination.page_size * (pagination.page - 1) + 1}
+                      </span>{" "}
+                      a{" "}
+                      <span className="font-medium">
+                        {Math.min(
+                          pagination.page_size * pagination.page,
+                          pagination.total_count,
+                        )}
+                      </span>{" "}
+                      de{" "}
+                      <span className="font-medium">
+                        {pagination.total_count}
+                      </span>{" "}
+                      resultados
+                    </p>
+                  </div>
+                  <div className="flex flex-1 justify-between sm:justify-end">
+                    <button
+                      onClick={() => setPage(page - 1)}
+                      disabled={!pagination.has_previous || isLoading}
+                      className="relative inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    >
+                      Anterior
+                    </button>
+                    <button
+                      onClick={() => setPage(page + 1)}
+                      disabled={!pagination.has_next || isLoading}
+                      className="relative ml-3 inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                </nav>
+              )}
             </div>
           </div>
         </div>
-      )}
-      {/* Pagination Controls */}
-      {pagination && pagination.total_pages > 1 && !isLoading && (
-        <nav
-          aria-label="Pagination"
-          className="flex items-center justify-between sm:shadow-sm sm:border-b sm:border-x sm:border-gray-300 sm:rounded-b-md bg-white px-4 py-3 sm:px-6"
-        >
-          <div className="hidden sm:block">
-            <p className="text-sm text-gray-700">
-              Mostrando{" "}
-              <span className="font-medium">
-                {pagination.page_size * (pagination.page - 1) + 1}
-              </span>{" "}
-              a{" "}
-              <span className="font-medium">
-                {Math.min(
-                  pagination.page_size * pagination.page,
-                  pagination.total_count,
-                )}
-              </span>{" "}
-              de <span className="font-medium">{pagination.total_count}</span>{" "}
-              resultados
-            </p>
-          </div>
-          <div className="flex flex-1 justify-between sm:justify-end">
-            <button
-              onClick={() => setPage(page - 1)}
-              disabled={!pagination.has_previous || isLoading}
-              className="relative inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-            >
-              Anterior
-            </button>
-            <button
-              onClick={() => setPage(page + 1)}
-              disabled={!pagination.has_next || isLoading}
-              className="relative ml-3 inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-            >
-              Siguiente
-            </button>
-          </div>
-        </nav>
       )}
 
       {/* Student Info Drawer */}

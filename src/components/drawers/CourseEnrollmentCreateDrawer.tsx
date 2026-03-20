@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
   Dialog,
@@ -17,6 +17,8 @@ import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import {
   InformationCircleIcon,
   MagnifyingGlassIcon,
+  PlusIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import * as Yup from "yup";
@@ -64,6 +66,14 @@ interface UsersResponse {
 
 interface EnrollmentResponse {
   enrollment: any;
+}
+
+interface CustomPayment {
+  id: number;
+  payment_type: string;
+  amount: string;
+  late_due: string;
+  note: string;
 }
 
 const validationSchema = Yup.object({
@@ -128,6 +138,72 @@ const CourseEnrollmentCreateDrawer: React.FC<
     () => new Date().toISOString().split("T")[0],
   );
   const [incluirCarnet, setIncluirCarnet] = useState(false);
+
+  const [customPayments, setCustomPayments] = useState<CustomPayment[]>([]);
+  const customPaymentIdRef = useRef(0);
+
+  const addCustomPayment = () => {
+    setCustomPayments((prev) => [
+      ...prev,
+      {
+        id: customPaymentIdRef.current++,
+        payment_type: "extra",
+        amount: "",
+        late_due: firstPaymentDate || new Date().toISOString().split("T")[0],
+        note: "",
+      },
+    ]);
+  };
+
+  const updateCustomPayment = (
+    id: number,
+    field: keyof CustomPayment,
+    value: string,
+  ) => {
+    setCustomPayments((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)),
+    );
+  };
+
+  const removeCustomPayment = (id: number) => {
+    setCustomPayments((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const paymentPreview = useMemo(() => {
+    const totalPrice = parseInt(price) || 0;
+    if (totalPrice <= 0 || weekDuration <= 0) return [];
+
+    const numMonths = Math.ceil(weekDuration / 4.3);
+    const amountPerMonth = Math.ceil(totalPrice / numMonths);
+    const startDate = firstPaymentDate
+      ? new Date(firstPaymentDate + "T00:00:00")
+      : new Date();
+
+    const payments: { amount: number; dueDate: Date; type: string }[] = [];
+
+    for (let i = 0; i < numMonths; i++) {
+      const dueDate = new Date(startDate);
+      dueDate.setMonth(dueDate.getMonth() + i);
+
+      const amount =
+        i === numMonths - 1
+          ? totalPrice - amountPerMonth * (numMonths - 1)
+          : amountPerMonth;
+
+      payments.push({ amount, dueDate, type: "Mensualidad" });
+    }
+
+    if (selectedCourse?.is_matricula) {
+      const anualidadAmount = 23460 + (incluirCarnet ? 1695 : 0);
+      payments.push({
+        amount: anualidadAmount,
+        dueDate: new Date(),
+        type: incluirCarnet ? "Matrícula + carnet" : "Anualidad",
+      });
+    }
+
+    return payments;
+  }, [price, weekDuration, firstPaymentDate, selectedCourse, incluirCarnet]);
 
   // Prerequisite status state
   const [prerequisiteStatus, setPrerequisiteStatus] =
@@ -294,6 +370,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
       setWeekDuration(12);
       setFirstPaymentDate(new Date().toISOString().split("T")[0]);
       setIncluirCarnet(false);
+      setCustomPayments([]);
       setErrors({});
       setShowCourseDropdown(false);
       setShowStudentDropdown(false);
@@ -426,10 +503,32 @@ const CourseEnrollmentCreateDrawer: React.FC<
         createData.incluir_carnet = incluirCarnet;
       }
 
-      await axiosPrivate.post<EnrollmentResponse>(
+      const enrollmentRes = await axiosPrivate.post<EnrollmentResponse>(
         "courses/manage-enrollments",
         createData,
       );
+
+      const newEnrollmentId = enrollmentRes.data?.enrollment?.id;
+
+      // Create custom payments
+      for (const cp of customPayments) {
+        const cpAmount = parseInt(cp.amount) || 0;
+        if (cpAmount <= 0 || !cp.late_due) continue;
+
+        const payload: any = {
+          user_id: selectedStudent.id,
+          amount: cpAmount,
+          late_due: cp.late_due,
+          note: cp.note || "",
+          payment_type: cp.payment_type,
+        };
+
+        if (cp.payment_type === "enrollment" && newEnrollmentId) {
+          payload.course_enrollment_id = newEnrollmentId;
+        }
+
+        await axiosPrivate.post("payments/create-payment", payload);
+      }
 
       // Close confirmation dialog
       setShowConfirmDialog(false);
@@ -458,6 +557,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
       setWeekDuration(12);
       setFirstPaymentDate(new Date().toISOString().split("T")[0]);
       setIncluirCarnet(false);
+      setCustomPayments([]);
       setErrors({});
       priceManuallyEdited.current = false;
 
@@ -1002,7 +1102,8 @@ const CourseEnrollmentCreateDrawer: React.FC<
                             htmlFor="price"
                             className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
                           >
-                            Precio (₡) <span className="text-red-500">*</span>
+                            Precio regular (₡){" "}
+                            <span className="text-red-500">*</span>
                           </label>
                         </div>
                         <div className="sm:col-span-2">
@@ -1077,7 +1178,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
                             htmlFor="first_payment_date"
                             className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
                           >
-                            Fecha primer pago
+                            Fecha de primer pago regular
                           </label>
                         </div>
                         <div className="sm:col-span-2">
@@ -1093,6 +1194,189 @@ const CourseEnrollmentCreateDrawer: React.FC<
                           />
                         </div>
                       </div>
+
+                      {/* Payment Preview */}
+                      {(paymentPreview.length > 0 ||
+                        customPayments.length > 0) && (
+                        <div className="px-4 sm:px-6 pb-5 pt-5">
+                          <div className="rounded-md border border-gray-200 overflow-hidden">
+                            <div className="bg-gray-50 px-3 py-2 border-b border-gray-200 flex items-center justify-between">
+                              <p className="text-xs font-semibold text-gray-700">
+                                Pagos que se crearán (
+                                {paymentPreview.length + customPayments.length})
+                              </p>
+                              <button
+                                type="button"
+                                onClick={addCustomPayment}
+                                className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                              >
+                                <PlusIcon className="h-3 w-3" />
+                                Pago extra
+                              </button>
+                            </div>
+                            <table className="min-w-full divide-y divide-gray-200 text-sm">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500">
+                                    Tipo
+                                  </th>
+                                  <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500">
+                                    Fecha de cobro
+                                  </th>
+                                  <th className="px-3 py-1.5 text-right text-xs font-medium text-gray-500">
+                                    Monto
+                                  </th>
+                                  {customPayments.length > 0 && (
+                                    <th className="w-8"></th>
+                                  )}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100 bg-white">
+                                {paymentPreview.map((p, i) => (
+                                  <tr key={i}>
+                                    <td className="px-3 py-1.5 text-xs text-gray-700">
+                                      {p.type}
+                                    </td>
+                                    <td className="px-3 py-1.5 text-xs text-gray-500">
+                                      {p.dueDate.toLocaleDateString("es-CR", {
+                                        day: "2-digit",
+                                        month: "short",
+                                        year: "numeric",
+                                      })}
+                                    </td>
+                                    <td className="px-3 py-1.5 text-xs text-gray-900 text-right font-medium">
+                                      ₡{p.amount.toLocaleString("es-CR")}
+                                    </td>
+                                    {customPayments.length > 0 && <td></td>}
+                                  </tr>
+                                ))}
+
+                                {customPayments.map((cp, idx) => (
+                                  <React.Fragment key={`custom-${cp.id}`}>
+                                    <tr className="bg-gray-100">
+                                      <td className="px-3 py-1.5">
+                                        <select
+                                          value={cp.payment_type}
+                                          onChange={(e) =>
+                                            updateCustomPayment(
+                                              cp.id,
+                                              "payment_type",
+                                              e.target.value,
+                                            )
+                                          }
+                                          className="w-full rounded border-gray-300 bg-white text-xs text-gray-700 py-1 pl-1 pr-6 focus:ring-gray-900 focus:border-gray-900"
+                                        >
+                                          <option value="enrollment">
+                                            Mensualidad
+                                          </option>
+                                          <option value="extra">Extra</option>
+                                          <option value="anualidad">
+                                            Matrícula
+                                          </option>
+                                        </select>
+                                      </td>
+                                      <td className="px-3 py-1.5">
+                                        <input
+                                          type="date"
+                                          value={cp.late_due}
+                                          onChange={(e) =>
+                                            updateCustomPayment(
+                                              cp.id,
+                                              "late_due",
+                                              e.target.value,
+                                            )
+                                          }
+                                          className="w-full rounded border-gray-300 bg-white text-xs text-gray-500 py-1 px-2 focus:ring-gray-900 focus:border-gray-900"
+                                        />
+                                      </td>
+                                      <td className="px-3 py-1.5 text-right">
+                                        <div className="inline-flex items-center gap-0.5">
+                                          <span className="text-xs text-gray-500">
+                                            ₡
+                                          </span>
+                                          <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={cp.amount}
+                                            onChange={(e) => {
+                                              const v = e.target.value.replace(
+                                                /[^0-9]/g,
+                                                "",
+                                              );
+                                              updateCustomPayment(
+                                                cp.id,
+                                                "amount",
+                                                v,
+                                              );
+                                            }}
+                                            placeholder="0"
+                                            className="w-20 rounded border-gray-300 bg-white text-xs text-gray-900 font-medium py-1 px-2 text-right placeholder:text-gray-400 focus:ring-gray-900 focus:border-gray-900"
+                                          />
+                                        </div>
+                                      </td>
+                                      <td className="px-1 py-1.5">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            removeCustomPayment(cp.id)
+                                          }
+                                          className="text-gray-400 hover:text-red-500"
+                                        >
+                                          <TrashIcon className="h-3.5 w-3.5" />
+                                        </button>
+                                      </td>
+                                    </tr>
+                                    <tr className="bg-gray-100">
+                                      <td
+                                        colSpan={4}
+                                        className="px-3 pb-2 pt-0"
+                                      >
+                                        <input
+                                          type="text"
+                                          value={cp.note}
+                                          onChange={(e) =>
+                                            updateCustomPayment(
+                                              cp.id,
+                                              "note",
+                                              e.target.value,
+                                            )
+                                          }
+                                          placeholder={`Nota pago extra #${idx + 1} (opcional)`}
+                                          className="w-full rounded border-gray-300 bg-white text-xs text-gray-700 py-1 px-2 placeholder:text-gray-400 focus:ring-gray-900 focus:border-gray-900"
+                                        />
+                                      </td>
+                                    </tr>
+                                  </React.Fragment>
+                                ))}
+                              </tbody>
+                              <tfoot className="bg-gray-50">
+                                <tr>
+                                  <td
+                                    colSpan={customPayments.length > 0 ? 3 : 2}
+                                    className="px-3 py-1.5 text-xs font-semibold text-gray-700"
+                                  >
+                                    Total
+                                  </td>
+                                  <td className="px-3 py-1.5 text-xs font-semibold text-gray-900 text-right">
+                                    ₡
+                                    {(
+                                      paymentPreview.reduce(
+                                        (sum, p) => sum + p.amount,
+                                        0,
+                                      ) +
+                                      customPayments.reduce(
+                                        (sum, cp) =>
+                                          sum + (parseInt(cp.amount) || 0),
+                                        0,
+                                      )
+                                    ).toLocaleString("es-CR")}
+                                  </td>
+                                </tr>
+                              </tfoot>
+                            </table>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 

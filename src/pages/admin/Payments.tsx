@@ -9,9 +9,12 @@ import {
   CalendarDaysIcon,
   ClockIcon,
   CalendarIcon,
+  PlusIcon,
 } from "@heroicons/react/24/outline";
 import PaymentViewEditDrawer from "../../components/drawers/PaymentViewEditDrawer";
 import PaymentRegisterDrawer from "../../components/drawers/PaymentRegisterDrawer";
+import BulkCustomPaymentDrawer from "../../components/drawers/BulkCustomPaymentDrawer";
+import PaymentCreateDrawer from "../../components/drawers/PaymentCreateDrawer";
 
 interface User {
   id: number;
@@ -42,7 +45,7 @@ interface Payment {
   instrument_loan: number | null;
   course_enrollment_info: CourseEnrollmentInfo | null;
   instrument_loan_info: InstrumentLoanInfo | null;
-  payment_type: "enrollment" | "loan" | "anualidad" | null;
+  payment_type: "enrollment" | "loan" | "anualidad" | "extra" | null;
   amount: number;
   amount_paid: number | null;
   remaining_amount: number;
@@ -124,12 +127,12 @@ const Payments = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(25);
 
   // Filters
   const [studentSearch, setStudentSearch] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<SearchUser | null>(
-    null
+    null,
   );
   const [showStudentDropdown, setShowStudentDropdown] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
@@ -141,7 +144,8 @@ const Payments = () => {
   const [availableYears, setAvailableYears] = useState<number[]>([]);
 
   // Anualidades Summary
-  const [anualidadesSummary, setAnualidadesSummary] = useState<AnualidadesSummary | null>(null);
+  const [anualidadesSummary, setAnualidadesSummary] =
+    useState<AnualidadesSummary | null>(null);
 
   // Summary
   const [summary, setSummary] = useState<StudentSummary | null>(null);
@@ -149,13 +153,16 @@ const Payments = () => {
 
   // Drawers
   const [selectedPaymentId, setSelectedPaymentId] = useState<number | null>(
-    null
+    null,
   );
   const [isViewEditDrawerOpen, setIsViewEditDrawerOpen] = useState(false);
   const [isRegisterDrawerOpen, setIsRegisterDrawerOpen] = useState(false);
   const [registerStudentId, setRegisterStudentId] = useState<number | null>(
-    null
+    null,
   );
+  const [isBulkPaymentDrawerOpen, setIsBulkPaymentDrawerOpen] = useState(false);
+  const [isCreatePaymentDrawerOpen, setIsCreatePaymentDrawerOpen] =
+    useState(false);
 
   const fetchPayments = async (pageNum: number) => {
     try {
@@ -188,16 +195,14 @@ const Payments = () => {
 
       const response = await axiosPrivate.get<PaginatedResponse>(
         "payments/manage-payments",
-        { params }
+        { params },
       );
 
       setPayments(response.data.results);
       setPagination(response.data.pagination);
     } catch (err: any) {
       console.error("Error fetching payments:", err);
-      setError(
-        err?.response?.data?.error || "Error al cargar los pagos"
-      );
+      setError(err?.response?.data?.error || "Error al cargar los pagos");
     } finally {
       setIsLoading(false);
     }
@@ -225,7 +230,7 @@ const Payments = () => {
 
       const response = await axiosPrivate.get<StudentSummary>(
         "payments/student-summary",
-        { params }
+        { params },
       );
       setSummary(response.data);
     } catch (err: any) {
@@ -242,7 +247,7 @@ const Payments = () => {
     try {
       const response = await axiosPrivate.get<AnualidadesSummary>(
         "payments/anualidades-summary",
-        { params: { student_id: selectedStudent.id } }
+        { params: { student_id: selectedStudent.id } },
       );
       setAnualidadesSummary(response.data);
     } catch (err: any) {
@@ -264,7 +269,7 @@ const Payments = () => {
           role: "all",
           page: 1,
           page_size: 20,
-        }
+        },
       );
       setSearchResults(response.data.results);
     } catch (err: any) {
@@ -275,7 +280,7 @@ const Payments = () => {
   const fetchAvailableYears = async () => {
     try {
       const response = await axiosPrivate.get<{ years: number[] }>(
-        "payments/available-years"
+        "payments/available-years",
       );
       setAvailableYears(response.data.years);
     } catch (err: any) {
@@ -320,7 +325,15 @@ const Payments = () => {
   // Effect to fetch payments when filters change
   useEffect(() => {
     fetchPayments(page);
-  }, [page, selectedStudent, paymentTypeFilter, statusFilter, overdueFilter, yearFilter, periodFilter]);
+  }, [
+    page,
+    selectedStudent,
+    paymentTypeFilter,
+    statusFilter,
+    overdueFilter,
+    yearFilter,
+    periodFilter,
+  ]);
 
   // Effect to fetch summary when student or filters change
   useEffect(() => {
@@ -396,7 +409,7 @@ const Payments = () => {
       last_name: payment.user.last_name,
     });
     setStudentSearch(`${payment.user.first_name} ${payment.user.last_name}`);
-    
+
     // Pass student ID to the drawer
     setRegisterStudentId(payment.user.id);
     setIsRegisterDrawerOpen(true);
@@ -412,8 +425,8 @@ const Payments = () => {
     try {
       // Extract just the date part (YYYY-MM-DD) to avoid timezone issues
       // Django stores datetimes in UTC, but we only need the date
-      const datePart = dateString.split('T')[0].split(' ')[0];
-      const [year, month, day] = datePart.split('-').map(Number);
+      const datePart = dateString.split("T")[0].split(" ")[0];
+      const [year, month, day] = datePart.split("-").map(Number);
       const date = new Date(year, month - 1, day); // month is 0-indexed
       return date.toLocaleDateString("es-CR", {
         year: "numeric",
@@ -479,6 +492,12 @@ const Payments = () => {
       return (
         <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-600/20">
           Matrícula
+        </span>
+      );
+    } else if (paymentType === "extra") {
+      return (
+        <span className="inline-flex items-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-600/20">
+          Extra
         </span>
       );
     }
@@ -606,6 +625,7 @@ const Payments = () => {
                   <option value="enrollment">Mensualidades</option>
                   <option value="loan">Alquileres</option>
                   <option value="anualidad">Matrícula</option>
+                  <option value="extra">Extra</option>
                 </select>
                 <svg
                   viewBox="0 0 16 16"
@@ -766,6 +786,26 @@ const Payments = () => {
                 </svg>
               </div>
             </div>
+
+            {/* Payment Creation Buttons */}
+            <div className="sm:w-auto flex items-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsCreatePaymentDrawerOpen(true)}
+                className="px-4 py-2 rounded-md text-sm font-medium bg-white text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 flex items-center justify-center gap-2"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Crear pago individual
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsBulkPaymentDrawerOpen(true)}
+                className="px-4 py-2 rounded-md text-sm font-medium bg-gray-900 text-white hover:bg-gray-800 flex items-center justify-center gap-2"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Crear pagos generales
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -847,102 +887,115 @@ const Payments = () => {
       )}
 
       {/* Anualidades Summary Box (when student selected and has pending anualidades) */}
-      {selectedStudent && anualidadesSummary && anualidadesSummary.count > 0 && (
-        <div className="mb-6">
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <BanknotesIcon className="h-5 w-5 text-purple-500" />
-                  <h4 className="text-sm font-medium text-purple-900">
-                    Matrícula Pendiente
-                  </h4>
+      {selectedStudent &&
+        anualidadesSummary &&
+        anualidadesSummary.count > 0 && (
+          <div className="mb-6">
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <BanknotesIcon className="h-5 w-5 text-purple-500" />
+                    <h4 className="text-sm font-medium text-purple-900">
+                      Matrícula Pendiente
+                    </h4>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {anualidadesSummary.anualidades.map((anualidad) => (
+                      <span
+                        key={anualidad.id}
+                        className="inline-flex items-center rounded-md bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700"
+                      >
+                        {anualidad.note} - {formatCurrency(anualidad.remaining)}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-lg font-semibold text-purple-700 mt-2">
+                    Total: {formatCurrency(anualidadesSummary.total_owed)}
+                  </p>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {anualidadesSummary.anualidades.map((anualidad) => (
-                    <span
-                      key={anualidad.id}
-                      className="inline-flex items-center rounded-md bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700"
-                    >
-                      {anualidad.note} - {formatCurrency(anualidad.remaining)}
-                    </span>
-                  ))}
-                </div>
-                <p className="text-lg font-semibold text-purple-700 mt-2">
-                  Total: {formatCurrency(anualidadesSummary.total_owed)}
-                </p>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Next Payment Card (when student selected) */}
-      {selectedStudent && summary && (summary.total_overdue > 0 || summary.next_month_remaining > 0) && (
-        <div className="mb-6">
-          {summary.total_overdue > 0 ? (
-            /* Overdue payments - show in red */
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
-                    <h4 className="text-sm font-medium text-red-900">
-                      Pendiente de pago
+      {selectedStudent &&
+        summary &&
+        (summary.total_overdue > 0 || summary.next_month_remaining > 0) && (
+          <div className="mb-6">
+            {summary.total_overdue > 0 ? (
+              /* Overdue payments - show in red */
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
+                      <h4 className="text-sm font-medium text-red-900">
+                        Pendiente de pago
+                      </h4>
+                    </div>
+                    <p className="text-lg font-semibold text-red-700 mt-1">
+                      {formatCurrency(summary.total_overdue)}
+                    </p>
+                    <div className="flex items-center gap-1 text-sm text-red-600 mt-1">
+                      <CalendarDaysIcon className="h-4 w-4" />
+                      <span>
+                        Pendiente desde:{" "}
+                        {formatDate(summary.earliest_overdue_date || "")}
+                      </span>
+                    </div>
+                    <p className="text-xs text-red-500 mt-1">
+                      {summary.overdue_payments_count} pago(s) vencido(s)
+                    </p>
+                  </div>
+                  {summary.next_payment && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleRegisterPayment(summary.next_payment!)
+                      }
+                      className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500"
+                    >
+                      Registrar pago
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : summary.next_month_remaining > 0 ? (
+              /* Next month payments - show in blue */
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-medium text-blue-900">
+                      Próximo pago
                     </h4>
+                    <p className="text-lg font-semibold text-blue-700 mt-1">
+                      {formatCurrency(summary.next_month_remaining)}
+                    </p>
+                    <div className="flex items-center gap-1 text-sm text-blue-600 mt-1">
+                      <CalendarDaysIcon className="h-4 w-4" />
+                      <span>
+                        Vence: {formatDate(summary.next_payment_date || "")}
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-lg font-semibold text-red-700 mt-1">
-                    {formatCurrency(summary.total_overdue)}
-                  </p>
-                  <div className="flex items-center gap-1 text-sm text-red-600 mt-1">
-                    <CalendarDaysIcon className="h-4 w-4" />
-                    <span>Pendiente desde: {formatDate(summary.earliest_overdue_date || "")}</span>
-                  </div>
-                  <p className="text-xs text-red-500 mt-1">
-                    {summary.overdue_payments_count} pago(s) vencido(s)
-                  </p>
+                  {summary.next_payment && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleRegisterPayment(summary.next_payment!)
+                      }
+                      className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
+                    >
+                      Registrar pago
+                    </button>
+                  )}
                 </div>
-                {summary.next_payment && (
-                  <button
-                    type="button"
-                    onClick={() => handleRegisterPayment(summary.next_payment!)}
-                    className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500"
-                  >
-                    Registrar pago
-                  </button>
-                )}
               </div>
-            </div>
-          ) : summary.next_month_remaining > 0 ? (
-            /* Next month payments - show in blue */
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-medium text-blue-900">
-                    Próximo pago
-                  </h4>
-                  <p className="text-lg font-semibold text-blue-700 mt-1">
-                    {formatCurrency(summary.next_month_remaining)}
-                  </p>
-                  <div className="flex items-center gap-1 text-sm text-blue-600 mt-1">
-                    <CalendarDaysIcon className="h-4 w-4" />
-                    <span>Vence: {formatDate(summary.next_payment_date || "")}</span>
-                  </div>
-                </div>
-                {summary.next_payment && (
-                  <button
-                    type="button"
-                    onClick={() => handleRegisterPayment(summary.next_payment!)}
-                    className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
-                  >
-                    Registrar pago
-                  </button>
-                )}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      )}
+            ) : null}
+          </div>
+        )}
 
       {/* Table */}
       <div className="mt-2 sm:mt-4 flow-root">
@@ -994,10 +1047,7 @@ const Payments = () => {
                     >
                       Estado
                     </th>
-                    <th
-                      scope="col"
-                      className="py-3.5 pr-4 pl-3 sm:pr-0"
-                    >
+                    <th scope="col" className="py-3.5 pr-4 pl-3 sm:pr-0">
                       <span className="sr-only">Acciones</span>
                     </th>
                   </tr>
@@ -1005,7 +1055,10 @@ const Payments = () => {
                 <tbody className="divide-y divide-gray-200 bg-white">
                   {isLoading ? (
                     <tr>
-                      <td colSpan={8} className="py-5 pr-3 pl-4 text-sm text-center text-gray-500 sm:pl-0">
+                      <td
+                        colSpan={8}
+                        className="py-5 pr-3 pl-4 text-sm text-center text-gray-500 sm:pl-0"
+                      >
                         <div className="flex justify-center">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
                         </div>
@@ -1095,51 +1148,54 @@ const Payments = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {pagination && (
+              <nav
+                aria-label="Pagination"
+                className="flex items-center justify-between sm:shadow-sm sm:border-b sm:border-x sm:border-gray-300 sm:rounded-b-md bg-white px-4 py-3 sm:px-6"
+              >
+                <div className="hidden sm:block">
+                  <p className="text-sm text-gray-700">
+                    Mostrando{" "}
+                    <span className="font-medium">
+                      {pagination.page_size * (pagination.page - 1) + 1}
+                    </span>{" "}
+                    a{" "}
+                    <span className="font-medium">
+                      {Math.min(
+                        pagination.page_size * pagination.page,
+                        pagination.total_count,
+                      )}
+                    </span>{" "}
+                    de{" "}
+                    <span className="font-medium">
+                      {pagination.total_count}
+                    </span>{" "}
+                    resultados
+                  </p>
+                </div>
+                <div className="flex flex-1 justify-between sm:justify-end">
+                  <button
+                    onClick={() => setPage(page - 1)}
+                    disabled={!pagination.has_previous || isLoading}
+                    className="relative inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    onClick={() => setPage(page + 1)}
+                    disabled={!pagination.has_next || isLoading}
+                    className="relative ml-3 inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </nav>
+            )}
           </div>
         </div>
       </div>
-
-      {/* Pagination Controls */}
-      {pagination && (
-        <nav
-          aria-label="Pagination"
-          className="flex items-center justify-between sm:shadow-sm sm:border-b sm:border-x sm:border-gray-300 sm:rounded-b-md bg-white px-4 py-3 sm:px-6"
-        >
-          <div className="hidden sm:block">
-            <p className="text-sm text-gray-700">
-              Mostrando{" "}
-              <span className="font-medium">
-                {pagination.page_size * (pagination.page - 1) + 1}
-              </span>{" "}
-              a{" "}
-              <span className="font-medium">
-                {Math.min(
-                  pagination.page_size * pagination.page,
-                  pagination.total_count
-                )}
-              </span>{" "}
-              de <span className="font-medium">{pagination.total_count}</span>{" "}
-              resultados
-            </p>
-          </div>
-          <div className="flex flex-1 justify-between sm:justify-end">
-            <button
-              onClick={() => setPage(page - 1)}
-              disabled={!pagination.has_previous || isLoading}
-              className="relative inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-            >
-              Anterior
-            </button>
-            <button
-              onClick={() => setPage(page + 1)}
-              disabled={!pagination.has_next || isLoading}
-              className="relative ml-3 inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-            >
-              Siguiente
-            </button>
-          </div>
-        </nav>
-      )}
 
       {/* Drawers */}
       <PaymentViewEditDrawer
@@ -1160,6 +1216,19 @@ const Payments = () => {
         }}
         studentId={registerStudentId}
         onPaymentRegistered={handlePaymentUpdated}
+      />
+
+      <BulkCustomPaymentDrawer
+        isOpen={isBulkPaymentDrawerOpen}
+        onClose={() => setIsBulkPaymentDrawerOpen(false)}
+        onPaymentsCreated={handlePaymentUpdated}
+        availableYears={availableYears}
+      />
+
+      <PaymentCreateDrawer
+        isOpen={isCreatePaymentDrawerOpen}
+        onClose={() => setIsCreatePaymentDrawerOpen(false)}
+        onPaymentCreated={handlePaymentUpdated}
       />
     </div>
   );
