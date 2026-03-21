@@ -14,7 +14,10 @@ import {
 import CourseEnrollmentCreateDrawer from "../../components/drawers/CourseEnrollmentCreateDrawer";
 import CourseEnrollmentEditDrawer from "../../components/drawers/CourseEnrollmentEditDrawer";
 import CourseEnrollmentScheduleDrawer from "../../components/drawers/CourseEnrollmentScheduleDrawer";
+import PrintEnrollmentReportDrawer from "../../components/drawers/PrintEnrollmentReportDrawer";
 import { HiOutlineBuildingLibrary } from "react-icons/hi2";
+import { CgFileDocument } from "react-icons/cg";
+import useAuth from "../../hooks/useAuth";
 
 interface Career {
   id: number;
@@ -98,6 +101,7 @@ interface ProfessorsResponse {
 const CourseEnrollments = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const axiosPrivate = useAxiosPrivate();
+  const { auth } = useAuth();
   const [enrollments, setEnrollments] = useState<CourseEnrollment[]>([]);
   const [careers, setCareers] = useState<Career[]>([]);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -133,6 +137,7 @@ const CourseEnrollments = () => {
   const [isScheduleDrawerOpen, setIsScheduleDrawerOpen] = useState(false);
   const [selectedEnrollmentForSchedule, setSelectedEnrollmentForSchedule] =
     useState<number | null>(null);
+  const [isPrintDrawerOpen, setIsPrintDrawerOpen] = useState(false);
 
   const fetchCareers = async () => {
     try {
@@ -383,6 +388,14 @@ const CourseEnrollments = () => {
         <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none flex gap-2">
           <button
             type="button"
+            onClick={() => setIsPrintDrawerOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-2 text-center text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+          >
+            <CgFileDocument className="size-4" />
+            Imprimir reporte
+          </button>
+          <button
+            type="button"
             onClick={() => {
               setIsMatriculaFilter(!isMatriculaFilter);
               setPage(1);
@@ -400,7 +413,7 @@ const CourseEnrollments = () => {
             onClick={handleCreateEnrollment}
             className="block rounded-md bg-gray-900 px-3 py-2 text-center text-sm font-semibold text-white shadow-xs hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
           >
-            Registrar matrícula
+            Registrar matrícula/curso
           </button>
         </div>
       </div>
@@ -906,6 +919,20 @@ const CourseEnrollments = () => {
         isOpen={isScheduleDrawerOpen}
         onClose={handleCloseScheduleDrawer}
         onScheduleUpdated={handleScheduleUpdated}
+      />
+
+      {/* Print Report Drawer */}
+      <PrintEnrollmentReportDrawer
+        isOpen={isPrintDrawerOpen}
+        onClose={() => setIsPrintDrawerOpen(false)}
+        careers={careers}
+        availableYears={availableYears}
+        axiosPrivate={axiosPrivate}
+        userName={
+          auth?.user
+            ? `${auth.user.first_name} ${auth.user.last_name}`
+            : "Admin"
+        }
       />
     </div>
   );

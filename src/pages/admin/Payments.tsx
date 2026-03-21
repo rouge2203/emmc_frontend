@@ -15,6 +15,11 @@ import PaymentViewEditDrawer from "../../components/drawers/PaymentViewEditDrawe
 import PaymentRegisterDrawer from "../../components/drawers/PaymentRegisterDrawer";
 import BulkCustomPaymentDrawer from "../../components/drawers/BulkCustomPaymentDrawer";
 import PaymentCreateDrawer from "../../components/drawers/PaymentCreateDrawer";
+import PrintPaymentReportDrawer from "../../components/drawers/PrintPaymentReportDrawer";
+import useAuth from "../../hooks/useAuth";
+import { CgFileDocument } from "react-icons/cg";
+import { LiaFileInvoiceDollarSolid } from "react-icons/lia";
+import { generateIndividualPaymentReport } from "../../utils/generateIndividualPaymentReport";
 
 interface User {
   id: number;
@@ -122,6 +127,7 @@ interface UsersResponse {
 const Payments = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const axiosPrivate = useAxiosPrivate();
+  const { auth } = useAuth();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -163,6 +169,7 @@ const Payments = () => {
   const [isBulkPaymentDrawerOpen, setIsBulkPaymentDrawerOpen] = useState(false);
   const [isCreatePaymentDrawerOpen, setIsCreatePaymentDrawerOpen] =
     useState(false);
+  const [isPrintDrawerOpen, setIsPrintDrawerOpen] = useState(false);
 
   const fetchPayments = async (pageNum: number) => {
     try {
@@ -418,6 +425,46 @@ const Payments = () => {
   const handlePaymentUpdated = () => {
     fetchPayments(page);
     fetchStudentSummary();
+  };
+
+  const [isGeneratingIndividual, setIsGeneratingIndividual] = useState(false);
+
+  const handleIndividualReport = async () => {
+    if (!selectedStudent) return;
+    try {
+      setIsGeneratingIndividual(true);
+
+      const params: any = {
+        page: 1,
+        page_size: 10000,
+        student_id: selectedStudent.id,
+      };
+      if (paymentTypeFilter) params.payment_type = paymentTypeFilter;
+      if (statusFilter) params.status = statusFilter;
+      if (overdueFilter) params.overdue = "true";
+      if (yearFilter) params.year = yearFilter;
+      if (periodFilter) params.period = periodFilter;
+
+      const response = await axiosPrivate.get("payments/manage-payments", {
+        params,
+      });
+
+      const studentName =
+        `${selectedStudent.first_name} ${selectedStudent.last_name || ""}`.trim();
+      const userName = auth?.user
+        ? `${auth.user.first_name} ${auth.user.last_name}`
+        : "Admin";
+
+      await generateIndividualPaymentReport(
+        response.data.results,
+        studentName,
+        userName,
+      );
+    } catch (err: any) {
+      console.error("Error generating individual report:", err);
+    } finally {
+      setIsGeneratingIndividual(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -789,6 +836,28 @@ const Payments = () => {
 
             {/* Payment Creation Buttons */}
             <div className="sm:w-auto flex items-end gap-2">
+              {selectedStudent ? (
+                <button
+                  type="button"
+                  onClick={handleIndividualReport}
+                  disabled={isGeneratingIndividual}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-2 text-center text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <LiaFileInvoiceDollarSolid className="size-4" />
+                  {isGeneratingIndividual
+                    ? "Generando..."
+                    : "Imprimir reporte individual"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsPrintDrawerOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-2 text-center text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+                >
+                  <CgFileDocument className="size-4" />
+                  Imprimir reporte
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setIsCreatePaymentDrawerOpen(true)}
@@ -1229,6 +1298,14 @@ const Payments = () => {
         isOpen={isCreatePaymentDrawerOpen}
         onClose={() => setIsCreatePaymentDrawerOpen(false)}
         onPaymentCreated={handlePaymentUpdated}
+      />
+
+      <PrintPaymentReportDrawer
+        isOpen={isPrintDrawerOpen}
+        onClose={() => setIsPrintDrawerOpen(false)}
+        availableYears={availableYears}
+        axiosPrivate={axiosPrivate}
+        userName={auth?.user ? `${auth.user.first_name} ${auth.user.last_name}` : "Admin"}
       />
     </div>
   );

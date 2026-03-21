@@ -591,7 +591,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
 
   // Check if required fields are filled and valid
   const isSubmitDisabled =
-    !selectedCourse || !selectedStudent || !price || isCreating;
+    !selectedCourse || !selectedStudent || price === "" || isCreating;
 
   const defaultPrice = selectedCourse
     ? selectedCourse.special_price || selectedCourse.course_type_price || 0
@@ -1171,29 +1171,31 @@ const CourseEnrollmentCreateDrawer: React.FC<
                         </div>
                       </div>
 
-                      {/* First Payment Date */}
-                      <div className="space-y-2 px-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0 sm:px-6 sm:py-5">
-                        <div>
-                          <label
-                            htmlFor="first_payment_date"
-                            className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
-                          >
-                            Fecha de primer pago regular
-                          </label>
+                      {/* First Payment Date (hidden when price is 0) */}
+                      {parseInt(price) > 0 && (
+                        <div className="space-y-2 px-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0 sm:px-6 sm:py-5">
+                          <div>
+                            <label
+                              htmlFor="first_payment_date"
+                              className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
+                            >
+                              Fecha de primer pago regular
+                            </label>
+                          </div>
+                          <div className="sm:col-span-2">
+                            <input
+                              id="first_payment_date"
+                              name="first_payment_date"
+                              type="date"
+                              value={firstPaymentDate}
+                              onChange={(e) =>
+                                setFirstPaymentDate(e.target.value)
+                              }
+                              className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 focus-visible:outline-gray-900"
+                            />
+                          </div>
                         </div>
-                        <div className="sm:col-span-2">
-                          <input
-                            id="first_payment_date"
-                            name="first_payment_date"
-                            type="date"
-                            value={firstPaymentDate}
-                            onChange={(e) =>
-                              setFirstPaymentDate(e.target.value)
-                            }
-                            className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 focus-visible:outline-gray-900"
-                          />
-                        </div>
-                      </div>
+                      )}
 
                       {/* Payment Preview */}
                       {(paymentPreview.length > 0 ||
