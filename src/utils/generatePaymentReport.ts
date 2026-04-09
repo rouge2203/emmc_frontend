@@ -86,10 +86,10 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 function getDisplayStatus(payment: PaymentData): string {
-  if (payment.is_overdue && payment.status !== "completado") return "Vencido";
+  if (payment.is_overdue && payment.status !== "completado") return "Pendiente";
   const labels: Record<string, string> = {
     "en espera": "En espera",
-    completado: "Completado",
+    completado: "Pagado",
     incompleto: "Incompleto",
   };
   return labels[payment.status] || payment.status;
@@ -285,11 +285,11 @@ export async function generatePaymentReport(
         if (data.section === "body" && data.column.index === 8) {
           const display = data.cell.raw as string;
           const key =
-            display === "Vencido"
+            display === "Pendiente"
               ? "vencido"
               : display === "En espera"
                 ? "en espera"
-                : display === "Completado"
+                : display === "Pagado"
                   ? "completado"
                   : display === "Incompleto"
                     ? "incompleto"
@@ -430,9 +430,9 @@ export async function generatePaymentReport(
 
     const statusLabels: Record<string, string> = {
       "en espera": "En espera",
-      completado: "Completado",
+      completado: "Pagado",
       incompleto: "Incompleto",
-      vencido: "Vencido",
+      vencido: "Pendiente",
     };
 
     const statusRows = Object.entries(byStatus)
