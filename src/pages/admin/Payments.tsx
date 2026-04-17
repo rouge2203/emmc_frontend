@@ -114,6 +114,29 @@ interface StudentSummary {
   next_payment: Payment | null;
 }
 
+interface OverdueTypeStat {
+  count: number;
+  total_due: number;
+}
+
+interface OverdueMonthStat {
+  month: string;
+  count: number;
+  total_due: number;
+}
+
+interface OverdueStats {
+  total_count: number;
+  total_due: number;
+  by_type: {
+    enrollment: OverdueTypeStat;
+    loan: OverdueTypeStat;
+    anualidad: OverdueTypeStat;
+    extra: OverdueTypeStat;
+  };
+  by_month: OverdueMonthStat[];
+}
+
 interface SearchUser {
   id: number;
   first_name: string;
@@ -155,6 +178,7 @@ const Payments = () => {
 
   // Summary
   const [summary, setSummary] = useState<StudentSummary | null>(null);
+  const [overdueStats, setOverdueStats] = useState<OverdueStats | null>(null);
   const studentDropdownRef = useRef<HTMLDivElement>(null);
 
   // Drawers
@@ -262,6 +286,26 @@ const Payments = () => {
     }
   };
 
+  const showOverdueStats = overdueFilter && !selectedStudent;
+
+  const fetchOverdueStats = async () => {
+    try {
+      const params: any = {};
+      if (paymentTypeFilter) params.payment_type = paymentTypeFilter;
+      if (statusFilter) params.status = statusFilter;
+      if (yearFilter) params.year = yearFilter;
+      if (periodFilter) params.period = periodFilter;
+
+      const response = await axiosPrivate.get<OverdueStats>(
+        "payments/overdue-stats",
+        { params },
+      );
+      setOverdueStats(response.data);
+    } catch (err: any) {
+      console.error("Error fetching overdue stats:", err);
+    }
+  };
+
   const searchStudents = async (search: string) => {
     if (!search || search.length < 2) {
       setSearchResults([]);
@@ -351,6 +395,22 @@ const Payments = () => {
   useEffect(() => {
     fetchAnualidadesSummary();
   }, [selectedStudent]);
+
+  // Effect to fetch overdue stats when "Vencidos" is the active scope
+  useEffect(() => {
+    if (showOverdueStats) {
+      fetchOverdueStats();
+    } else {
+      setOverdueStats(null);
+    }
+  }, [
+    overdueFilter,
+    selectedStudent,
+    paymentTypeFilter,
+    statusFilter,
+    yearFilter,
+    periodFilter,
+  ]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -487,6 +547,18 @@ const Payments = () => {
 
   const formatCurrency = (amount: number) => {
     return `₡${amount?.toLocaleString() || 0}`;
+  };
+
+  const formatMonth = (yearMonth: string) => {
+    const [yearStr, monthStr] = yearMonth.split("-");
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    if (!year || !month) return yearMonth;
+    const date = new Date(year, month - 1, 1);
+    return date.toLocaleDateString("es-CR", {
+      year: "numeric",
+      month: "short",
+    });
   };
 
   const getStatusBadge = (status: string, isOverdue: boolean) => {
@@ -745,7 +817,7 @@ const Payments = () => {
                 }`}
               >
                 <ExclamationCircleIcon className="h-4 w-4" />
-                Por pagar
+                Vencidos
               </button>
             </div>
           </div>
@@ -878,6 +950,125 @@ const Payments = () => {
           </div>
         </div>
       </div>
+
+      {/* Overdue Stats Panel (when "Vencidos" filter active and no student selected) */}
+      {showOverdueStats && overdueStats && (
+        <div className="mb-6 space-y-4">
+          {/* Top row: total count + total due */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-red-900">
+                    Pagos vencidos
+                  </p>
+                  <p className="text-lg font-semibold text-red-700">
+                    {overdueStats.total_count.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <BanknotesIcon className="h-6 w-6 text-red-500" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-red-900">
+                    Total adeudado
+                  </p>
+                  <p className="text-lg font-semibold text-red-700">
+                    {formatCurrency(overdueStats.total_due)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* By type */}
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Por tipo</h3>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {(
+                [
+                  {
+                    key: "enrollment" as const,
+                    label: "Mensualidades",
+                    accent: "bg-gray-50 text-gray-700 ring-gray-600/20",
+                  },
+                  {
+                    key: "loan" as const,
+                    label: "Alquiler",
+                    accent: "bg-gray-50 text-gray-700 ring-gray-600/20",
+                  },
+                  {
+                    key: "anualidad" as const,
+                    label: "Matrícula",
+                    accent: "bg-purple-50 text-purple-700 ring-purple-600/20",
+                  },
+                  {
+                    key: "extra" as const,
+                    label: "Extra",
+                    accent: "bg-indigo-50 text-indigo-700 ring-indigo-600/20",
+                  },
+                ]
+              ).map(({ key, label, accent }) => {
+                const stat = overdueStats.by_type[key];
+                return (
+                  <div
+                    key={key}
+                    className="rounded-md border border-gray-200 p-3"
+                  >
+                    <span
+                      className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${accent}`}
+                    >
+                      {label}
+                    </span>
+                    <p className="mt-2 text-base font-semibold text-gray-900">
+                      {stat.count.toLocaleString()} pago(s)
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {formatCurrency(stat.total_due)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* By month */}
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Por mes</h3>
+            {overdueStats.by_month.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                No hay pagos vencidos en el rango seleccionado.
+              </p>
+            ) : (
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {overdueStats.by_month.map((m) => (
+                  <div
+                    key={m.month}
+                    className="flex-shrink-0 min-w-[140px] rounded-md border border-gray-200 p-3"
+                  >
+                    <p className="text-xs font-medium uppercase text-gray-500">
+                      {formatMonth(m.month)}
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-gray-900">
+                      {m.count.toLocaleString()} pago(s)
+                    </p>
+                    <p className="text-sm text-red-600">
+                      {formatCurrency(m.total_due)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Summary Cards (when student selected) */}
       {selectedStudent && summary && (
@@ -1305,7 +1496,11 @@ const Payments = () => {
         onClose={() => setIsPrintDrawerOpen(false)}
         availableYears={availableYears}
         axiosPrivate={axiosPrivate}
-        userName={auth?.user ? `${auth.user.first_name} ${auth.user.last_name}` : "Admin"}
+        userName={
+          auth?.user
+            ? `${auth.user.first_name} ${auth.user.last_name}`
+            : "Admin"
+        }
       />
     </div>
   );
