@@ -232,6 +232,7 @@ const PrintEnrollmentReportDrawer: React.FC<
                             <option value="cursando">Cursando</option>
                             <option value="aprobado">Aprobado</option>
                             <option value="reprobado">Reprobado</option>
+                            <option value="retirado">Retirado</option>
                           </select>
                           <svg
                             viewBox="0 0 16 16"

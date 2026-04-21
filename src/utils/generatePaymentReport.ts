@@ -433,6 +433,7 @@ export async function generatePaymentReport(
       completado: "Pagado",
       incompleto: "Incompleto",
       vencido: "Pendiente",
+      cancelado: "Cancelado",
     };
 
     const statusRows = Object.entries(byStatus)

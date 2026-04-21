@@ -18,6 +18,7 @@ import {
   MagnifyingGlassIcon,
   XCircleIcon,
   ArrowPathIcon,
+  ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
@@ -75,6 +76,7 @@ interface CourseEnrollment {
   grade: number | null;
   professor_observation: string | null;
   schedule_set: boolean;
+  retired_at: string | null;
   created_at: string;
   updated_at: string;
   created_by: {
@@ -131,6 +133,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
   const [errorNotificationMessage, setErrorNotificationMessage] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showRetireCourseDialog, setShowRetireCourseDialog] = useState(false);
 
   // Searchable selects state
   const [courseSearch, setCourseSearch] = useState("");
@@ -160,6 +163,12 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
       fetchEnrollmentData();
     }
   }, [isOpen, enrollmentId]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setShowRetireCourseDialog(false);
+    }
+  }, [isOpen]);
 
   // Fetch professors only when the user activates the professor dropdown
   useEffect(() => {
@@ -892,9 +901,20 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                                 onChange={(e) => setStatus(e.target.value)}
                                 className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                               >
-                                <option value="cursando">Cursando</option>
-                                <option value="aprobado">Aprobado</option>
-                                <option value="reprobado">Reprobado</option>
+                                {status === "retirado" ? (
+                                  <>
+                                    <option value="cursando">Cursando</option>
+                                    <option value="aprobado">Aprobado</option>
+                                    <option value="reprobado">Reprobado</option>
+                                    <option value="retirado">Retirado</option>
+                                  </>
+                                ) : (
+                                  <>
+                                    <option value="cursando">Cursando</option>
+                                    <option value="aprobado">Aprobado</option>
+                                    <option value="reprobado">Reprobado</option>
+                                  </>
+                                )}
                               </select>
                               <svg
                                 viewBox="0 0 16 16"
@@ -910,7 +930,50 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                                 />
                               </svg>
                             </div>
+                            {status !== "retirado" && (
+                              <button
+                                type="button"
+                                onClick={() => setShowRetireCourseDialog(true)}
+                                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-200"
+                              >
+                                <ArrowRightOnRectangleIcon
+                                  className="size-5 text-gray-500"
+                                  aria-hidden
+                                />
+                                Retirar curso
+                              </button>
+                            )}
                           </div>
+
+                          {/* Retired At Info */}
+                          {status === "retirado" && (
+                            <div className="rounded-md bg-gray-50 border border-gray-200 p-3">
+                              {enrollment?.retired_at ? (
+                                <p className="text-sm text-gray-600">
+                                  <span className="font-medium text-gray-900">
+                                    Fecha de retiro:
+                                  </span>{" "}
+                                  {new Date(enrollment.retired_at).toLocaleDateString(
+                                    "es-CR",
+                                    {
+                                      year: "numeric",
+                                      month: "long",
+                                      day: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    },
+                                  )}
+                                </p>
+                              ) : (
+                                <p className="text-sm text-gray-600">
+                                  <span className="font-medium text-gray-900">
+                                    Fecha de retiro:
+                                  </span>{" "}
+                                  Se registrará al guardar los cambios.
+                                </p>
+                              )}
+                            </div>
+                          )}
 
                           {/* Grade */}
                           {!selectedCourse?.is_matricula && (
@@ -1217,6 +1280,74 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
           </div>,
           document.body,
         )}
+
+      {/* Retirar curso confirmation */}
+      <Dialog
+        open={showRetireCourseDialog}
+        onClose={() => setShowRetireCourseDialog(false)}
+        className="relative z-[100]"
+      >
+        <DialogBackdrop
+          transition
+          className="fixed inset-0 bg-gray-500/75 transition-opacity data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
+        />
+        <div className="fixed inset-0 z-[100] w-screen overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <DialogPanel
+              transition
+              className="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in sm:my-8 sm:w-full sm:max-w-lg sm:p-6 data-closed:sm:translate-y-0 data-closed:sm:scale-95"
+            >
+              <div className="sm:flex sm:items-start">
+                <div className="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-red-50 sm:mx-0 sm:size-10">
+                  <ExclamationTriangleIcon
+                    aria-hidden="true"
+                    className="size-6 text-red-600"
+                  />
+                </div>
+                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                  <DialogTitle
+                    as="h3"
+                    className="text-base font-semibold text-gray-900"
+                  >
+                    Confirmar retiro del curso
+                  </DialogTitle>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      Cuando pulse <span className="font-medium text-gray-900">Guardar</span> en
+                      este formulario, se enviará un correo al estudiante (y al encargado si
+                      aplica) notificando el retiro del curso, y se cancelarán los pagos
+                      pendientes de esta matrícula. Los pagos ya realizados no se verán
+                      afectados.
+                    </p>
+                    <p className="mt-2 text-sm text-gray-500">
+                      ¿Desea marcar esta matrícula como retirada?
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatus("retirado");
+                    setShowRetireCourseDialog(false);
+                  }}
+                  className="inline-flex w-full justify-center rounded-md bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-gray-800 sm:ml-3 sm:w-auto"
+                >
+                  Sí, continuar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowRetireCourseDialog(false)}
+                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </DialogPanel>
+          </div>
+        </div>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog

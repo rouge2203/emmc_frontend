@@ -16,6 +16,8 @@ import PaymentRegisterDrawer from "../../components/drawers/PaymentRegisterDrawe
 import BulkCustomPaymentDrawer from "../../components/drawers/BulkCustomPaymentDrawer";
 import PaymentCreateDrawer from "../../components/drawers/PaymentCreateDrawer";
 import PrintPaymentReportDrawer from "../../components/drawers/PrintPaymentReportDrawer";
+import BecadoApplyDrawer from "../../components/drawers/BecadoApplyDrawer";
+import { AcademicCapIcon } from "@heroicons/react/24/outline";
 import useAuth from "../../hooks/useAuth";
 import { CgFileDocument } from "react-icons/cg";
 import { LiaFileInvoiceDollarSolid } from "react-icons/lia";
@@ -170,6 +172,7 @@ const Payments = () => {
   const [overdueFilter, setOverdueFilter] = useState(false);
   const [yearFilter, setYearFilter] = useState<string>("");
   const [periodFilter, setPeriodFilter] = useState<string>("");
+  const [monthFilter, setMonthFilter] = useState<string>("");
   const [availableYears, setAvailableYears] = useState<number[]>([]);
 
   // Anualidades Summary
@@ -194,6 +197,11 @@ const Payments = () => {
   const [isCreatePaymentDrawerOpen, setIsCreatePaymentDrawerOpen] =
     useState(false);
   const [isPrintDrawerOpen, setIsPrintDrawerOpen] = useState(false);
+  const [isBecadoApplyOpen, setIsBecadoApplyOpen] = useState(false);
+  const [studentBecadoInfo, setStudentBecadoInfo] = useState<{
+    is_becado: boolean;
+    becado_percentage: number | null;
+  } | null>(null);
 
   const fetchPayments = async (pageNum: number) => {
     try {
@@ -222,6 +230,9 @@ const Payments = () => {
       }
       if (periodFilter) {
         params.period = periodFilter;
+      }
+      if (monthFilter) {
+        params.month = monthFilter;
       }
 
       const response = await axiosPrivate.get<PaginatedResponse>(
@@ -269,6 +280,26 @@ const Payments = () => {
     }
   };
 
+  const fetchStudentBecadoInfo = async () => {
+    if (!selectedStudent) {
+      setStudentBecadoInfo(null);
+      return;
+    }
+    try {
+      const res = await axiosPrivate.get("users/get-user-info", {
+        params: { id: selectedStudent.id },
+      });
+      const profile = res.data?.user?.profile || {};
+      setStudentBecadoInfo({
+        is_becado: !!profile.is_becado,
+        becado_percentage: profile.becado_percentage ?? null,
+      });
+    } catch (err) {
+      console.error("Error fetching becado info:", err);
+      setStudentBecadoInfo(null);
+    }
+  };
+
   const fetchAnualidadesSummary = async () => {
     if (!selectedStudent) {
       setAnualidadesSummary(null);
@@ -291,7 +322,6 @@ const Payments = () => {
   const fetchOverdueStats = async () => {
     try {
       const params: any = {};
-      if (paymentTypeFilter) params.payment_type = paymentTypeFilter;
       if (statusFilter) params.status = statusFilter;
       if (yearFilter) params.year = yearFilter;
       if (periodFilter) params.period = periodFilter;
@@ -384,6 +414,7 @@ const Payments = () => {
     overdueFilter,
     yearFilter,
     periodFilter,
+    monthFilter,
   ]);
 
   // Effect to fetch summary when student or filters change
@@ -396,6 +427,11 @@ const Payments = () => {
     fetchAnualidadesSummary();
   }, [selectedStudent]);
 
+  // Effect to fetch becado info when student changes
+  useEffect(() => {
+    fetchStudentBecadoInfo();
+  }, [selectedStudent]);
+
   // Effect to fetch overdue stats when "Vencidos" is the active scope
   useEffect(() => {
     if (showOverdueStats) {
@@ -406,7 +442,6 @@ const Payments = () => {
   }, [
     overdueFilter,
     selectedStudent,
-    paymentTypeFilter,
     statusFilter,
     yearFilter,
     periodFilter,
@@ -439,6 +474,7 @@ const Payments = () => {
     setStudentSearch("");
     setSummary(null);
     setAnualidadesSummary(null);
+    setStudentBecadoInfo(null);
     setPage(1);
   };
 
@@ -450,8 +486,10 @@ const Payments = () => {
     setOverdueFilter(false);
     setYearFilter("");
     setPeriodFilter("");
+    setMonthFilter("");
     setSummary(null);
     setAnualidadesSummary(null);
+    setStudentBecadoInfo(null);
     setPage(1);
   };
 
@@ -461,7 +499,8 @@ const Payments = () => {
     statusFilter ||
     overdueFilter ||
     yearFilter ||
-    periodFilter;
+    periodFilter ||
+    monthFilter;
 
   const handleViewPayment = (payment: Payment) => {
     setSelectedPaymentId(payment.id);
@@ -575,12 +614,14 @@ const Payments = () => {
       "en espera": "bg-yellow-50 text-yellow-700 ring-yellow-600/20",
       completado: "bg-green-50 text-green-700 ring-green-600/20",
       incompleto: "bg-orange-50 text-orange-700 ring-orange-600/20",
+      cancelado: "bg-gray-50 text-gray-500 ring-gray-400/20",
     };
 
     const labels: Record<string, string> = {
       "en espera": "En espera",
       completado: "Completado",
       incompleto: "Incompleto",
+      cancelado: "Cancelado",
     };
 
     return (
@@ -785,6 +826,7 @@ const Payments = () => {
                   <option value="en espera">En espera</option>
                   <option value="completado">Completado</option>
                   <option value="incompleto">Incompleto</option>
+                  <option value="cancelado">Cancelado</option>
                 </select>
                 <svg
                   viewBox="0 0 16 16"
@@ -807,7 +849,9 @@ const Payments = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setOverdueFilter(!overdueFilter);
+                  const next = !overdueFilter;
+                  setOverdueFilter(next);
+                  if (!next) setMonthFilter("");
                   setPage(1);
                 }}
                 className={`w-full px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
@@ -1017,10 +1061,19 @@ const Payments = () => {
                 ]
               ).map(({ key, label, accent }) => {
                 const stat = overdueStats.by_type[key];
+                const isActive = paymentTypeFilter === key;
                 return (
                   <div
                     key={key}
-                    className="rounded-md border border-gray-200 p-3"
+                    onClick={() => {
+                      setPaymentTypeFilter(isActive ? "" : key);
+                      setPage(1);
+                    }}
+                    className={`rounded-md border p-3 cursor-pointer transition-colors ${
+                      isActive
+                        ? "border-gray-900 bg-gray-50 ring-1 ring-gray-900"
+                        : "border-gray-200 hover:border-gray-400"
+                    }`}
                   >
                     <span
                       className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${accent}`}
@@ -1041,29 +1094,54 @@ const Payments = () => {
 
           {/* By month */}
           <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Por mes</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-gray-900">Por mes</h3>
+              {monthFilter && (
+                <button
+                  type="button"
+                  onClick={() => { setMonthFilter(""); setPage(1); }}
+                  className="text-xs text-gray-500 hover:text-gray-900 flex items-center gap-1"
+                >
+                  <XMarkIcon className="h-3 w-3" />
+                  Quitar filtro de mes
+                </button>
+              )}
+            </div>
             {overdueStats.by_month.length === 0 ? (
               <p className="text-sm text-gray-500">
                 No hay pagos vencidos en el rango seleccionado.
               </p>
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-2">
-                {overdueStats.by_month.map((m) => (
-                  <div
-                    key={m.month}
-                    className="flex-shrink-0 min-w-[140px] rounded-md border border-gray-200 p-3"
-                  >
-                    <p className="text-xs font-medium uppercase text-gray-500">
-                      {formatMonth(m.month)}
-                    </p>
-                    <p className="mt-1 text-base font-semibold text-gray-900">
-                      {m.count.toLocaleString()} pago(s)
-                    </p>
-                    <p className="text-sm text-red-600">
-                      {formatCurrency(m.total_due)}
-                    </p>
-                  </div>
-                ))}
+                {overdueStats.by_month.map((m) => {
+                  const isActive = monthFilter === m.month;
+                  return (
+                    <button
+                      key={m.month}
+                      type="button"
+                      onClick={() => {
+                        setMonthFilter(isActive ? "" : m.month);
+                        setOverdueFilter(true);
+                        setPage(1);
+                      }}
+                      className={`flex-shrink-0 min-w-[140px] rounded-md border p-3 text-left transition-colors ${
+                        isActive
+                          ? "border-red-400 bg-red-50 ring-1 ring-red-400"
+                          : "border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300"
+                      }`}
+                    >
+                      <p className={`text-xs font-medium uppercase ${isActive ? "text-red-600" : "text-gray-500"}`}>
+                        {formatMonth(m.month)}
+                      </p>
+                      <p className={`mt-1 text-base font-semibold ${isActive ? "text-red-700" : "text-gray-900"}`}>
+                        {m.count.toLocaleString()} pago(s)
+                      </p>
+                      <p className="text-sm text-red-600">
+                        {formatCurrency(m.total_due)}
+                      </p>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1141,6 +1219,39 @@ const Payments = () => {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Becado banner (when selected student is becado) */}
+      {selectedStudent && studentBecadoInfo?.is_becado && (
+        <div className="mb-6">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="flex items-start gap-3">
+                <AcademicCapIcon className="h-6 w-6 text-amber-600 mt-0.5" />
+                <div>
+                  <h4 className="text-sm font-semibold text-amber-900">
+                    Estudiante becado
+                  </h4>
+                  <p className="text-sm text-amber-800 mt-1">
+                    {studentBecadoInfo.becado_percentage
+                      ? `Tiene un descuento asignado del ${studentBecadoInfo.becado_percentage}%.`
+                      : "No tiene un porcentaje de descuento asignado."}{" "}
+                    Puedes aplicar el descuento a todos sus pagos pendientes
+                    desde aquí.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBecadoApplyOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600"
+              >
+                <AcademicCapIcon className="h-4 w-4" />
+                Aplicar becado a pagos pendientes
+              </button>
             </div>
           </div>
         </div>
@@ -1392,7 +1503,7 @@ const Payments = () => {
                             >
                               Detalles
                             </button>
-                            {payment.status !== "completado" && (
+                            {payment.status !== "completado" && payment.status !== "cancelado" && (
                               <button
                                 onClick={() => handleRegisterPayment(payment)}
                                 className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold border py-0.5 px-2 rounded-sm"
@@ -1501,6 +1612,16 @@ const Payments = () => {
             ? `${auth.user.first_name} ${auth.user.last_name}`
             : "Admin"
         }
+      />
+
+      <BecadoApplyDrawer
+        isOpen={isBecadoApplyOpen}
+        onClose={() => setIsBecadoApplyOpen(false)}
+        studentId={selectedStudent?.id ?? null}
+        onApplied={() => {
+          handlePaymentUpdated();
+          fetchAnualidadesSummary();
+        }}
       />
     </div>
   );

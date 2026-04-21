@@ -42,6 +42,8 @@ interface StudentUser {
     email_sponsor: string | null;
     gender: string | null;
     work: string | null;
+    is_becado?: boolean;
+    becado_percentage?: number | null;
   } | null;
 }
 
@@ -121,6 +123,10 @@ const StudentCreateDrawer: React.FC<StudentCreateDrawerProps> = ({
   const [phoneSponsor, setPhoneSponsor] = useState("");
   const [emailSponsor, setEmailSponsor] = useState("");
 
+  // Form state - Becado
+  const [isBecado, setIsBecado] = useState(false);
+  const [becadoPercentage, setBecadoPercentage] = useState("");
+
   const role = "student"; // Fixed role
 
   // Save to localStorage
@@ -146,6 +152,8 @@ const StudentCreateDrawer: React.FC<StudentCreateDrawerProps> = ({
       amountSponsor,
       phoneSponsor,
       emailSponsor,
+      isBecado,
+      becadoPercentage,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
   }, [
@@ -169,6 +177,8 @@ const StudentCreateDrawer: React.FC<StudentCreateDrawerProps> = ({
     amountSponsor,
     phoneSponsor,
     emailSponsor,
+    isBecado,
+    becadoPercentage,
   ]);
 
   // Load from localStorage
@@ -197,6 +207,8 @@ const StudentCreateDrawer: React.FC<StudentCreateDrawerProps> = ({
         setAmountSponsor(formData.amountSponsor || "");
         setPhoneSponsor(formData.phoneSponsor || "");
         setEmailSponsor(formData.emailSponsor || "");
+        setIsBecado(Boolean(formData.isBecado));
+        setBecadoPercentage(formData.becadoPercentage || "");
       }
     } catch (error) {
       console.error("Error loading from localStorage:", error);
@@ -225,6 +237,8 @@ const StudentCreateDrawer: React.FC<StudentCreateDrawerProps> = ({
     setAmountSponsor("");
     setPhoneSponsor("");
     setEmailSponsor("");
+    setIsBecado(false);
+    setBecadoPercentage("");
     setErrors({});
     localStorage.removeItem(STORAGE_KEY);
   }, []);
@@ -283,6 +297,8 @@ const StudentCreateDrawer: React.FC<StudentCreateDrawerProps> = ({
     amountSponsor,
     phoneSponsor,
     emailSponsor,
+    isBecado,
+    becadoPercentage,
   ]);
 
   // Validate form
@@ -375,6 +391,14 @@ const StudentCreateDrawer: React.FC<StudentCreateDrawerProps> = ({
       }
       if (emailSponsor.trim()) {
         createData.email_sponsor = emailSponsor.trim();
+      }
+
+      if (isBecado) {
+        createData.is_becado = true;
+        const pct = parseInt(becadoPercentage, 10);
+        if (!isNaN(pct)) {
+          createData.becado_percentage = Math.max(0, Math.min(100, pct));
+        }
       }
 
       const response = await axiosPrivate.post("auth/create-user", createData);
@@ -551,6 +575,12 @@ const StudentCreateDrawer: React.FC<StudentCreateDrawerProps> = ({
 
   // Check if required fields are filled and valid
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const becadoPctInvalid =
+    isBecado &&
+    (becadoPercentage === "" ||
+      isNaN(parseInt(becadoPercentage, 10)) ||
+      parseInt(becadoPercentage, 10) < 0 ||
+      parseInt(becadoPercentage, 10) > 100);
   const isSubmitDisabled =
     !firstName.trim() ||
     firstName.trim().length < 2 ||
@@ -565,6 +595,7 @@ const StudentCreateDrawer: React.FC<StudentCreateDrawerProps> = ({
     !address.trim() ||
     !dateMatricula ||
     !gender ||
+    becadoPctInvalid ||
     isCreating;
 
   return (
@@ -1033,6 +1064,83 @@ const StudentCreateDrawer: React.FC<StudentCreateDrawerProps> = ({
                             onChange={(e) => setWork(e.target.value)}
                             className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                           />
+                        </div>
+                      </div>
+
+                      {/* Becado Section */}
+                      <div className="px-4 sm:px-6 mt-4 ">
+                        <h3 className="text-sm text-center underline underline-offset-3 font-medium text-gray-900 mb-4">
+                          Becado
+                        </h3>
+                      </div>
+
+                      {/* Es becado checkbox */}
+                      <div className="space-y-2 px-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0 sm:px-6 sm:py-5">
+                        <div>
+                          <label
+                            htmlFor="is_becado"
+                            className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
+                          >
+                            Es estudiante becado
+                          </label>
+                        </div>
+                        <div className="sm:col-span-2 flex items-center">
+                          <input
+                            id="is_becado"
+                            name="is_becado"
+                            type="checkbox"
+                            checked={isBecado}
+                            onChange={(e) => {
+                              setIsBecado(e.target.checked);
+                              if (!e.target.checked) {
+                                setBecadoPercentage("");
+                              }
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          />
+                          <span className="ml-2 text-sm text-gray-600">
+                            Marcar para aplicar un descuento en pagos
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Becado percentage */}
+                      <div className="space-y-2 px-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0 sm:px-6 sm:py-5">
+                        <div>
+                          <label
+                            htmlFor="becado_percentage"
+                            className="block text-sm/6 font-medium text-gray-900 sm:mt-1.5"
+                          >
+                            Porcentaje de descuento (%)
+                            {isBecado && (
+                              <span className="text-red-500"> *</span>
+                            )}
+                          </label>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <input
+                            id="becado_percentage"
+                            name="becado_percentage"
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={1}
+                            value={becadoPercentage}
+                            disabled={!isBecado}
+                            onChange={(e) =>
+                              setBecadoPercentage(e.target.value)
+                            }
+                            className={`block w-full rounded-md px-3 py-1.5 text-base outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6 ${
+                              isBecado
+                                ? "bg-white text-gray-900"
+                                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            } ${becadoPctInvalid ? "outline-red-500" : ""}`}
+                          />
+                          {becadoPctInvalid && (
+                            <p className="mt-1 text-sm text-red-600">
+                              Ingresa un porcentaje entre 0 y 100.
+                            </p>
+                          )}
                         </div>
                       </div>
 

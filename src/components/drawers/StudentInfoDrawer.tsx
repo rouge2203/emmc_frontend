@@ -15,9 +15,11 @@ import {
   CalendarDaysIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
+  AcademicCapIcon,
 } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
+import BecadoApplyDrawer from "./BecadoApplyDrawer";
 
 interface StudentUser {
   id: number;
@@ -47,6 +49,8 @@ interface StudentUser {
     email_sponsor: string | null;
     gender: string | null;
     work: string | null;
+    is_becado?: boolean;
+    becado_percentage?: number | null;
   } | null;
   last_login: string | null;
   date_joined: string;
@@ -123,6 +127,15 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
   const [phoneSponsor, setPhoneSponsor] = useState("");
   const [emailSponsor, setEmailSponsor] = useState("");
 
+  // Form state - Becado
+  const [isBecado, setIsBecado] = useState(false);
+  const [becadoPercentage, setBecadoPercentage] = useState("");
+  const [savedIsBecado, setSavedIsBecado] = useState(false);
+  const [savedBecadoPercentage, setSavedBecadoPercentage] = useState<
+    number | null
+  >(null);
+  const [isBecadoApplyOpen, setIsBecadoApplyOpen] = useState(false);
+
   useEffect(() => {
     if (isOpen && userId) {
       fetchUserData();
@@ -185,6 +198,14 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
         setAmountSponsor(userData.profile.amount_sponsor?.toString() || "");
         setPhoneSponsor(userData.profile.phone_sponsor || "");
         setEmailSponsor(userData.profile.email_sponsor || "");
+
+        // Becado
+        const becado = Boolean(userData.profile.is_becado);
+        const pct = userData.profile.becado_percentage;
+        setIsBecado(becado);
+        setBecadoPercentage(pct != null ? String(pct) : "");
+        setSavedIsBecado(becado);
+        setSavedBecadoPercentage(pct ?? null);
       }
     } catch (err: any) {
       console.error("Error fetching user data:", err);
@@ -310,6 +331,20 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
           profileData.email_sponsor = emailSponsor || null;
           hasProfileChanges = true;
         }
+
+        // Becado
+        const currentIsBecado = Boolean(user.profile.is_becado);
+        if (isBecado !== currentIsBecado) {
+          profileData.is_becado = isBecado;
+          hasProfileChanges = true;
+        }
+        const currentPct = user.profile.becado_percentage ?? null;
+        const newPctRaw = becadoPercentage.trim();
+        const newPct = isBecado && newPctRaw !== "" ? parseInt(newPctRaw, 10) : null;
+        if (newPct !== currentPct) {
+          profileData.becado_percentage = newPct;
+          hasProfileChanges = true;
+        }
       }
 
       if (hasProfileChanges) {
@@ -352,6 +387,13 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
           );
           setPhoneSponsor(updatedUserData.profile.phone_sponsor || "");
           setEmailSponsor(updatedUserData.profile.email_sponsor || "");
+
+          const becado = Boolean(updatedUserData.profile.is_becado);
+          const pct = updatedUserData.profile.becado_percentage;
+          setIsBecado(becado);
+          setBecadoPercentage(pct != null ? String(pct) : "");
+          setSavedIsBecado(becado);
+          setSavedBecadoPercentage(pct ?? null);
         }
 
         // Check if email was blank and now has a value - send activation email
@@ -894,6 +936,90 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
                                   onChange={(e) => setWork(e.target.value)}
                                   className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                                 />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Becado Section */}
+                          <div className="space-y-3.5 pt-4">
+                            <h3 className="text-sm/6 font-medium text-center underline underline-offset-3 text-gray-900">
+                              Becado
+                            </h3>
+
+                            <div className="flex items-center">
+                              <input
+                                id="is_becado"
+                                name="is_becado"
+                                type="checkbox"
+                                checked={isBecado}
+                                onChange={(e) => {
+                                  setIsBecado(e.target.checked);
+                                  if (!e.target.checked) {
+                                    setBecadoPercentage("");
+                                  }
+                                }}
+                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                              />
+                              <label
+                                htmlFor="is_becado"
+                                className="ml-2 text-sm font-medium text-gray-900"
+                              >
+                                Es estudiante becado
+                              </label>
+                            </div>
+
+                            <div>
+                              <label
+                                htmlFor="becado_percentage"
+                                className="block text-sm/6 font-medium text-gray-900"
+                              >
+                                Porcentaje de descuento (%)
+                              </label>
+                              <div className="mt-2">
+                                <input
+                                  id="becado_percentage"
+                                  name="becado_percentage"
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  step={1}
+                                  value={becadoPercentage}
+                                  disabled={!isBecado}
+                                  onChange={(e) =>
+                                    setBecadoPercentage(e.target.value)
+                                  }
+                                  className={`block w-full rounded-md px-3 py-1.5 text-base outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6 ${
+                                    isBecado
+                                      ? "bg-white text-gray-900"
+                                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                  }`}
+                                />
+                              </div>
+                              <p className="mt-1 ml-0.5 text-xs text-gray-500">
+                                Descuento aplicado a nuevos pagos generados.
+                                Para pagos ya existentes, usa el botón de
+                                aplicar a continuación.
+                              </p>
+                            </div>
+
+                            <div className="rounded-md bg-purple-50 border border-purple-200 px-3 py-2 flex items-start gap-2">
+                              <AcademicCapIcon className="h-5 w-5 text-purple-600 shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-xs text-purple-900">
+                                  {savedIsBecado
+                                    ? `Becado guardado: ${
+                                        savedBecadoPercentage ?? 0
+                                      }%. Aplica el descuento a los pagos pendientes existentes.`
+                                    : "Para aplicar el descuento a los pagos pendientes existentes, primero marca como becado y guarda."}
+                                </p>
+                                <button
+                                  type="button"
+                                  disabled={!savedIsBecado || !userId}
+                                  onClick={() => setIsBecadoApplyOpen(true)}
+                                  className="mt-2 inline-flex items-center rounded-md bg-purple-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  Aplicar becado a pagos pendientes
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -1640,6 +1766,16 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
           </div>
         </div>
       </Dialog>
+
+      {/* Becado Apply Drawer */}
+      <BecadoApplyDrawer
+        studentId={userId}
+        isOpen={isBecadoApplyOpen}
+        onClose={() => setIsBecadoApplyOpen(false)}
+        onApplied={() => {
+          setIsBecadoApplyOpen(false);
+        }}
+      />
     </>
   );
 };

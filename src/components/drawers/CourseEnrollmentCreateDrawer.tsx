@@ -48,6 +48,8 @@ interface User {
   id: number;
   first_name: string;
   last_name: string;
+  is_becado?: boolean;
+  becado_percentage?: number | null;
 }
 
 interface CourseEnrollmentCreateDrawerProps {
@@ -138,6 +140,9 @@ const CourseEnrollmentCreateDrawer: React.FC<
     () => new Date().toISOString().split("T")[0],
   );
   const [incluirCarnet, setIncluirCarnet] = useState(false);
+  const [incluirMatricula, setIncluirMatricula] = useState(true);
+  const [matriculaAmount, setMatriculaAmount] = useState<string>("");
+  const matriculaManuallyEdited = useRef(false);
 
   const [customPayments, setCustomPayments] = useState<CustomPayment[]>([]);
   const customPaymentIdRef = useRef(0);
@@ -169,6 +174,20 @@ const CourseEnrollmentCreateDrawer: React.FC<
     setCustomPayments((prev) => prev.filter((p) => p.id !== id));
   };
 
+  // Effective becado percentage from the selected student (0 = no discount)
+  const studentBecadoPct =
+    selectedStudent?.is_becado && selectedStudent?.becado_percentage
+      ? Math.max(0, Math.min(100, selectedStudent.becado_percentage))
+      : 0;
+
+  // Default matricula amount (₡23,460 + carnet) discounted by becado %
+  const defaultMatriculaAmount = useMemo(() => {
+    const base = 23460 + (incluirCarnet ? 1695 : 0);
+    return studentBecadoPct > 0
+      ? Math.round(base * (1 - studentBecadoPct / 100))
+      : base;
+  }, [incluirCarnet, studentBecadoPct]);
+
   const paymentPreview = useMemo(() => {
     const totalPrice = parseInt(price) || 0;
     if (totalPrice <= 0 || weekDuration <= 0) return [];
@@ -193,8 +212,9 @@ const CourseEnrollmentCreateDrawer: React.FC<
       payments.push({ amount, dueDate, type: "Mensualidad" });
     }
 
-    if (selectedCourse?.is_matricula) {
-      const anualidadAmount = 23460 + (incluirCarnet ? 1695 : 0);
+    if (selectedCourse?.is_matricula && incluirMatricula) {
+      const matAmt = parseInt(matriculaAmount, 10);
+      const anualidadAmount = !isNaN(matAmt) ? matAmt : defaultMatriculaAmount;
       payments.push({
         amount: anualidadAmount,
         dueDate: new Date(),
@@ -203,7 +223,16 @@ const CourseEnrollmentCreateDrawer: React.FC<
     }
 
     return payments;
-  }, [price, weekDuration, firstPaymentDate, selectedCourse, incluirCarnet]);
+  }, [
+    price,
+    weekDuration,
+    firstPaymentDate,
+    selectedCourse,
+    incluirCarnet,
+    incluirMatricula,
+    matriculaAmount,
+    defaultMatriculaAmount,
+  ]);
 
   // Prerequisite status state
   const [prerequisiteStatus, setPrerequisiteStatus] =
@@ -284,15 +313,32 @@ const CourseEnrollmentCreateDrawer: React.FC<
     }
   }, [isOpen, professorSearch, axiosPrivate]);
 
-  // Update price and week_duration when course changes
+  // Update price and week_duration when course or student changes
   useEffect(() => {
     if (selectedCourse && !priceManuallyEdited.current) {
       const coursePrice =
         selectedCourse.special_price || selectedCourse.course_type_price || 0;
-      setPrice(coursePrice.toString());
+      const discounted =
+        studentBecadoPct > 0
+          ? Math.round(coursePrice * (1 - studentBecadoPct / 100))
+          : coursePrice;
+      setPrice(discounted.toString());
       setWeekDuration(selectedCourse.week_duration);
     }
-  }, [selectedCourse]);
+  }, [selectedCourse, studentBecadoPct]);
+
+  // Auto-fill matricula amount when course/student/carnet change (unless manually edited)
+  useEffect(() => {
+    if (!selectedCourse?.is_matricula) {
+      matriculaManuallyEdited.current = false;
+      setIncluirMatricula(true);
+      setMatriculaAmount("");
+      return;
+    }
+    if (!matriculaManuallyEdited.current) {
+      setMatriculaAmount(String(defaultMatriculaAmount));
+    }
+  }, [selectedCourse, defaultMatriculaAmount]);
 
   // Update prerequisite status when course changes
   useEffect(() => {
@@ -370,6 +416,9 @@ const CourseEnrollmentCreateDrawer: React.FC<
       setWeekDuration(12);
       setFirstPaymentDate(new Date().toISOString().split("T")[0]);
       setIncluirCarnet(false);
+      setIncluirMatricula(true);
+      setMatriculaAmount("");
+      matriculaManuallyEdited.current = false;
       setCustomPayments([]);
       setErrors({});
       setShowCourseDropdown(false);
@@ -501,6 +550,17 @@ const CourseEnrollmentCreateDrawer: React.FC<
 
       if (selectedCourse.is_matricula) {
         createData.incluir_carnet = incluirCarnet;
+        createData.incluir_matricula = incluirMatricula;
+        if (incluirMatricula) {
+          const matAmt = parseInt(matriculaAmount, 10);
+          if (!isNaN(matAmt)) {
+            createData.matricula_amount = matAmt;
+          }
+        }
+      }
+
+      if (studentBecadoPct > 0) {
+        createData.becado_percentage = studentBecadoPct;
       }
 
       const enrollmentRes = await axiosPrivate.post<EnrollmentResponse>(
@@ -557,6 +617,9 @@ const CourseEnrollmentCreateDrawer: React.FC<
       setWeekDuration(12);
       setFirstPaymentDate(new Date().toISOString().split("T")[0]);
       setIncluirCarnet(false);
+      setIncluirMatricula(true);
+      setMatriculaAmount("");
+      matriculaManuallyEdited.current = false;
       setCustomPayments([]);
       setErrors({});
       priceManuallyEdited.current = false;
@@ -742,7 +805,7 @@ const CourseEnrollmentCreateDrawer: React.FC<
                               </div>
                             </div>
                           )}
-                          {/* Anualidad info alert for matricula courses */}
+                          {/* Anualidad / matrícula controls for matricula courses */}
                           {selectedCourse?.is_matricula && (
                             <div className="mt-2 rounded-md bg-blue-50 p-3 space-y-2">
                               <div className="flex">
@@ -752,26 +815,37 @@ const CourseEnrollmentCreateDrawer: React.FC<
                                     className="size-5 text-blue-400"
                                   />
                                 </div>
-                                <div className="ml-3">
+                                <div className="ml-3 flex-1">
                                   <p className="text-sm text-blue-700">
-                                    Se creará un pago de matrícula de{" "}
-                                    <span className="font-medium">
-                                      ₡
-                                      {(
-                                        23460 + (incluirCarnet ? 1695 : 0)
-                                      ).toLocaleString("es-CR")}
-                                    </span>
+                                    {incluirMatricula
+                                      ? "Se creará un pago de matrícula con el monto indicado abajo."
+                                      : "No se creará pago de matrícula con esta inscripción."}
                                   </p>
                                 </div>
                               </div>
                               <label className="flex items-center gap-2 cursor-pointer ml-8">
                                 <input
                                   type="checkbox"
-                                  checked={incluirCarnet}
+                                  checked={incluirMatricula}
                                   onChange={(e) =>
-                                    setIncluirCarnet(e.target.checked)
+                                    setIncluirMatricula(e.target.checked)
                                   }
                                   className="size-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                <span className="text-sm text-blue-700">
+                                  Aplicar matrícula
+                                </span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer ml-8">
+                                <input
+                                  type="checkbox"
+                                  checked={incluirCarnet}
+                                  disabled={!incluirMatricula}
+                                  onChange={(e) => {
+                                    setIncluirCarnet(e.target.checked);
+                                    matriculaManuallyEdited.current = false;
+                                  }}
+                                  className="size-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50"
                                 />
                                 <span className="text-sm text-blue-700">
                                   Incluir Carnet{" "}
@@ -780,6 +854,39 @@ const CourseEnrollmentCreateDrawer: React.FC<
                                   </span>
                                 </span>
                               </label>
+                              <div className="ml-8">
+                                <label
+                                  htmlFor="matricula_amount"
+                                  className="block text-xs font-medium text-blue-900"
+                                >
+                                  Monto matrícula (₡)
+                                </label>
+                                <input
+                                  id="matricula_amount"
+                                  type="number"
+                                  min={0}
+                                  step={1}
+                                  value={matriculaAmount}
+                                  disabled={!incluirMatricula}
+                                  onChange={(e) => {
+                                    matriculaManuallyEdited.current = true;
+                                    setMatriculaAmount(e.target.value);
+                                  }}
+                                  className={`mt-1 block w-40 rounded-md px-2 py-1 text-sm outline-1 -outline-offset-1 outline-blue-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-700 ${
+                                    incluirMatricula
+                                      ? "bg-white text-gray-900"
+                                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                  }`}
+                                />
+                                {studentBecadoPct > 0 && incluirMatricula && (
+                                  <p className="mt-1 text-[11px] text-blue-700">
+                                    Sugerido con descuento: ₡
+                                    {defaultMatriculaAmount.toLocaleString(
+                                      "es-CR",
+                                    )}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -931,6 +1038,37 @@ const CourseEnrollmentCreateDrawer: React.FC<
                                 ) : null}
                               </>
                             )}
+                          {/* Becado banner */}
+                          {selectedStudent?.is_becado && (
+                            <div className="mt-2 rounded-md bg-amber-50 p-3 border border-amber-200">
+                              <div className="flex">
+                                <div className="shrink-0">
+                                  <InformationCircleIcon
+                                    aria-hidden="true"
+                                    className="size-5 text-amber-500"
+                                  />
+                                </div>
+                                <div className="ml-3 text-sm text-amber-800">
+                                  <p>
+                                    Este estudiante es{" "}
+                                    <span className="font-semibold">
+                                      becado
+                                    </span>{" "}
+                                    {studentBecadoPct > 0 && (
+                                      <>
+                                        con un{" "}
+                                        <span className="font-semibold">
+                                          {studentBecadoPct}% de descuento
+                                        </span>
+                                      </>
+                                    )}
+                                    . El precio del curso y la matrícula se
+                                    ajustarán automáticamente.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -1132,6 +1270,14 @@ const CourseEnrollmentCreateDrawer: React.FC<
                           <span className="text-xs text-gray-500">
                             Precio por defecto: ₡{defaultPrice.toLocaleString()}
                           </span>
+                          {studentBecadoPct > 0 && defaultPrice > 0 && (
+                            <span className="block text-xs text-amber-700">
+                              Con becado ({studentBecadoPct}%): ₡
+                              {Math.round(
+                                defaultPrice * (1 - studentBecadoPct / 100),
+                              ).toLocaleString("es-CR")}
+                            </span>
+                          )}
                         </div>
                       </div>
 

@@ -32,12 +32,14 @@ const STATUS_COLORS: Record<string, [number, number, number]> = {
   cursando: [219, 234, 254],
   aprobado: [220, 252, 231],
   reprobado: [254, 226, 226],
+  retirado: [243, 244, 246],
 };
 
 const STATUS_TEXT_COLORS: Record<string, [number, number, number]> = {
   cursando: [30, 64, 175],
   aprobado: [22, 101, 52],
   reprobado: [153, 27, 27],
+  retirado: [107, 114, 128],
 };
 
 function getPeriodLabel(period: number): string {

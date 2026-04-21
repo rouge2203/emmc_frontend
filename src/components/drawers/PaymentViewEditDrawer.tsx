@@ -273,6 +273,15 @@ const PaymentViewEditDrawer: React.FC<PaymentViewEditDrawerProps> = ({
                     ) : payment ? (
                       <div className="px-4 py-5 sm:px-6">
                         <div className="space-y-6">
+                          {/* Cancelled Payment Banner */}
+                          {payment.status === "cancelado" && (
+                            <div className="rounded-md bg-gray-50 border border-gray-300 p-3">
+                              <p className="text-sm font-medium text-gray-700">
+                                Este pago fue cancelado por retiro del curso. No se puede editar.
+                              </p>
+                            </div>
+                          )}
+
                           {/* User Info (Read-only) */}
                           <div className="space-y-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0">
                             <label className="block text-sm font-medium text-gray-900 sm:mt-1.5">
@@ -530,7 +539,7 @@ const PaymentViewEditDrawer: React.FC<PaymentViewEditDrawerProps> = ({
                     <button
                       type="button"
                       onClick={handleSaveClick}
-                      disabled={isSaving}
+                      disabled={isSaving || payment?.status === "cancelado"}
                       className="inline-flex justify-center rounded-md bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSaving ? "Guardando..." : "Guardar"}

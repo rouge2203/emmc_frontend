@@ -189,6 +189,7 @@ const BulkCustomPaymentDrawer: React.FC<BulkCustomPaymentDrawerProps> = ({
     if (s === "cursando") return "Cursando";
     if (s === "aprobado") return "Aprobado";
     if (s === "reprobado") return "Reprobado";
+    if (s === "retirado") return "Retirado";
     return "Todos";
   };
 

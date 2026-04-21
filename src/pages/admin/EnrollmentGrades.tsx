@@ -123,6 +123,10 @@ const statusLabels: Record<string, { label: string; className: string }> = {
     label: "Reprobado",
     className: "bg-red-50 text-red-700 ring-red-600/10",
   },
+  retirado: {
+    label: "Retirado",
+    className: "bg-gray-50 text-gray-600 ring-gray-500/10",
+  },
 };
 
 export default function EnrollmentGrades() {

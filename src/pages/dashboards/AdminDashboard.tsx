@@ -32,6 +32,7 @@ interface DashboardStats {
       cursando: number;
       aprobado: number;
       reprobado: number;
+      retirado: number;
     };
     by_period: {
       1: number;
@@ -348,6 +349,14 @@ const AdminDashboard = () => {
                     Reprobado: {stats.enrollments.by_status.reprobado}
                   </span>
                 </div>
+                {stats.enrollments.by_status.retirado > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-gray-400"></span>
+                    <span className="text-gray-600">
+                      Retirado: {stats.enrollments.by_status.retirado}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

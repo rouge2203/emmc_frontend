@@ -9,10 +9,12 @@ import {
   FunnelIcon,
   BarsArrowUpIcon,
   BanknotesIcon,
+  AcademicCapIcon,
 } from "@heroicons/react/24/outline";
 import StudentInfoDrawer from "../../components/drawers/StudentInfoDrawer";
 import StudentCreateDrawer from "../../components/drawers/StudentCreateDrawer";
 import UserObservationsDrawer from "../../components/drawers/UserObservationsDrawer";
+import BecadoApplyDrawer from "../../components/drawers/BecadoApplyDrawer";
 import { RiMailCloseFill } from "react-icons/ri";
 import { HiOutlineAcademicCap } from "react-icons/hi2";
 import { LuVote } from "react-icons/lu";
@@ -46,6 +48,8 @@ interface StudentUser {
     email_sponsor: string | null;
     gender: string | null;
     work: string | null;
+    is_becado?: boolean;
+    becado_percentage?: number | null;
   } | null;
   has_active_enrollment?: boolean;
   active_enrollment_period?: number | null;
@@ -89,6 +93,11 @@ const StudentUsers = () => {
   const [statusFilter, setStatusFilter] = useState<boolean | null>(null);
   const [noEmailFilter, setNoEmailFilter] = useState(false);
   const [enrollmentFilter, setEnrollmentFilter] = useState("");
+  const [becadoFilter, setBecadoFilter] = useState("");
+  const [becadoApplyUserId, setBecadoApplyUserId] = useState<number | null>(
+    null,
+  );
+  const [isBecadoApplyOpen, setIsBecadoApplyOpen] = useState(false);
 
   const fetchUsers = useCallback(
     async (pageNum: number) => {
@@ -118,6 +127,10 @@ const StudentUsers = () => {
           requestData.enrollment_filter = enrollmentFilter;
         }
 
+        if (becadoFilter) {
+          requestData.becado = becadoFilter;
+        }
+
         const response = await axiosPrivate.post<PaginatedResponse>(
           "users/get-users",
           requestData,
@@ -141,12 +154,20 @@ const StudentUsers = () => {
       statusFilter,
       noEmailFilter,
       enrollmentFilter,
+      becadoFilter,
     ],
   );
 
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, orderBy, statusFilter, noEmailFilter, enrollmentFilter]);
+  }, [
+    searchQuery,
+    orderBy,
+    statusFilter,
+    noEmailFilter,
+    enrollmentFilter,
+    becadoFilter,
+  ]);
 
   useEffect(() => {
     fetchUsers(page);
@@ -218,6 +239,7 @@ const StudentUsers = () => {
     setStatusFilter(null);
     setNoEmailFilter(false);
     setEnrollmentFilter("");
+    setBecadoFilter("");
   };
 
   const hasActiveFilters =
@@ -225,7 +247,13 @@ const StudentUsers = () => {
     orderBy !== "-date_joined" ||
     statusFilter !== null ||
     noEmailFilter ||
-    enrollmentFilter !== "";
+    enrollmentFilter !== "" ||
+    becadoFilter !== "";
+
+  const handleOpenBecadoApply = (user: StudentUser) => {
+    setBecadoApplyUserId(user.id);
+    setIsBecadoApplyOpen(true);
+  };
 
   // Placeholder image URL
   const getPlaceholderImage = (name: string) => {
@@ -452,6 +480,42 @@ const StudentUsers = () => {
                 </svg>
               </div>
             </div>
+
+            {/* Becado Filter */}
+            <div className="sm:w-48">
+              <label
+                htmlFor="becadoFilter"
+                className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1"
+              >
+                <AcademicCapIcon className="h-4 w-4" />
+                Becado
+              </label>
+              <div className="mt-2 grid grid-cols-1">
+                <select
+                  id="becadoFilter"
+                  value={becadoFilter}
+                  onChange={(e) => setBecadoFilter(e.target.value)}
+                  className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                >
+                  <option value="">Todos</option>
+                  <option value="solo_becados">Solo becados</option>
+                  <option value="sin_becado">Sin becado</option>
+                </select>
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  data-slot="icon"
+                  aria-hidden="true"
+                  className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                >
+                  <path
+                    d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                    clipRule="evenodd"
+                    fillRule="evenodd"
+                  />
+                </svg>
+              </div>
+            </div>
           </div>
           {/* No Email Filter - Below search input */}
           <div className="flex items-center   justify-endstart sm:mt-2 mt-4">
@@ -551,8 +615,19 @@ const StudentUsers = () => {
                                   />
                                 </div>
                                 <div className="ml-4">
-                                  <div className="font-medium text-gray-900">
-                                    {fullName} ({user.profile?.carnet})
+                                  <div className="font-medium text-gray-900 flex items-center gap-2 flex-wrap">
+                                    <span>
+                                      {fullName} ({user.profile?.carnet})
+                                    </span>
+                                    {user.profile?.is_becado && (
+                                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 ring-1 ring-inset ring-amber-600/20">
+                                        <AcademicCapIcon className="h-3 w-3" />
+                                        Becado
+                                        {user.profile.becado_percentage
+                                          ? ` ${user.profile.becado_percentage}%`
+                                          : ""}
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="mt-1 text-gray-500">
                                     {displayEmail}
@@ -638,6 +713,19 @@ const StudentUsers = () => {
                                   Alquileres
                                   <span className="sr-only">, {fullName}</span>
                                 </button>
+                                {user.profile?.is_becado && (
+                                  <button
+                                    onClick={() => handleOpenBecadoApply(user)}
+                                    className="text-amber-800 bg-amber-50 hover:bg-amber-100 shadow-sm hover:cursor-pointer border border-amber-300 font-semibold py-0.5 px-2 rounded-sm flex items-center gap-1"
+                                    title="Aplicar becado a pagos pendientes"
+                                  >
+                                    <AcademicCapIcon className="h-4 w-4" />
+                                    Becado
+                                    <span className="sr-only">
+                                      , {fullName}
+                                    </span>
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => handleEdit(user)}
                                   className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm"
@@ -739,6 +827,17 @@ const StudentUsers = () => {
         userName={selectedUserName}
         isOpen={isObservationsDrawerOpen}
         onClose={handleCloseObservationsDrawer}
+      />
+
+      {/* Becado Apply Drawer */}
+      <BecadoApplyDrawer
+        isOpen={isBecadoApplyOpen}
+        onClose={() => {
+          setIsBecadoApplyOpen(false);
+          setBecadoApplyUserId(null);
+        }}
+        studentId={becadoApplyUserId}
+        onApplied={() => fetchUsers(page)}
       />
     </div>
   );
