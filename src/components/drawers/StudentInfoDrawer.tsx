@@ -16,10 +16,16 @@ import {
   XCircleIcon,
   ExclamationTriangleIcon,
   AcademicCapIcon,
+  PrinterIcon,
 } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
+import useAuth from "../../hooks/useAuth";
 import BecadoApplyDrawer from "./BecadoApplyDrawer";
+import {
+  generateStudentCertificationReport,
+  type CertificationEnrollmentRow,
+} from "../../utils/generateStudentCertificationReport";
 
 interface StudentUser {
   id: number;
@@ -74,6 +80,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
   onSaveSuccess,
 }) => {
   const axiosPrivate = useAxiosPrivate();
+  const { auth } = useAuth();
   const [user, setUser] = useState<StudentUser | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -135,6 +142,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
     number | null
   >(null);
   const [isBecadoApplyOpen, setIsBecadoApplyOpen] = useState(false);
+  const [isGeneratingCert, setIsGeneratingCert] = useState(false);
 
   useEffect(() => {
     if (isOpen && userId) {
@@ -622,6 +630,51 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
     )}&background=155c95&color=fff&size=128`;
   };
 
+  const handlePrintCertification = async () => {
+    if (!userId) return;
+    setIsGeneratingCert(true);
+    try {
+      const response = await axiosPrivate.get<{
+        results: CertificationEnrollmentRow[];
+      }>("courses/manage-enrollments", {
+        params: { student_id: userId, page: 1, page_size: 10000 },
+      });
+      const results = response.data.results;
+      const careers = new Set<string>();
+      results.forEach((r) => {
+        if (r.course_career_name) careers.add(r.course_career_name);
+      });
+      const catedraLine =
+        careers.size > 0 ? Array.from(careers).sort().join(", ") : "—";
+      const printedBy =
+        auth?.user != null
+          ? `${auth.user.first_name || ""} ${auth.user.last_name || ""}`.trim() ||
+            "—"
+          : "—";
+      const displayStudentName =
+        `${firstName} ${lastName}`.trim() ||
+        (user
+          ? `${user.first_name || ""} ${user.last_name || ""}`.trim()
+          : "—");
+      await generateStudentCertificationReport({
+        enrollments: results,
+        carnet: carnet || "—",
+        studentName: displayStudentName,
+        catedraLine,
+        printedBy,
+      });
+    } catch (err: unknown) {
+      const anyErr = err as { response?: { data?: { error?: string } } };
+      setErrorNotificationMessage(
+        anyErr?.response?.data?.error || "Error al generar la certificación",
+      );
+      setShowErrorNotification(true);
+      setTimeout(() => setShowErrorNotification(false), 5000);
+    } finally {
+      setIsGeneratingCert(false);
+    }
+  };
+
   const fullName = user
     ? `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Sin nombre"
     : "";
@@ -683,6 +736,31 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
                               src={getPlaceholderImage(fullName)}
                               className="inline-block size-20 rounded-full bg-gray-100 outline -outline-offset-1 outline-black/5"
                             />
+                          </div>
+
+                          <div className="rounded-lg border border-gray-200 bg-gray-50/90 p-4">
+                            <h3 className="text-sm/6 font-medium text-center text-gray-900">
+                              Certificación de cursos
+                            </h3>
+                            <p className="mt-1.5 text-center text-xs text-gray-600">
+                              PDF con cursos, notas, período, estado e
+                              información de la escuela. Incluye al
+                              administrador que genera el documento.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={handlePrintCertification}
+                              disabled={isGeneratingCert}
+                              className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <PrinterIcon
+                                className="h-4 w-4 shrink-0"
+                                aria-hidden
+                              />
+                              {isGeneratingCert
+                                ? "Generando PDF…"
+                                : "Imprimir certificación"}
+                            </button>
                           </div>
 
                           {/* Basic Information Section */}

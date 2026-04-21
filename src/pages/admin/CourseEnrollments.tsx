@@ -10,6 +10,7 @@ import {
   UserIcon,
   ClockIcon,
   AcademicCapIcon,
+  CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 import CourseEnrollmentCreateDrawer from "../../components/drawers/CourseEnrollmentCreateDrawer";
 import CourseEnrollmentEditDrawer from "../../components/drawers/CourseEnrollmentEditDrawer";
@@ -127,6 +128,7 @@ const CourseEnrollments = () => {
   const [missingProfessorFilter, setMissingProfessorFilter] = useState(false);
   const [missingScheduleFilter, setMissingScheduleFilter] = useState(false);
   const [isMatriculaFilter, setIsMatriculaFilter] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("");
 
   // Drawers
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<
@@ -187,6 +189,7 @@ const CourseEnrollments = () => {
       if (missingProfessorFilter) params.missing_professor = true;
       if (missingScheduleFilter) params.missing_schedule = true;
       if (isMatriculaFilter) params.is_matricula = true;
+      if (statusFilter) params.status = statusFilter;
 
       const response = await axiosPrivate.get<PaginatedResponse>(
         "courses/manage-enrollments",
@@ -260,6 +263,7 @@ const CourseEnrollments = () => {
     missingProfessorFilter,
     missingScheduleFilter,
     isMatriculaFilter,
+    statusFilter,
     isInitialized,
   ]);
 
@@ -283,6 +287,7 @@ const CourseEnrollments = () => {
     setMissingProfessorFilter(false);
     setMissingScheduleFilter(false);
     setIsMatriculaFilter(false);
+    setStatusFilter("");
     setPage(1);
   };
 
@@ -293,7 +298,8 @@ const CourseEnrollments = () => {
     professorFilter !== null ||
     missingProfessorFilter ||
     missingScheduleFilter ||
-    isMatriculaFilter;
+    isMatriculaFilter ||
+    statusFilter !== "";
 
   const handleEdit = (enrollment: CourseEnrollment) => {
     setSelectedEnrollmentId(enrollment.id);
@@ -435,7 +441,7 @@ const CourseEnrollments = () => {
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4">
             {/* Search */}
             <div className="flex-1">
               <label
@@ -584,6 +590,47 @@ const CourseEnrollments = () => {
                       {professor.full_name}
                     </option>
                   ))}
+                </select>
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  data-slot="icon"
+                  aria-hidden="true"
+                  className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                >
+                  <path
+                    d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                    clipRule="evenodd"
+                    fillRule="evenodd"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            {/* Status Filter */}
+            <div className="w-full min-w-0 sm:w-48">
+              <label
+                htmlFor="enrollmentStatusFilter"
+                className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1"
+              >
+                <CheckCircleIcon className="h-4 w-4" />
+                Estado
+              </label>
+              <div className="mt-2 grid grid-cols-1">
+                <select
+                  id="enrollmentStatusFilter"
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="col-start-1 row-start-1 w-full min-w-0 appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                >
+                  <option value="">Todos</option>
+                  <option value="cursando">Cursando</option>
+                  <option value="aprobado">Aprobado</option>
+                  <option value="reprobado">Reprobado</option>
+                  <option value="retirado">Retirado</option>
                 </select>
                 <svg
                   viewBox="0 0 16 16"
