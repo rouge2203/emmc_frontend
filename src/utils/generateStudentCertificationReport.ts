@@ -89,6 +89,88 @@ function safeFilenamePart(s: string, max = 40): string {
   );
 }
 
+const GRADING_SCALE_NOTE =
+  "Las calificaciones se ajustan a la escala de 1 a 100. La nota mínima de aprobación de cualquier materia es de 70.";
+
+/** Circular school stamp (vector), matching institutional blue. */
+function drawOfficialStamp(doc: jsPDF, cx: number, cy: number, r: number) {
+  const blue: [number, number, number] = [30, 93, 149];
+  doc.setDrawColor(...blue);
+  doc.setLineWidth(0.35);
+  doc.circle(cx, cy, r, "S");
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...blue);
+  const lines = ["ESCUELA", "MUNICIPAL", "DE MÚSICA", "DE CARTAGO"];
+  const fs = 4.6;
+  doc.setFontSize(fs);
+  const lineStep = 3.35;
+  let ty = cy - ((lines.length - 1) * lineStep) / 2 + 0.5;
+  for (const line of lines) {
+    doc.text(line, cx, ty, { align: "center" });
+    ty += lineStep;
+  }
+}
+
+function drawDoubleRule(doc: jsPDF, x: number, y: number, w: number) {
+  doc.setDrawColor(55, 65, 81);
+  doc.setLineWidth(0.2);
+  doc.line(x, y, x + w, y);
+  doc.line(x, y + 0.55, x + w, y + 0.55);
+}
+
+/**
+ * Signature line, director name, official stamp, and grading-scale disclaimer.
+ * Returns Y after the closing double rule.
+ */
+function drawCertificationClosingSection(
+  doc: jsPDF,
+  margin: number,
+  contentW: number,
+  startY: number,
+): number {
+  const sigLineW = 54;
+  const stampR = 13.5;
+  const stampD = stampR * 2;
+  const gapSigStamp = 7;
+  const rowW = sigLineW + gapSigStamp + stampD;
+  const rowLeft = margin + (contentW - rowW) / 2;
+
+  let y = startY;
+  const lineY = y;
+  doc.setDrawColor(17, 24, 39);
+  doc.setLineWidth(0.25);
+  doc.line(rowLeft, lineY, rowLeft + sigLineW, lineY);
+
+  y = lineY + 5;
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(17, 24, 39);
+  doc.text("M.M. Federico Molina Campos", rowLeft + sigLineW / 2, y, {
+    align: "center",
+  });
+  y += 4.5;
+  doc.setFontSize(8.5);
+  doc.text("Director", rowLeft + sigLineW / 2, y, { align: "center" });
+
+  const stampCx = rowLeft + sigLineW + gapSigStamp + stampR;
+  const stampCy = lineY + stampR - 0.5;
+  drawOfficialStamp(doc, stampCx, stampCy, stampR);
+
+  y = Math.max(y + 2, stampCy + stampR + 4);
+  y += 6;
+
+  drawDoubleRule(doc, margin, y, contentW);
+  y += 3.5;
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(55, 65, 81);
+  const noteLines = doc.splitTextToSize(GRADING_SCALE_NOTE, contentW - 4);
+  doc.text(noteLines, margin + 2, y);
+  y += noteLines.length * 3.8 + 2.5;
+  drawDoubleRule(doc, margin, y, contentW);
+  return y + 2;
+}
+
 /** Draws logo (optional) + student info box. Returns the Y position after the block. */
 function drawStudentInfoBox(
   doc: jsPDF,
@@ -336,7 +418,22 @@ export async function generateStudentCertificationReport({
     },
   });
 
-  const totalPages = doc.getNumberOfPages();
+  let totalPages = doc.getNumberOfPages();
+  doc.setPage(totalPages);
+  const lastTable = (doc as unknown as { lastAutoTable?: { finalY: number } })
+    .lastAutoTable;
+  let closingStartY = (lastTable?.finalY ?? y) + 10;
+  const footerReserveMm = 14;
+  const closingBlockEstimateMm = 62;
+  if (closingStartY + closingBlockEstimateMm > pageHeight - footerReserveMm) {
+    doc.addPage();
+    totalPages = doc.getNumberOfPages();
+    doc.setPage(totalPages);
+    closingStartY = margin + 18;
+  }
+  drawCertificationClosingSection(doc, margin, contentW, closingStartY);
+  totalPages = doc.getNumberOfPages();
+
   const footerFromBottomMm = 2.5;
   const footerBaseY = pageHeight - footerFromBottomMm;
   const footerFont = 7;
