@@ -198,7 +198,7 @@ const ResetPassword = () => {
                     Portal Educativo
                   </h1>
                   <p className="text-lg lg:text-base font-roboto">
-                    Escuela de Música de Cartago
+                    Escuela Municipal de Música de Cartago
                   </p>
                 </div>
               </div>

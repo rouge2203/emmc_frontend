@@ -34,7 +34,7 @@ const RecoverPassword = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [heroImage] = useState(
     () =>
-      instrumentsImages[Math.floor(Math.random() * instrumentsImages.length)]
+      instrumentsImages[Math.floor(Math.random() * instrumentsImages.length)],
   );
 
   useEffect(() => {
@@ -58,7 +58,7 @@ const RecoverPassword = () => {
       });
 
       setSuccessMsg(
-        "Hemos enviado instrucciones a tu correo. Revisa tu bandeja de entrada y sigue los pasos para restablecer tu contraseña."
+        "Hemos enviado instrucciones a tu correo. Revisa tu bandeja de entrada y sigue los pasos para restablecer tu contraseña.",
       );
 
       setIsDialogOpen(true);
@@ -97,7 +97,7 @@ const RecoverPassword = () => {
                     Portal Educativo
                   </h1>
                   <p className="text-lg lg:text-base font-roboto">
-                    Escuela de Música de Cartago
+                    Escuela Municipal de Música de Cartago
                   </p>
                 </div>
               </div>

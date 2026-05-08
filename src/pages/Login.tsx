@@ -35,7 +35,7 @@ const Login = () => {
 
   const [heroImage] = useState(
     () =>
-      instruments_images[Math.floor(Math.random() * instruments_images.length)]
+      instruments_images[Math.floor(Math.random() * instruments_images.length)],
   );
 
   // Focus on username input on mount
@@ -90,7 +90,7 @@ const Login = () => {
         {
           headers: { "Content-Type": "application/json" },
           withCredentials: true,
-        }
+        },
       );
 
       const access = response?.data?.access;
@@ -145,7 +145,7 @@ const Login = () => {
                   Portal Educativo
                 </h1>
                 <p className="text-lg lg:text-base font-roboto">
-                  Escuela de Música de Cartago
+                  Escuela Municipal de Música de Cartago
                 </p>
               </div>
             </div>

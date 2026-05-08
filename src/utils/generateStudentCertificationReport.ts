@@ -331,7 +331,7 @@ export async function generateStudentCertificationReport({
     sorted.length === 0
       ? [["—", "No hay cursos registrados", "—", "—", "—", "—"]]
       : sorted.map((e) => {
-          const fe = e.updated_at || e.created_at;
+          const fe = e.created_at || e.updated_at;
           return [
             e.course_code || "—",
             e.course_name || "—",
