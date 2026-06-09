@@ -821,8 +821,7 @@ const CourseEnrollments = () => {
                           <td className="py-5 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
                             <div className="flex gap-2 justify-end">
                               {!enrollment.professor &&
-                                enrollment.status === "cursando" &&
-                                !enrollment.course.is_matricula && (
+                                enrollment.status === "cursando" && (
                                   <button
                                     onClick={() =>
                                       handleAssignProfessor(enrollment)
@@ -837,8 +836,7 @@ const CourseEnrollments = () => {
                                   </button>
                                 )}
                               {!enrollment.schedule_set &&
-                                enrollment.status === "cursando" &&
-                                !enrollment.course.is_matricula && (
+                                enrollment.status === "cursando" && (
                                   <button
                                     onClick={() =>
                                       handleAssignSchedule(enrollment)
@@ -866,18 +864,16 @@ const CourseEnrollments = () => {
                                   </span>
                                 </button>
                               )}
-                              {!enrollment.course.is_matricula && (
-                                <Link
-                                  to={`/admin/enrollment-grades/${enrollment.id}`}
-                                  className="text-gray-900 flex items-center gap-1 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-medium border py-0.5 px-2 rounded-sm"
-                                >
-                                  <AcademicCapIcon className="h-4 w-4 text-gray-600" />
-                                  Ver Notas
-                                  <span className="sr-only">
-                                    , {enrollment.course_code}
-                                  </span>
-                                </Link>
-                              )}
+                              <Link
+                                to={`/admin/enrollment-grades/${enrollment.id}`}
+                                className="text-gray-900 flex items-center gap-1 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-medium border py-0.5 px-2 rounded-sm"
+                              >
+                                <AcademicCapIcon className="h-4 w-4 text-gray-600" />
+                                Ver Notas
+                                <span className="sr-only">
+                                  , {enrollment.course_code}
+                                </span>
+                              </Link>
                               <button
                                 onClick={() => handleEdit(enrollment)}
                                 className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm"

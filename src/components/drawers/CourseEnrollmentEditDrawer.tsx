@@ -52,6 +52,12 @@ interface CourseEnrollment {
     career_name: string | null;
     is_matricula: boolean;
   };
+  assigned_course: {
+    id: number;
+    code: string;
+    name: string;
+    career_name: string | null;
+  } | null;
   course_name: string;
   course_code: string;
   course_career_name: string | null;
@@ -157,6 +163,18 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
   const [grade, setGrade] = useState<string>("");
   const [professorObservation, setProfessorObservation] = useState<string>("");
 
+  // Assigned (actual) subject for matricula enrollments
+  const [selectedAssignedCourse, setSelectedAssignedCourse] =
+    useState<Course | null>(null);
+  const [assignedCourseSearch, setAssignedCourseSearch] = useState("");
+  const [assignedCourseOptions, setAssignedCourseOptions] = useState<Course[]>(
+    [],
+  );
+  const [showAssignedCourseDropdown, setShowAssignedCourseDropdown] =
+    useState(false);
+  const [assignedCourseDropdownActive, setAssignedCourseDropdownActive] =
+    useState(false);
+
   // Fetch enrollment data
   useEffect(() => {
     if (isOpen && enrollmentId) {
@@ -195,6 +213,26 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
     const timeoutId = setTimeout(fetchProfessors, 300);
     return () => clearTimeout(timeoutId);
   }, [professorDropdownActive, professorSearch, axiosPrivate]);
+
+  // Fetch course catalog (non-matricula) for the assign-subject select
+  useEffect(() => {
+    if (!assignedCourseDropdownActive) return;
+    const fetchCourses = async () => {
+      try {
+        const response = await axiosPrivate.get<{ courses: Course[] }>(
+          "courses/list-courses-for-enrollment",
+          { params: assignedCourseSearch ? { search: assignedCourseSearch } : {} },
+        );
+        setAssignedCourseOptions(
+          (response.data.courses || []).filter((c) => !c.is_matricula),
+        );
+      } catch (err: any) {
+        console.error("Error fetching courses:", err);
+      }
+    };
+    const timeoutId = setTimeout(fetchCourses, 300);
+    return () => clearTimeout(timeoutId);
+  }, [assignedCourseDropdownActive, assignedCourseSearch, axiosPrivate]);
 
   const fetchEnrollmentData = async () => {
     if (!enrollmentId) return;
@@ -242,6 +280,23 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
         setStatus(foundEnrollment.status);
         setGrade(foundEnrollment.grade?.toString() || "");
         setProfessorObservation(foundEnrollment.professor_observation || "");
+        if (foundEnrollment.assigned_course) {
+          const ac: Course = {
+            id: foundEnrollment.assigned_course.id,
+            code: foundEnrollment.assigned_course.code,
+            name: foundEnrollment.assigned_course.name,
+            career_name: foundEnrollment.assigned_course.career_name,
+            special_price: null,
+            course_type_price: null,
+            week_duration: 0,
+            is_matricula: false,
+          };
+          setSelectedAssignedCourse(ac);
+          setAssignedCourseSearch(`${ac.code} - ${ac.name}`);
+        } else {
+          setSelectedAssignedCourse(null);
+          setAssignedCourseSearch("");
+        }
       } else {
         setError("Matrícula no encontrada");
       }
@@ -262,16 +317,17 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
       const target = event.target as HTMLElement;
       if (!target.closest(".searchable-select-container")) {
         setShowProfessorDropdown(false);
+        setShowAssignedCourseDropdown(false);
       }
     };
 
-    if (showProfessorDropdown) {
+    if (showProfessorDropdown || showAssignedCourseDropdown) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => {
         document.removeEventListener("mousedown", handleClickOutside);
       };
     }
-  }, [showProfessorDropdown]);
+  }, [showProfessorDropdown, showAssignedCourseDropdown]);
 
   const handleSave = async () => {
     if (!enrollmentId || !selectedCourse || !selectedStudent) return;
@@ -308,6 +364,12 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
       }
       if (professorObservation !== (enrollment?.professor_observation || "")) {
         updateData.professor_observation = professorObservation.trim() || null;
+      }
+      if (
+        (selectedAssignedCourse?.id ?? null) !==
+        (enrollment?.assigned_course?.id ?? null)
+      ) {
+        updateData.assigned_course_id = selectedAssignedCourse?.id || null;
       }
 
       const response = await axiosPrivate.put<EnrollmentResponse>(
@@ -346,6 +408,23 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
         setStatus(updatedEnrollment.status);
         setGrade(updatedEnrollment.grade?.toString() || "");
         setProfessorObservation(updatedEnrollment.professor_observation || "");
+        if (updatedEnrollment.assigned_course) {
+          const ac: Course = {
+            id: updatedEnrollment.assigned_course.id,
+            code: updatedEnrollment.assigned_course.code,
+            name: updatedEnrollment.assigned_course.name,
+            career_name: updatedEnrollment.assigned_course.career_name,
+            special_price: null,
+            course_type_price: null,
+            week_duration: 0,
+            is_matricula: false,
+          };
+          setSelectedAssignedCourse(ac);
+          setAssignedCourseSearch(`${ac.code} - ${ac.name}`);
+        } else {
+          setSelectedAssignedCourse(null);
+          setAssignedCourseSearch("");
+        }
 
         // Notify parent component to update the list
         if (onEnrollmentUpdated) {
@@ -524,7 +603,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                     ) : enrollment ? (
                       <div className="divide-y divide-gray-200 px-4 sm:px-6 py-6">
                         <div className="space-y-3.5">
-                          {selectedCourse?.is_matricula ? (
+                          {selectedCourse?.is_matricula && (
                             <div className="rounded-md bg-primary/10 border border-primary/30 px-2 py-4 mb-4">
                               <div className="flex">
                                 <div className="flex-shrink-0">
@@ -535,13 +614,19 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                                 </div>
                                 <div className="ml-3 flex-1">
                                   <h3 className="text-sm font-medium text-primary">
-                                    Esto es una matrícula, no un curso en
-                                    específico
+                                    Esta es una matrícula
                                   </h3>
+                                  <div className="mt-1 text-xs text-primary/80">
+                                    <p>
+                                      Asigne profesor, horario y, antes de cerrar
+                                      la nota, la asignatura específica.
+                                    </p>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          ) : (
+                          )}
+                          {(
                             <>
                               {/* Professor Alert */}
                               {!enrollment.professor && (
@@ -663,7 +748,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                           </div>
 
                           {/* Professor */}
-                          {!selectedCourse?.is_matricula && (
+                          {(
                             <div>
                               <label
                                 htmlFor="professor"
@@ -716,10 +801,12 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                                         onChange={(e) => {
                                           setProfessorSearch(e.target.value);
                                           setShowProfessorDropdown(true);
+                                          setProfessorDropdownActive(true);
                                         }}
-                                        onFocus={() =>
-                                          setShowProfessorDropdown(true)
-                                        }
+                                        onFocus={() => {
+                                          setShowProfessorDropdown(true);
+                                          setProfessorDropdownActive(true);
+                                        }}
                                         onBlur={handleProfessorBlur}
                                         className="block rounded-md w-full pl-10 pr-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                                         placeholder="Buscar profesor..."
@@ -767,6 +854,73 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                                   </>
                                 )}
                               </div>
+                            </div>
+                          )}
+
+                          {/* Assigned subject (matricula only) */}
+                          {selectedCourse?.is_matricula && (
+                            <div>
+                              <label
+                                htmlFor="assigned_course"
+                                className="block text-sm/6 font-medium text-gray-900"
+                              >
+                                Asignatura asignada
+                              </label>
+                              <div className="mt-2 relative searchable-select-container">
+                                <div className="relative">
+                                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <IoMdBook
+                                      className="h-5 w-5 text-gray-400"
+                                      aria-hidden="true"
+                                    />
+                                  </div>
+                                  <input
+                                    id="assigned_course"
+                                    name="assigned_course"
+                                    type="text"
+                                    value={assignedCourseSearch}
+                                    onChange={(e) => {
+                                      setAssignedCourseSearch(e.target.value);
+                                      setSelectedAssignedCourse(null);
+                                      setShowAssignedCourseDropdown(true);
+                                      setAssignedCourseDropdownActive(true);
+                                    }}
+                                    onFocus={() => {
+                                      setShowAssignedCourseDropdown(true);
+                                      setAssignedCourseDropdownActive(true);
+                                    }}
+                                    className="block w-full rounded-md pl-10 pr-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                                    placeholder="Buscar asignatura..."
+                                  />
+                                </div>
+                                {showAssignedCourseDropdown &&
+                                  assignedCourseOptions.length > 0 && (
+                                    <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                                      {assignedCourseOptions.map((c) => (
+                                        <div
+                                          key={c.id}
+                                          onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            setSelectedAssignedCourse(c);
+                                            setAssignedCourseSearch(
+                                              `${c.code} - ${c.name}`,
+                                            );
+                                            setShowAssignedCourseDropdown(false);
+                                          }}
+                                          className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100"
+                                        >
+                                          <span className="font-medium text-gray-900">
+                                            {c.code} - {c.name}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                              </div>
+                              <p className="mt-1 text-xs text-gray-500">
+                                Requerida antes de cerrar la nota. Deje vacío para
+                                no asignar aún.
+                              </p>
                             </div>
                           )}
 
@@ -874,13 +1028,12 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                                 type="number"
                                 min="1"
                                 value={weekDuration}
-                                disabled={selectedCourse?.is_matricula}
                                 onChange={(e) =>
                                   setWeekDuration(
                                     parseInt(e.target.value) || 12,
                                   )
                                 }
-                                className={`block w-full rounded-md px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6 ${selectedCourse?.is_matricula ? "bg-gray-100 cursor-not-allowed" : "bg-white"}`}
+                                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                               />
                             </div>
                           </div>
@@ -976,7 +1129,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                           )}
 
                           {/* Grade */}
-                          {!selectedCourse?.is_matricula && (
+                          {(
                             <div>
                               <label
                                 htmlFor="grade"
@@ -1001,7 +1154,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                           )}
 
                           {/* Professor Observation */}
-                          {!selectedCourse?.is_matricula && (
+                          {(
                             <div>
                               <label
                                 htmlFor="professor_observation"

@@ -389,12 +389,9 @@ export default function EnrollmentGrades() {
       }
     }
 
-    // Add points from "Asistencia a Recital 1" and "Asistencia a Recital 2"
+    // Add points from every "Asistencia a Recital N" item
     const asistenciaRecitals = courseData.assignments.filter(
-      (a) =>
-        a.is_concert &&
-        (a.title === "Asistencia a Recital 1" ||
-          a.title === "Asistencia a Recital 2"),
+      (a) => a.is_concert && /^Asistencia a Recital \d+$/.test(a.title),
     );
 
     const asistenciaPoints = asistenciaRecitals.reduce(
@@ -403,8 +400,8 @@ export default function EnrollmentGrades() {
     );
     totalPoints += asistenciaPoints;
 
-    // Max possible: all weeks (10 each) + 2 asistencia recitals (10 each)
-    const maxPossible = weekDuration * 10 + 20;
+    // Max possible: all weeks (10 each) + each asistencia recital (10 each)
+    const maxPossible = weekDuration * 10 + asistenciaRecitals.length * 10;
     if (maxPossible === 0) return 0;
 
     // 50% of final grade: (points obtained / max possible points) * 50
@@ -1435,6 +1432,16 @@ export default function EnrollmentGrades() {
                           Los puntos de{" "}
                           <span className="font-semibold">
                             Asistencia a Recital 2
+                          </span>{" "}
+                          (máximo 10 puntos)
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-600 font-semibold">•</span>
+                        <span>
+                          Los puntos de{" "}
+                          <span className="font-semibold">
+                            Asistencia a Recital 3
                           </span>{" "}
                           (máximo 10 puntos)
                         </span>

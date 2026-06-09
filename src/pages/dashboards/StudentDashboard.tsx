@@ -5,7 +5,6 @@ import {
   AcademicCapIcon,
   ArrowRightIcon,
   CalendarDaysIcon,
-  InformationCircleIcon,
   NewspaperIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/16/solid";
@@ -42,12 +41,20 @@ interface Schedule {
   classroom: string | null;
 }
 
+interface AssignedCourse {
+  id: number;
+  name: string | null;
+  code: string | null;
+  career_name: string | null;
+}
+
 interface Enrollment {
   id: number;
   course_name: string | null;
   course_code: string | null;
   career_name: string | null;
   is_matricula: boolean;
+  assigned_course: AssignedCourse | null;
   status: string;
   grade: number | null;
   week_duration: number;
@@ -310,47 +317,21 @@ const StudentDashboard = () => {
               className="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-3 xl:gap-x-8"
             >
               {filteredActiveEnrollments.map((enrollment) => {
-                if (enrollment.is_matricula) {
-                  return (
-                    <li
-                      key={enrollment.id}
-                      className="overflow-hidden rounded-xl border border-gray-200 bg-white"
-                    >
-                      <div className="flex items-center gap-x-4 border-b border-gray-900/5 bg-gray-50 p-6">
-                        <div className="flex size-12 flex-none items-center justify-center rounded-lg bg-primary text-white font-semibold text-lg">
-                          {enrollment.course_name
-                            ?.split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .slice(0, 2)
-                            .toUpperCase() || "?"}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm/6 font-medium text-gray-900 truncate">
-                            {enrollment.course_name || "Matrícula"}
-                          </div>
-                          <div className="text-xs text-gray-500 truncate">
-                            {enrollment.course_code}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="px-6 py-5">
-                        <div className="flex items-start gap-x-3">
-                          <InformationCircleIcon className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                          <p className="text-sm text-gray-600">
-                            Está a la espera de que se le asigne una asignatura y un profesor.
-                          </p>
-                        </div>
-                      </div>
-                    </li>
-                  );
-                }
-
                 const professorName = enrollment.professor
                   ? `${enrollment.professor.first_name || ""} ${
                       enrollment.professor.last_name || ""
                     }`.trim()
                   : "Profesor pendiente";
+                // For matricula enrollments, show the assigned subject once set.
+                const displayName =
+                  enrollment.assigned_course?.name ||
+                  enrollment.course_name ||
+                  (enrollment.is_matricula ? "Matrícula" : "Curso sin nombre");
+                const displayCode =
+                  enrollment.assigned_course?.code || enrollment.course_code;
+                const displayCareer =
+                  enrollment.assigned_course?.career_name ||
+                  enrollment.career_name;
                 return (
                   <li
                     key={enrollment.id}
@@ -358,7 +339,7 @@ const StudentDashboard = () => {
                   >
                     <div className="flex items-center gap-x-4 border-b border-gray-900/5 bg-gray-50 p-6">
                       <div className="flex size-12 flex-none items-center justify-center rounded-lg bg-primary text-white font-semibold text-lg">
-                        {enrollment.course_name
+                        {displayName
                           ?.split(" ")
                           .map((n) => n[0])
                           .join("")
@@ -367,10 +348,13 @@ const StudentDashboard = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm/6 font-medium text-gray-900 truncate">
-                          {enrollment.course_name || "Curso sin nombre"}
+                          {displayName}
                         </div>
                         <div className="text-xs text-gray-500 truncate">
-                          {enrollment.course_code}
+                          {displayCode}
+                          {enrollment.is_matricula &&
+                            !enrollment.assigned_course &&
+                            " · Matrícula"}
                         </div>
                       </div>
                       <Link
@@ -388,11 +372,11 @@ const StudentDashboard = () => {
                           {professorName || "Sin asignar"}
                         </dd>
                       </div>
-                      {enrollment.career_name && (
+                      {displayCareer && (
                         <div className="flex justify-between gap-x-4 py-3">
                           <dt className="text-gray-500">Carrera</dt>
                           <dd className="text-gray-700 text-right truncate max-w-40">
-                            {enrollment.career_name}
+                            {displayCareer}
                           </dd>
                         </div>
                       )}

@@ -1,12 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
 import { XMarkIcon, PrinterIcon } from "@heroicons/react/24/outline";
 import type { AxiosInstance } from "axios";
-import { generateEnrollmentReport } from "../../utils/generateEnrollmentReport";
+import {
+  generateEnrollmentReport,
+  generateProfessorReport,
+} from "../../utils/generateEnrollmentReport";
 
 interface Career {
   id: number;
   name: string;
+}
+
+interface Professor {
+  id: number;
+  first_name: string;
+  last_name: string;
 }
 
 interface PrintEnrollmentReportDrawerProps {
@@ -27,11 +36,33 @@ const PrintEnrollmentReportDrawer: React.FC<
   const [periodFilter, setPeriodFilter] = useState<string>("1");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [careerFilter, setCareerFilter] = useState<string>("");
+  const [reportType, setReportType] = useState<"general" | "by_professor">(
+    "general",
+  );
+  const [professorFilter, setProfessorFilter] = useState<string>("");
+  const [professors, setProfessors] = useState<Professor[]>([]);
 
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Lazy-load the professor list the first time the by-professor report is chosen
+  useEffect(() => {
+    if (reportType !== "by_professor" || professors.length > 0) return;
+    const fetchProfessors = async () => {
+      try {
+        const response = await axiosPrivate.get<{ users: Professor[] }>(
+          "courses/list-users-for-enrollment",
+          { params: { role: "teacher" } },
+        );
+        setProfessors(response.data.users || []);
+      } catch (err) {
+        console.error("Error fetching professors:", err);
+      }
+    };
+    fetchProfessors();
+  }, [reportType, professors.length, axiosPrivate]);
 
   const handleGenerate = async () => {
     try {
@@ -39,6 +70,8 @@ const PrintEnrollmentReportDrawer: React.FC<
       setError(null);
       setProgress(10);
       setProgressLabel("Cargando datos...");
+
+      const isByProfessor = reportType === "by_professor";
 
       const params: Record<string, string | number> = {
         page: 1,
@@ -48,6 +81,10 @@ const PrintEnrollmentReportDrawer: React.FC<
       };
       if (statusFilter) params.status = statusFilter;
       if (careerFilter) params.career_id = parseInt(careerFilter);
+      if (isByProfessor) {
+        params.report_schedules = "true";
+        if (professorFilter) params.professor_id = parseInt(professorFilter);
+      }
 
       const response = await axiosPrivate.get("courses/manage-enrollments", {
         params,
@@ -69,7 +106,23 @@ const PrintEnrollmentReportDrawer: React.FC<
           careers.find((c) => c.id === parseInt(careerFilter))?.name || "Todas",
       };
 
-      await generateEnrollmentReport(enrollments, filterLabels, userName);
+      if (isByProfessor) {
+        const selectedProfessor = professors.find(
+          (p) => p.id === parseInt(professorFilter),
+        );
+        const professorLabel = professorFilter
+          ? `${selectedProfessor?.last_name || ""} ${
+              selectedProfessor?.first_name || ""
+            }`.trim() || "—"
+          : "Todos";
+        await generateProfessorReport(
+          enrollments,
+          { ...filterLabels, professor: professorLabel },
+          userName,
+        );
+      } else {
+        await generateEnrollmentReport(enrollments, filterLabels, userName);
+      }
 
       setProgress(100);
       setProgressLabel("Completado");
@@ -94,6 +147,8 @@ const PrintEnrollmentReportDrawer: React.FC<
     setPeriodFilter("1");
     setStatusFilter("");
     setCareerFilter("");
+    setReportType("general");
+    setProfessorFilter("");
     setProgress(0);
     setProgressLabel("");
     setError(null);
@@ -140,6 +195,88 @@ const PrintEnrollmentReportDrawer: React.FC<
 
                   <div className="px-4 py-5 sm:px-6">
                     <div className="space-y-6">
+                      {/* Report type */}
+                      <div>
+                        <label
+                          htmlFor="report-type"
+                          className="block text-sm/6 font-medium text-gray-900"
+                        >
+                          Tipo de reporte <span className="text-red-500">*</span>
+                        </label>
+                        <div className="mt-2 grid grid-cols-1">
+                          <select
+                            id="report-type"
+                            value={reportType}
+                            onChange={(e) =>
+                              setReportType(
+                                e.target.value as "general" | "by_professor",
+                              )
+                            }
+                            disabled={isGenerating}
+                            className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                          >
+                            <option value="general">General</option>
+                            <option value="by_professor">Por profesor</option>
+                          </select>
+                          <svg
+                            viewBox="0 0 16 16"
+                            fill="currentColor"
+                            aria-hidden="true"
+                            className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                          >
+                            <path
+                              d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                              clipRule="evenodd"
+                              fillRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* Professor (by-professor report only) */}
+                      {reportType === "by_professor" && (
+                        <div>
+                          <label
+                            htmlFor="report-professor"
+                            className="block text-sm/6 font-medium text-gray-900"
+                          >
+                            Profesor
+                          </label>
+                          <div className="mt-2 grid grid-cols-1">
+                            <select
+                              id="report-professor"
+                              value={professorFilter}
+                              onChange={(e) =>
+                                setProfessorFilter(e.target.value)
+                              }
+                              disabled={isGenerating}
+                              className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                            >
+                              <option value="">Todos los profesores</option>
+                              {professors.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {`${p.last_name || ""} ${
+                                    p.first_name || ""
+                                  }`.trim()}
+                                </option>
+                              ))}
+                            </select>
+                            <svg
+                              viewBox="0 0 16 16"
+                              fill="currentColor"
+                              aria-hidden="true"
+                              className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                            >
+                              <path
+                                d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                                clipRule="evenodd"
+                                fillRule="evenodd"
+                              />
+                            </svg>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Year */}
                       <div>
                         <label

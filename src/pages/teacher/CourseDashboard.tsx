@@ -81,6 +81,13 @@ interface CourseData {
       description: string | null;
     };
     career_name: string | null;
+    is_matricula: boolean;
+    assigned_course: {
+      id: number;
+      name: string;
+      code: string;
+      career_name: string | null;
+    } | null;
     student: {
       id: number;
       first_name: string;
@@ -177,6 +184,13 @@ export default function CourseDashboard() {
 
   const [submitting, setSubmitting] = useState(false);
 
+  // Assign-subject (for matricula enrollments)
+  const [assignCourseDialogOpen, setAssignCourseDialogOpen] = useState(false);
+  const [assignCourseSearch, setAssignCourseSearch] = useState("");
+  const [assignCourseOptions, setAssignCourseOptions] = useState<
+    { id: number; code: string; name: string; is_matricula: boolean }[]
+  >([]);
+
   // Notification states
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [showErrorNotification, setShowErrorNotification] = useState(false);
@@ -208,6 +222,34 @@ export default function CourseDashboard() {
       fetchCourseData();
     }
   }, [enrollmentId]);
+
+  // Load the course catalog (non-matricula subjects) for the assign-subject dialog
+  useEffect(() => {
+    if (!assignCourseDialogOpen) return;
+    const controller = new AbortController();
+    const fetchOptions = async () => {
+      try {
+        const response = await axiosPrivate.get(
+          "courses/list-courses-for-enrollment",
+          {
+            params: assignCourseSearch ? { search: assignCourseSearch } : {},
+            signal: controller.signal,
+          },
+        );
+        setAssignCourseOptions(
+          (response.data.courses || []).filter(
+            (c: { is_matricula: boolean }) => !c.is_matricula,
+          ),
+        );
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          console.error("Error fetching courses:", err);
+        }
+      }
+    };
+    fetchOptions();
+    return () => controller.abort();
+  }, [assignCourseDialogOpen, assignCourseSearch]);
 
   const openAssignmentDrawer = (week: number, assignment?: Assignment) => {
     if (isReadOnly) return;
@@ -436,8 +478,35 @@ export default function CourseDashboard() {
       });
       setFinalizeDialogOpen(false);
       fetchCourseData();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error finalizing enrollment:", err);
+      setNotificationMessage(
+        err?.response?.data?.error || "Error al cerrar la calificación",
+      );
+      setShowErrorNotification(true);
+      setTimeout(() => setShowErrorNotification(false), 5000);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAssignCourse = async (assignedCourseId: number | null) => {
+    setSubmitting(true);
+    try {
+      await axiosPrivate.post(
+        `courses/teacher-assign-course/${enrollmentId}`,
+        { assigned_course_id: assignedCourseId },
+      );
+      setAssignCourseDialogOpen(false);
+      setAssignCourseSearch("");
+      fetchCourseData();
+    } catch (err: any) {
+      console.error("Error assigning course:", err);
+      setNotificationMessage(
+        err?.response?.data?.error || "Error al asignar la asignatura",
+      );
+      setShowErrorNotification(true);
+      setTimeout(() => setShowErrorNotification(false), 5000);
     } finally {
       setSubmitting(false);
     }
@@ -458,12 +527,9 @@ export default function CourseDashboard() {
       }
     }
 
-    // Add points from "Asistencia a Recital 1" and "Asistencia a Recital 2"
+    // Add points from every "Asistencia a Recital N" item
     const asistenciaRecitals = courseData.assignments.filter(
-      (a) =>
-        a.is_concert &&
-        (a.title === "Asistencia a Recital 1" ||
-          a.title === "Asistencia a Recital 2"),
+      (a) => a.is_concert && /^Asistencia a Recital \d+$/.test(a.title),
     );
 
     const asistenciaPoints = asistenciaRecitals.reduce(
@@ -472,8 +538,8 @@ export default function CourseDashboard() {
     );
     totalPoints += asistenciaPoints;
 
-    // Max possible: all weeks (10 each) + 2 asistencia recitals (10 each)
-    const maxPossible = weekDuration * 10 + 20;
+    // Max possible: all weeks (10 each) + each asistencia recital (10 each)
+    const maxPossible = weekDuration * 10 + asistenciaRecitals.length * 10;
     if (maxPossible === 0) return 0;
 
     // 50% of final grade: (points obtained / max possible points) * 50
@@ -601,11 +667,11 @@ export default function CourseDashboard() {
             </button>
             <div className="flex-1 min-w-0">
               <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">
-                {enrollment.course.name}
+                {enrollment.assigned_course?.name || enrollment.course.name}
               </h1>
               <p className="text-xs sm:text-sm text-gray-500 truncate">
-                {enrollment.course.code} - {enrollment.student.first_name}{" "}
-                {enrollment.student.last_name}
+                {enrollment.assigned_course?.code || enrollment.course.code} -{" "}
+                {enrollment.student.first_name} {enrollment.student.last_name}
               </p>
             </div>
             <div
@@ -621,6 +687,50 @@ export default function CourseDashboard() {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Matricula: assign the actual subject */}
+        {enrollment.is_matricula && (
+          <div
+            className={`mb-8 rounded-lg border px-4 py-4 ${
+              enrollment.assigned_course
+                ? "border-green-200 bg-green-50"
+                : "border-yellow-200 bg-yellow-50"
+            }`}
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm">
+                {enrollment.assigned_course ? (
+                  <p className="text-green-800">
+                    Asignatura asignada:{" "}
+                    <span className="font-semibold">
+                      {enrollment.assigned_course.name} (
+                      {enrollment.assigned_course.code})
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-yellow-800">
+                    Esta es una matrícula. Asigne la asignatura específica antes
+                    de cerrar la calificación.
+                  </p>
+                )}
+              </div>
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAssignCourseSearch("");
+                    setAssignCourseDialogOpen(true);
+                  }}
+                  className="shrink-0 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
+                >
+                  {enrollment.assigned_course
+                    ? "Cambiar asignatura"
+                    : "Asignar asignatura"}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Enrollment Info Cards */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
           <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -1522,6 +1632,96 @@ export default function CourseDashboard() {
         </div>
       </Dialog>
 
+      {/* Assign Subject Dialog (matricula) */}
+      <Dialog
+        open={assignCourseDialogOpen}
+        onClose={() => setAssignCourseDialogOpen(false)}
+        className="relative z-50"
+      >
+        <DialogBackdrop
+          transition
+          className="fixed inset-0 bg-gray-500/75 transition-opacity data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
+        />
+        <div className="fixed inset-0 z-50 w-screen overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <DialogPanel
+              transition
+              className="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in sm:my-8 sm:w-full sm:max-w-lg sm:p-6 data-closed:sm:translate-y-0 data-closed:sm:scale-95"
+            >
+              <div className="absolute right-0 top-0 pr-4 pt-4">
+                <button
+                  type="button"
+                  className="rounded-md bg-white text-gray-400 hover:text-gray-500"
+                  onClick={() => setAssignCourseDialogOpen(false)}
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <DialogTitle
+                as="h3"
+                className="text-base font-semibold text-gray-900"
+              >
+                Asignar asignatura
+              </DialogTitle>
+              <p className="mt-1 text-sm text-gray-500">
+                Seleccione la asignatura específica para esta matrícula.
+              </p>
+              <div className="mt-4">
+                <input
+                  type="text"
+                  value={assignCourseSearch}
+                  onChange={(e) => setAssignCourseSearch(e.target.value)}
+                  placeholder="Buscar por código o nombre..."
+                  className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                />
+                <ul className="mt-2 max-h-64 overflow-auto divide-y divide-gray-100 rounded-md border border-gray-200">
+                  {assignCourseOptions.length === 0 ? (
+                    <li className="px-3 py-3 text-sm text-gray-500">
+                      No hay asignaturas que coincidan.
+                    </li>
+                  ) : (
+                    assignCourseOptions.map((c) => (
+                      <li key={c.id}>
+                        <button
+                          type="button"
+                          disabled={submitting}
+                          onClick={() => handleAssignCourse(c.id)}
+                          className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          <span className="font-medium text-gray-900">
+                            {c.name}
+                          </span>
+                          <span className="text-xs text-gray-500">{c.code}</span>
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
+              <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                {courseData?.enrollment.assigned_course && (
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => handleAssignCourse(null)}
+                    className="inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-red-600 shadow-xs ring-1 ring-inset ring-red-300 hover:bg-red-50 disabled:opacity-50 sm:ml-3 sm:w-auto"
+                  >
+                    Quitar asignatura
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setAssignCourseDialogOpen(false)}
+                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </DialogPanel>
+          </div>
+        </div>
+      </Dialog>
+
       {/* Delete Confirmation Dialog */}
       <Dialog
         open={deleteDialogOpen}
@@ -1666,6 +1866,16 @@ export default function CourseDashboard() {
                           Los puntos de{" "}
                           <span className="font-semibold">
                             Asistencia a Recital 2
+                          </span>{" "}
+                          (máximo 10 puntos)
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-600 font-semibold">•</span>
+                        <span>
+                          Los puntos de{" "}
+                          <span className="font-semibold">
+                            Asistencia a Recital 3
                           </span>{" "}
                           (máximo 10 puntos)
                         </span>

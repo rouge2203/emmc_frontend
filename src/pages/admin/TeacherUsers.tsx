@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import { LiaUserTieSolid } from "react-icons/lia";
 import { HiOutlineAcademicCap } from "react-icons/hi2";
+import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import TeacherInfoDrawer from "../../components/drawers/TeacherInfoDrawer";
 import TeacherCreateDrawer from "../../components/drawers/TeacherCreateDrawer";
 import UserObservationsDrawer from "../../components/drawers/UserObservationsDrawer";
@@ -48,7 +49,9 @@ const TeacherUsers = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(15);
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
@@ -56,7 +59,7 @@ const TeacherUsers = () => {
     useState(false);
   const [selectedUserName, setSelectedUserName] = useState("");
 
-  const fetchUsers = async (pageNum: number) => {
+  const fetchUsers = async (pageNum: number, searchTerm: string) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -66,6 +69,7 @@ const TeacherUsers = () => {
           role: "teacher",
           page: pageNum,
           page_size: pageSize,
+          search: searchTerm || undefined,
         }
       );
       setUsers(response.data.results);
@@ -81,8 +85,25 @@ const TeacherUsers = () => {
   };
 
   useEffect(() => {
-    fetchUsers(page);
-  }, [axiosPrivate, page, pageSize]);
+    fetchUsers(page, search);
+  }, [axiosPrivate, page, pageSize, search]);
+
+  const handleSearch = () => {
+    setSearch(searchInput.trim());
+    setPage(1);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput("");
+    setSearch("");
+    setPage(1);
+  };
 
   // Check for navigation state to open create drawer
   useEffect(() => {
@@ -140,7 +161,7 @@ const TeacherUsers = () => {
       }
     } else {
       // Refresh the table to include the new user
-      fetchUsers(page);
+      fetchUsers(page, search);
     }
   };
 
@@ -180,6 +201,51 @@ const TeacherUsers = () => {
           >
             Crear profesor
           </button>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="mt-4">
+        <label
+          htmlFor="teacherSearch"
+          className="block text-xs font-medium text-gray-700 mb-1"
+        >
+          Búsqueda
+        </label>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <MagnifyingGlassIcon
+                className="h-5 w-5 text-gray-400"
+                aria-hidden="true"
+              />
+            </div>
+            <input
+              id="teacherSearch"
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Nombre, apellido, email o cédula..."
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleSearch}
+            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors"
+          >
+            <MagnifyingGlassIcon className="h-5 w-5" />
+          </button>
+          {search && (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors text-sm font-semibold"
+            >
+              Limpiar
+            </button>
+          )}
         </div>
       </div>
       {isLoading && (

@@ -77,6 +77,13 @@ interface CourseData {
       description: string | null;
     };
     career_name: string | null;
+    is_matricula?: boolean;
+    assigned_course?: {
+      id: number;
+      name: string;
+      code: string;
+      career_name: string | null;
+    } | null;
     student: {
       id: number;
       first_name: string;
@@ -194,12 +201,9 @@ export default function CourseDashboard() {
       }
     }
 
-    // Add points from "Asistencia a Recital 1" and "Asistencia a Recital 2"
+    // Add points from every "Asistencia a Recital N" item
     const asistenciaRecitals = courseData.assignments.filter(
-      (a) =>
-        a.is_concert &&
-        (a.title === "Asistencia a Recital 1" ||
-          a.title === "Asistencia a Recital 2"),
+      (a) => a.is_concert && /^Asistencia a Recital \d+$/.test(a.title),
     );
 
     const asistenciaPoints = asistenciaRecitals.reduce(
@@ -208,8 +212,8 @@ export default function CourseDashboard() {
     );
     totalPoints += asistenciaPoints;
 
-    // Max possible: all weeks (10 each) + 2 asistencia recitals (10 each)
-    const maxPossible = weekDuration * 10 + 20;
+    // Max possible: all weeks (10 each) + each asistencia recital (10 each)
+    const maxPossible = weekDuration * 10 + asistenciaRecitals.length * 10;
     if (maxPossible === 0) return 0;
 
     // 50% of final grade: (points obtained / max possible points) * 50
@@ -313,10 +317,11 @@ export default function CourseDashboard() {
             </button>
             <div className="flex-1 min-w-0">
               <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">
-                {enrollment.course.name}
+                {enrollment.assigned_course?.name || enrollment.course.name}
               </h1>
               <p className="text-xs sm:text-sm text-gray-500 truncate">
-                {enrollment.course.code} - {professorName}
+                {enrollment.assigned_course?.code || enrollment.course.code} -{" "}
+                {professorName}
               </p>
             </div>
             <div
@@ -470,10 +475,10 @@ export default function CourseDashboard() {
                         >
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start gap-x-2 sm:gap-x-3">
-                              {(assignment.is_concert &&
-                                assignment.title ===
-                                  "Asistencia a Recital 1") ||
-                              assignment.title === "Asistencia a Recital 2" ? (
+                              {assignment.is_concert &&
+                              /^Asistencia a Recital \d+$/.test(
+                                assignment.title,
+                              ) ? (
                                 <GiMusicalNotes className="size-5 shrink-0 text-purple-500 mt-0.5" />
                               ) : assignment.is_exam ? (
                                 <MusicalNoteIcon className="h-5 w-5 shrink-0 text-purple-500 mt-0.5" />
@@ -835,6 +840,16 @@ export default function CourseDashboard() {
                           Los puntos de{" "}
                           <span className="font-semibold">
                             Asistencia a Recital 2
+                          </span>{" "}
+                          (máximo 10 puntos)
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-600 font-semibold">•</span>
+                        <span>
+                          Los puntos de{" "}
+                          <span className="font-semibold">
+                            Asistencia a Recital 3
                           </span>{" "}
                           (máximo 10 puntos)
                         </span>
