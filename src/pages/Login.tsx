@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import axios from "../api/axios";
 import useAuth from "../hooks/useAuth";
-import { FaRegNewspaper, FaEye, FaEyeSlash } from "react-icons/fa";
-import { TbPasswordUser } from "react-icons/tb";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { ImCancelCircle } from "react-icons/im";
 import { CgPiano } from "react-icons/cg";
 
@@ -16,6 +15,48 @@ const instruments_images = [
   "/saxophone.png",
   "/violin.jpg",
 ];
+
+type PianoKey = {
+  note: string;
+  label: string;
+  midi: number;
+  keyboard: string;
+};
+
+const WHITE_KEYS: PianoKey[] = [
+  { note: "C4", label: "Do", midi: 60, keyboard: "a" },
+  { note: "D4", label: "Re", midi: 62, keyboard: "s" },
+  { note: "E4", label: "Mi", midi: 64, keyboard: "d" },
+  { note: "F4", label: "Fa", midi: 65, keyboard: "f" },
+  { note: "G4", label: "Sol", midi: 67, keyboard: "g" },
+  { note: "A4", label: "La", midi: 69, keyboard: "h" },
+  { note: "B4", label: "Si", midi: 71, keyboard: "j" },
+  { note: "C5", label: "Do", midi: 72, keyboard: "k" },
+];
+
+// position = number of white keys to the left of the black key's slot
+const BLACK_KEYS: (PianoKey & { position: number })[] = [
+  { note: "C#4", label: "Do♯", midi: 61, keyboard: "w", position: 1 },
+  { note: "D#4", label: "Re♯", midi: 63, keyboard: "e", position: 2 },
+  { note: "F#4", label: "Fa♯", midi: 66, keyboard: "t", position: 4 },
+  { note: "G#4", label: "Sol♯", midi: 68, keyboard: "y", position: 5 },
+  { note: "A#4", label: "La♯", midi: 70, keyboard: "u", position: 6 },
+];
+
+const PIANO_KEYS = [...WHITE_KEYS, ...BLACK_KEYS];
+
+const midiToFreq = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
+
+// [harmonic multiple, gain, waveform, detune in cents]
+const PARTIALS: [number, number, OscillatorType, number][] = [
+  [1, 0.5, "triangle", 0],
+  [1, 0.18, "triangle", 5],
+  [2, 0.22, "sine", 0],
+  [3, 0.08, "sine", 0],
+  [4, 0.04, "sine", 0],
+];
+
+type AudioEngine = { ctx: AudioContext; out: GainNode };
 
 const Login = () => {
   const { auth, setAuth } = useAuth();
@@ -77,6 +118,158 @@ const Login = () => {
       isLoggingIn.current = false;
     };
   }, []);
+
+  const audioRef = useRef<AudioEngine | null>(null);
+  const [activeNotes, setActiveNotes] = useState<Set<string>>(() => new Set());
+
+  const playNote = useCallback((midi: number) => {
+    let engine = audioRef.current;
+    if (!engine || engine.ctx.state === "closed") {
+      const AudioCtor =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (!AudioCtor) return;
+      const ctx = new AudioCtor();
+      // Shared compressor keeps chords and glissandos from clipping
+      const compressor = ctx.createDynamicsCompressor();
+      compressor.threshold.value = -18;
+      compressor.knee.value = 12;
+      compressor.ratio.value = 6;
+      compressor.attack.value = 0.002;
+      compressor.release.value = 0.15;
+      const out = ctx.createGain();
+      out.gain.value = 0.9;
+      out.connect(compressor);
+      compressor.connect(ctx.destination);
+      engine = { ctx, out };
+      audioRef.current = engine;
+    }
+    const { ctx, out } = engine;
+    if (ctx.state === "suspended") void ctx.resume();
+
+    const now = ctx.currentTime;
+    const freq = midiToFreq(midi);
+
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.3, now + 0.01);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + 1.5);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.Q.value = 0.7;
+    filter.frequency.setValueAtTime(Math.min(freq * 7, 9000), now);
+    filter.frequency.exponentialRampToValueAtTime(freq * 1.8, now + 1.1);
+
+    filter.connect(master);
+    master.connect(out);
+
+    PARTIALS.forEach(([ratio, gain, type, detune], i) => {
+      const osc = ctx.createOscillator();
+      osc.type = type;
+      osc.frequency.value = freq * ratio;
+      osc.detune.value = detune;
+      const oscGain = ctx.createGain();
+      oscGain.gain.value = gain;
+      osc.connect(oscGain);
+      oscGain.connect(filter);
+      if (i === 0) {
+        osc.onended = () => {
+          filter.disconnect();
+          master.disconnect();
+        };
+      }
+      osc.start(now);
+      osc.stop(now + 1.6);
+    });
+  }, []);
+
+  const pressKey = useCallback(
+    (key: PianoKey) => {
+      playNote(key.midi);
+      setActiveNotes((prev) => {
+        if (prev.has(key.note)) return prev;
+        const next = new Set(prev);
+        next.add(key.note);
+        return next;
+      });
+    },
+    [playNote],
+  );
+
+  const releaseKey = useCallback((note: string) => {
+    setActiveNotes((prev) => {
+      if (!prev.has(note)) return prev;
+      const next = new Set(prev);
+      next.delete(note);
+      return next;
+    });
+  }, []);
+
+  // Play the piano with the computer keyboard, except while typing in a field
+  useEffect(() => {
+    const findKey = (e: KeyboardEvent) =>
+      PIANO_KEYS.find((k) => k.keyboard === e.key.toLowerCase());
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable]")) return;
+      const key = findKey(e);
+      if (key) pressKey(key);
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const key = findKey(e);
+      if (key) releaseKey(key.note);
+    };
+    const clearAll = () => {
+      setActiveNotes((prev) => (prev.size ? new Set() : prev));
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", clearAll);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", clearAll);
+    };
+  }, [pressKey, releaseKey]);
+
+  // Release audio resources when leaving the page
+  useEffect(() => {
+    return () => {
+      audioRef.current?.ctx.close().catch(() => {});
+    };
+  }, []);
+
+  const keyHandlers = (key: PianoKey) => ({
+    onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      // Give up implicit capture so dragging across keys plays a glissando
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+      pressKey(key);
+    },
+    onPointerEnter: (e: React.PointerEvent<HTMLButtonElement>) => {
+      if (e.buttons === 1) pressKey(key);
+    },
+    onPointerUp: () => releaseKey(key.note),
+    onPointerLeave: () => releaseKey(key.note),
+    onPointerCancel: () => releaseKey(key.note),
+    onKeyDown: (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (e.repeat) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        pressKey(key);
+      }
+    },
+    onKeyUp: (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (e.key === "Enter" || e.key === " ") releaseKey(key.note);
+    },
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -263,16 +456,80 @@ const Login = () => {
                   </div>
                 </div>
 
-                <div className="mt-6 space-y-3 sm:pb-4">
-                  <button className="w-full text-primary flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                    <FaRegNewspaper className="w-5 h-5 mr-3" />
-                    Información de matrícula 2026
-                  </button>
-
-                  <button className="w-full  flex items-center justify-center px-4 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors ">
-                    <TbPasswordUser className="w-5 h-5 mr-3" />
-                    Solicitar acceso
-                  </button>
+                <div className="mt-6 sm:pb-4">
+                  <div
+                    role="group"
+                    aria-label="Piano interactivo"
+                    className="select-none touch-none overflow-hidden rounded-xl border border-gray-200 bg-gray-900 shadow-md"
+                  >
+                    <div className="h-2 bg-gray-900" />
+                    <div className="h-1 bg-red-800" />
+                    <div className="relative h-36 sm:h-32">
+                      <div className="flex h-full gap-px px-px pb-px">
+                        {WHITE_KEYS.map((key, i) => {
+                          const isActive = activeNotes.has(key.note);
+                          // End keys follow the case's 12px curve (11px = 12 - 1px gap)
+                          const cornerClass =
+                            i === 0
+                              ? "rounded-br rounded-bl-[11px]"
+                              : i === WHITE_KEYS.length - 1
+                                ? "rounded-bl rounded-br-[11px]"
+                                : "rounded-b";
+                          return (
+                            <button
+                              key={key.note}
+                              type="button"
+                              aria-label={`Nota ${key.label} (${key.note})`}
+                              title={`${key.label} · tecla ${key.keyboard.toUpperCase()}`}
+                              {...keyHandlers(key)}
+                              className={`relative flex-1 ${cornerClass} transition-colors duration-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
+                                isActive
+                                  ? "translate-y-px bg-linear-to-b from-gray-200 to-gray-300 shadow-inner"
+                                  : "bg-linear-to-b from-white to-gray-100"
+                              }`}
+                            >
+                              <span
+                                className={`pointer-events-none absolute inset-x-0 bottom-1.5 text-center text-[10px] font-medium tracking-wide ${
+                                  isActive ? "text-gray-700" : "text-gray-400"
+                                }`}
+                              >
+                                {key.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {BLACK_KEYS.map((key) => {
+                        const isActive = activeNotes.has(key.note);
+                        return (
+                          <button
+                            key={key.note}
+                            type="button"
+                            aria-label={`Nota ${key.label.replace("♯", " sostenido")} (${key.note})`}
+                            title={`${key.label} · tecla ${key.keyboard.toUpperCase()}`}
+                            {...keyHandlers(key)}
+                            style={{
+                              left: `${key.position * 12.5}%`,
+                              width: "8.5%",
+                              transform: "translateX(-50%)",
+                            }}
+                            className={`absolute top-0 z-10 rounded-b-md border-x border-b border-black/70 transition-all duration-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
+                              isActive
+                                ? "h-[56%] bg-linear-to-b from-gray-600 to-gray-800"
+                                : "h-[60%] bg-linear-to-b from-gray-700 via-gray-900 to-black shadow-[0_4px_6px_rgba(0,0,0,0.5)]"
+                            }`}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <p className="mt-2.5 text-center text-xs text-gray-400">
+                    Toca una melodía
+                    <span className="hidden sm:inline">
+                      {" "}
+                      · también suena con tu teclado (A–K)
+                    </span>
+                  </p>
                 </div>
               </div>
             </div>
