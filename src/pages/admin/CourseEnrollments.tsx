@@ -115,14 +115,20 @@ const CourseEnrollments = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(25);
+  const [pageSize] = useState(50);
   const urlParamsProcessed = useRef(false);
+  // Monotonic id of the most recent enrollments request; older responses are
+  // discarded so they cannot overwrite newer results.
+  const latestRequestId = useRef(0);
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Filters
   const [studentSearch, setStudentSearch] = useState("");
   const [studentSearchInput, setStudentSearchInput] = useState("");
   const [yearFilter, setYearFilter] = useState<number | null>(null);
+  // null = "Todos". Only offered once a year is chosen, since a period on its
+  // own spans every year on record.
+  const [periodFilter, setPeriodFilter] = useState<number | null>(null);
   const [careerFilter, setCareerFilter] = useState<number | null>(null);
   const [professorFilter, setProfessorFilter] = useState<number | null>(null);
   const [missingProfessorFilter, setMissingProfessorFilter] = useState(false);
@@ -175,6 +181,10 @@ const CourseEnrollments = () => {
   };
 
   const fetchEnrollments = async (pageNum: number) => {
+    // Queries against the remote database take seconds, and the period buttons
+    // are quick to click in succession. Stamp each request so a slow earlier
+    // response can never overwrite the results of a newer one.
+    const requestId = ++latestRequestId.current;
     try {
       setIsLoading(true);
       setError(null);
@@ -184,6 +194,7 @@ const CourseEnrollments = () => {
       };
       if (studentSearch) params.student_search = studentSearch;
       if (yearFilter) params.year = yearFilter;
+      if (yearFilter && periodFilter) params.period = periodFilter;
       if (careerFilter) params.career_id = careerFilter;
       if (professorFilter) params.professor_id = professorFilter;
       if (missingProfessorFilter) params.missing_professor = true;
@@ -195,16 +206,20 @@ const CourseEnrollments = () => {
         "courses/manage-enrollments",
         { params },
       );
+      if (requestId !== latestRequestId.current) return;
       setEnrollments(response.data.results);
       setPagination(response.data.pagination);
       setCounts(response.data.counts);
     } catch (err: any) {
+      if (requestId !== latestRequestId.current) return;
       setError(err?.response?.data?.error || "Error al cargar las matrículas");
       console.error("Error fetching enrollments:", err);
     } finally {
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 250);
+      if (requestId === latestRequestId.current) {
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 250);
+      }
     }
   };
 
@@ -258,6 +273,7 @@ const CourseEnrollments = () => {
     pageSize,
     studentSearch,
     yearFilter,
+    periodFilter,
     careerFilter,
     professorFilter,
     missingProfessorFilter,
@@ -267,7 +283,32 @@ const CourseEnrollments = () => {
     isInitialized,
   ]);
 
+  // The input's clear button only empties the search term — unlike handleSearch
+  // it deliberately leaves any filters the user has applied in place.
+  const handleClearSearch = () => {
+    setStudentSearchInput("");
+    setStudentSearch("");
+    setPage(1);
+  };
+
+  // A search starts from a clean slate: drop every filter so the term is matched
+  // against all courses. The user can then narrow the result with the selects.
   const handleSearch = () => {
+    // An empty box is not a search. Clearing the filters here would let a stray
+    // Enter wipe a filter set the user had built up, so treat it like the input's
+    // clear button instead.
+    if (!studentSearchInput.trim()) {
+      handleClearSearch();
+      return;
+    }
+    setYearFilter(null);
+    setPeriodFilter(null);
+    setCareerFilter(null);
+    setProfessorFilter(null);
+    setMissingProfessorFilter(false);
+    setMissingScheduleFilter(false);
+    setIsMatriculaFilter(false);
+    setStatusFilter("");
     setStudentSearch(studentSearchInput);
     setPage(1);
   };
@@ -282,6 +323,7 @@ const CourseEnrollments = () => {
     setStudentSearch("");
     setStudentSearchInput("");
     setYearFilter(null);
+    setPeriodFilter(null);
     setCareerFilter(null);
     setProfessorFilter(null);
     setMissingProfessorFilter(false);
@@ -294,6 +336,7 @@ const CourseEnrollments = () => {
   const hasActiveFilters =
     studentSearch !== "" ||
     yearFilter !== null ||
+    periodFilter !== null ||
     careerFilter !== null ||
     professorFilter !== null ||
     missingProfessorFilter ||
@@ -465,8 +508,19 @@ const CourseEnrollments = () => {
                     onChange={(e) => setStudentSearchInput(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Nombre, apellido, código o nombre del curso..."
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
+                    className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
                   />
+                  {(studentSearchInput || studentSearch) && (
+                    <button
+                      type="button"
+                      onClick={handleClearSearch}
+                      aria-label="Limpiar búsqueda"
+                      title="Limpiar búsqueda"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:text-gray-700 focus-visible:ring-2 focus-visible:ring-primary rounded-r-md"
+                    >
+                      <XMarkIcon className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -494,6 +548,9 @@ const CourseEnrollments = () => {
                   onChange={(e) => {
                     const value = e.target.value;
                     setYearFilter(value ? parseInt(value) : null);
+                    // The period buttons are hidden without a year, so drop the
+                    // period too rather than leave it filtering invisibly.
+                    if (!value) setPeriodFilter(null);
                     setPage(1);
                   }}
                   className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
@@ -520,6 +577,53 @@ const CourseEnrollments = () => {
                 </svg>
               </div>
             </div>
+
+            {/* Period Filter — only meaningful once a year is chosen */}
+            {yearFilter !== null && (
+              <div className="sm:w-auto">
+                <span
+                  id="periodFilterLabel"
+                  className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1"
+                >
+                  <CalendarDaysIcon className="h-4 w-4" />
+                  Período
+                </span>
+                <div
+                  role="group"
+                  aria-labelledby="periodFilterLabel"
+                  className="mt-2 inline-flex rounded-md shadow-xs isolate"
+                >
+                  {[
+                    { value: null, label: "Todos" },
+                    { value: 1, label: "I" },
+                    { value: 2, label: "II" },
+                    { value: 3, label: "III" },
+                  ].map((option, index, all) => {
+                    const isActive = periodFilter === option.value;
+                    return (
+                      <button
+                        key={option.label}
+                        type="button"
+                        onClick={() => {
+                          setPeriodFilter(option.value);
+                          setPage(1);
+                        }}
+                        aria-pressed={isActive}
+                        className={`relative -ml-px px-4 py-1.5 text-sm font-medium ring-1 ring-inset focus:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 transition-colors ${
+                          index === 0 ? "ml-0 rounded-l-md" : ""
+                        } ${index === all.length - 1 ? "rounded-r-md" : ""} ${
+                          isActive
+                            ? "z-10 bg-primary text-white ring-primary hover:bg-primary/90"
+                            : "bg-white text-gray-700 ring-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Career Filter */}
             <div className="sm:w-48">
