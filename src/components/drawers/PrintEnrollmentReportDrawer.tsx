@@ -41,11 +41,23 @@ const PrintEnrollmentReportDrawer: React.FC<
   );
   const [professorFilter, setProfessorFilter] = useState<string>("");
   const [professors, setProfessors] = useState<Professor[]>([]);
+  const [fontScale, setFontScale] = useState<string>("1");
 
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // The parent mounts this drawer before availableYears has loaded, so the
+  // useState initialiser above captures "". Adopt the newest year as soon as the
+  // list arrives — otherwise parseInt("") sends year=NaN, which the API cannot
+  // parse and silently drops, returning every year's enrollments. Only fills a
+  // blank value, so an explicit choice by the user is never overridden.
+  useEffect(() => {
+    if (!yearFilter && availableYears.length > 0) {
+      setYearFilter(String(availableYears[0]));
+    }
+  }, [availableYears, yearFilter]);
 
   // Lazy-load the professor list the first time the by-professor report is chosen
   useEffect(() => {
@@ -73,10 +85,21 @@ const PrintEnrollmentReportDrawer: React.FC<
 
       const isByProfessor = reportType === "by_professor";
 
+      const parsedYear = parseInt(yearFilter);
+      if (!Number.isFinite(parsedYear)) {
+        // Sending year=NaN would be dropped server-side and silently widen the
+        // report to every year on record.
+        setError("Seleccione un año para generar el reporte.");
+        setIsGenerating(false);
+        setProgress(0);
+        setProgressLabel("");
+        return;
+      }
+
       const params: Record<string, string | number> = {
         page: 1,
         page_size: 10000,
-        year: parseInt(yearFilter),
+        year: parsedYear,
         period: parseInt(periodFilter),
       };
       if (statusFilter) params.status = statusFilter;
@@ -106,6 +129,8 @@ const PrintEnrollmentReportDrawer: React.FC<
           careers.find((c) => c.id === parseInt(careerFilter))?.name || "Todas",
       };
 
+      const scale = parseFloat(fontScale) || 1;
+
       if (isByProfessor) {
         const selectedProfessor = professors.find(
           (p) => p.id === parseInt(professorFilter),
@@ -119,9 +144,15 @@ const PrintEnrollmentReportDrawer: React.FC<
           enrollments,
           { ...filterLabels, professor: professorLabel },
           userName,
+          scale,
         );
       } else {
-        await generateEnrollmentReport(enrollments, filterLabels, userName);
+        await generateEnrollmentReport(
+          enrollments,
+          filterLabels,
+          userName,
+          scale,
+        );
       }
 
       setProgress(100);
@@ -149,6 +180,7 @@ const PrintEnrollmentReportDrawer: React.FC<
     setCareerFilter("");
     setReportType("general");
     setProfessorFilter("");
+    setFontScale("1");
     setProgress(0);
     setProgressLabel("");
     setError(null);
@@ -408,6 +440,41 @@ const PrintEnrollmentReportDrawer: React.FC<
                                 {career.name}
                               </option>
                             ))}
+                          </select>
+                          <svg
+                            viewBox="0 0 16 16"
+                            fill="currentColor"
+                            aria-hidden="true"
+                            className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                          >
+                            <path
+                              d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                              clipRule="evenodd"
+                              fillRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* Font size */}
+                      <div>
+                        <label
+                          htmlFor="report-font-scale"
+                          className="block text-sm/6 font-medium text-gray-900"
+                        >
+                          Tamaño de letra
+                        </label>
+                        <div className="mt-2 grid grid-cols-1">
+                          <select
+                            id="report-font-scale"
+                            value={fontScale}
+                            onChange={(e) => setFontScale(e.target.value)}
+                            disabled={isGenerating}
+                            className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                          >
+                            <option value="1">Normal</option>
+                            <option value="1.15">Grande (+15%)</option>
+                            <option value="1.3">Muy grande (+30%)</option>
                           </select>
                           <svg
                             viewBox="0 0 16 16"
