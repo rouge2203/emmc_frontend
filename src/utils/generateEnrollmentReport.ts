@@ -34,6 +34,7 @@ interface CourseEnrollment {
   } | null;
   student_full_name: string;
   student_carnet?: string | null;
+  student_phone?: string | null;
   professor_full_name: string | null;
   period: number;
   period_display: string;
@@ -399,7 +400,10 @@ export async function generateEnrollmentReport(
       if (idx === -1) return;
       columnStyles[idx] = {
         cellWidth: sp(width),
-        halign: label === "Estudiante" || label === "Carnet" ? "left" : "center",
+        halign:
+          label === "Estudiante" || label === "Carnet" || label === "Teléfono"
+            ? "left"
+            : "center",
       };
     });
     if (columnStyles[0]) columnStyles[0].halign = "center";
@@ -438,12 +442,19 @@ export async function generateEnrollmentReport(
       "#",
       "Estudiante",
       "Carnet",
+      "Teléfono",
       "Matrícula",
       "Carrera",
       "Estado",
       "Período - Año",
     ];
-    const fixed = { "#": 10, Carnet: 18, Estado: 20, "Período - Año": 26 };
+    const fixed = {
+      "#": 10,
+      Carnet: 18,
+      "Teléfono": 20,
+      Estado: 20,
+      "Período - Año": 26,
+    };
 
     groupByCareer(matriculas, studentCareers, collator).forEach((group) => {
       ensureSpace(sp(GROUP_RESERVE));
@@ -452,6 +463,7 @@ export async function generateEnrollmentReport(
         (i + 1).toString(),
         e.student_full_name,
         e.student_carnet || "—",
+        e.student_phone || "—",
         e.course_name,
         e.course_career_name || "—",
         e.status,
@@ -473,6 +485,7 @@ export async function generateEnrollmentReport(
       "#",
       "Estudiante",
       "Carnet",
+      "Teléfono",
       "Curso",
       "Código",
       "Profesor/a",
@@ -482,6 +495,7 @@ export async function generateEnrollmentReport(
     const fixed = {
       "#": 10,
       Carnet: 18,
+      "Teléfono": 20,
       "Código": 22,
       Estado: 20,
       "Período - Año": 26,
@@ -494,6 +508,7 @@ export async function generateEnrollmentReport(
         (i + 1).toString(),
         e.student_full_name,
         e.student_carnet || "—",
+        e.student_phone || "—",
         e.course_name,
         e.course_code,
         e.professor_full_name || "Sin asignar",
