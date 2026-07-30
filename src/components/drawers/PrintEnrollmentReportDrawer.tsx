@@ -16,6 +16,7 @@ interface Professor {
   id: number;
   first_name: string;
   last_name: string;
+  enrollment_count: number;
 }
 
 interface PrintEnrollmentReportDrawerProps {
@@ -41,6 +42,8 @@ const PrintEnrollmentReportDrawer: React.FC<
   );
   const [professorFilter, setProfessorFilter] = useState<string>("");
   const [professors, setProfessors] = useState<Professor[]>([]);
+  const [isLoadingProfessors, setIsLoadingProfessors] = useState(false);
+  const [professorsError, setProfessorsError] = useState<string | null>(null);
   const [fontScale, setFontScale] = useState<string>("1");
 
   const [progress, setProgress] = useState(0);
@@ -59,22 +62,62 @@ const PrintEnrollmentReportDrawer: React.FC<
     }
   }, [availableYears, yearFilter]);
 
-  // Lazy-load the professor list the first time the by-professor report is chosen
+  // Only professors that actually have students under the selected filters can
+  // produce a report, so the list is refetched whenever those filters change. The
+  // request is aborted on cleanup, so a slow earlier response can never overwrite
+  // the results of a newer one.
   useEffect(() => {
-    if (reportType !== "by_professor" || professors.length > 0) return;
+    if (!isOpen || reportType !== "by_professor") return;
+    // year=NaN is dropped server-side and would widen the list to every year.
+    const parsedYear = parseInt(yearFilter);
+    if (!Number.isFinite(parsedYear)) return;
+
+    const controller = new AbortController();
+
     const fetchProfessors = async () => {
+      setIsLoadingProfessors(true);
+      setProfessorsError(null);
       try {
-        const response = await axiosPrivate.get<{ users: Professor[] }>(
-          "courses/list-users-for-enrollment",
-          { params: { role: "teacher" } },
+        const params: Record<string, string | number> = {
+          year: parsedYear,
+          period: parseInt(periodFilter),
+        };
+        if (statusFilter) params.status = statusFilter;
+        if (careerFilter) params.career_id = parseInt(careerFilter);
+
+        const response = await axiosPrivate.get<{ professors: Professor[] }>(
+          "courses/enrollment-professors",
+          { params, signal: controller.signal },
         );
-        setProfessors(response.data.users || []);
+        const list = response.data.professors || [];
+        setProfessors(list);
+        // A professor chosen under the previous filters may have no students under
+        // the new ones. Functional update on purpose: professorFilter has to stay
+        // out of the dependency list or every choice would trigger a refetch.
+        setProfessorFilter((current) =>
+          current && !list.some((p) => String(p.id) === current) ? "" : current,
+        );
+        setIsLoadingProfessors(false);
       } catch (err) {
+        if (controller.signal.aborted) return;
         console.error("Error fetching professors:", err);
+        setProfessors([]);
+        setProfessorsError("Error al cargar los profesores");
+        setIsLoadingProfessors(false);
       }
     };
+
     fetchProfessors();
-  }, [reportType, professors.length, axiosPrivate]);
+    return () => controller.abort();
+  }, [
+    isOpen,
+    reportType,
+    yearFilter,
+    periodFilter,
+    statusFilter,
+    careerFilter,
+    axiosPrivate,
+  ]);
 
   const handleGenerate = async () => {
     try {
@@ -180,6 +223,9 @@ const PrintEnrollmentReportDrawer: React.FC<
     setCareerFilter("");
     setReportType("general");
     setProfessorFilter("");
+    setProfessors([]);
+    setIsLoadingProfessors(false);
+    setProfessorsError(null);
     setFontScale("1");
     setProgress(0);
     setProgressLabel("");
@@ -264,50 +310,6 @@ const PrintEnrollmentReportDrawer: React.FC<
                           </svg>
                         </div>
                       </div>
-
-                      {/* Professor (by-professor report only) */}
-                      {reportType === "by_professor" && (
-                        <div>
-                          <label
-                            htmlFor="report-professor"
-                            className="block text-sm/6 font-medium text-gray-900"
-                          >
-                            Profesor
-                          </label>
-                          <div className="mt-2 grid grid-cols-1">
-                            <select
-                              id="report-professor"
-                              value={professorFilter}
-                              onChange={(e) =>
-                                setProfessorFilter(e.target.value)
-                              }
-                              disabled={isGenerating}
-                              className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
-                            >
-                              <option value="">Todos los profesores</option>
-                              {professors.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {`${p.last_name || ""} ${
-                                    p.first_name || ""
-                                  }`.trim()}
-                                </option>
-                              ))}
-                            </select>
-                            <svg
-                              viewBox="0 0 16 16"
-                              fill="currentColor"
-                              aria-hidden="true"
-                              className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
-                            >
-                              <path
-                                d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
-                                clipRule="evenodd"
-                                fillRule="evenodd"
-                              />
-                            </svg>
-                          </div>
-                        </div>
-                      )}
 
                       {/* Year */}
                       <div>
@@ -455,6 +457,74 @@ const PrintEnrollmentReportDrawer: React.FC<
                           </svg>
                         </div>
                       </div>
+
+                      {/* Professor — the options are scoped to the filters above */}
+                      {reportType === "by_professor" && (
+                        <div>
+                          <label
+                            htmlFor="report-professor"
+                            className="block text-sm/6 font-medium text-gray-900"
+                          >
+                            Profesor
+                          </label>
+                          {isLoadingProfessors ? (
+                            <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                              Cargando profesores...
+                            </div>
+                          ) : professors.length === 0 ? (
+                            <p className="mt-2 text-sm text-gray-500">
+                              Ningún profesor tiene estudiantes con los filtros
+                              seleccionados.
+                            </p>
+                          ) : (
+                            <>
+                              <div className="mt-2 grid grid-cols-1">
+                                <select
+                                  id="report-professor"
+                                  value={professorFilter}
+                                  onChange={(e) =>
+                                    setProfessorFilter(e.target.value)
+                                  }
+                                  disabled={isGenerating}
+                                  className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                                >
+                                  <option value="">Todos los profesores</option>
+                                  {professors.map((p) => (
+                                    <option key={p.id} value={p.id}>
+                                      {`${p.last_name || ""} ${
+                                        p.first_name || ""
+                                      }`.trim()}{" "}
+                                      ({p.enrollment_count})
+                                    </option>
+                                  ))}
+                                </select>
+                                <svg
+                                  viewBox="0 0 16 16"
+                                  fill="currentColor"
+                                  aria-hidden="true"
+                                  className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                                >
+                                  <path
+                                    d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                                    clipRule="evenodd"
+                                    fillRule="evenodd"
+                                  />
+                                </svg>
+                              </div>
+                              <p className="mt-1 text-sm text-gray-500">
+                                Entre paréntesis, la cantidad de matrículas con
+                                los filtros seleccionados.
+                              </p>
+                            </>
+                          )}
+                          {professorsError && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {professorsError}
+                            </p>
+                          )}
+                        </div>
+                      )}
 
                       {/* Font size */}
                       <div>

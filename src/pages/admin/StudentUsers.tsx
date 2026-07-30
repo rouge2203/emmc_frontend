@@ -617,7 +617,10 @@ const StudentUsers = () => {
                                 <div className="ml-4">
                                   <div className="font-medium text-gray-900 flex items-center gap-2 flex-wrap">
                                     <span>
-                                      {fullName} ({user.profile?.carnet})
+                                      {fullName}
+                                      {user.profile?.carnet
+                                        ? ` (${user.profile.carnet})`
+                                        : ""}
                                     </span>
                                     {user.profile?.is_becado && (
                                       <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 ring-1 ring-inset ring-amber-600/20">
