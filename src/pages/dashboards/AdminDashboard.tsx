@@ -39,6 +39,11 @@ interface DashboardStats {
       2: number;
       3: number;
     };
+    students_by_period: {
+      1: number;
+      2: number;
+      3: number;
+    };
     by_year: { year: number; count: number }[];
     by_career: { career: string; count: number }[];
     missing_professor: number;
@@ -134,10 +139,12 @@ const AdminDashboard = () => {
     1,
   );
 
-  const maxClassesByDay = Math.max(
-    ...stats.schedules.by_day.map((d) => d.count),
-    1,
-  );
+  const periodEntries = ([1, 2, 3] as const).map((period) => ({
+    period,
+    count: stats.enrollments.students_by_period[period],
+  }));
+
+  const maxStudentsByPeriod = Math.max(1, ...periodEntries.map((p) => p.count));
 
   const maxEnrollmentByYear = Math.max(
     ...stats.enrollments.by_year.map((y) => y.count),
@@ -361,31 +368,35 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Classes by Day */}
+          {/* Students by Period */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-medium text-gray-900">
-                Clases por Dia de la Semana
+                Estudiantes por Periodo ({selectedYear})
               </h3>
               <Link
-                to="/admin/calendario-de-cursos"
+                to="/admin/cursos-matriculados"
                 className="text-sm text-primary hover:text-primary"
               >
-                Ver calendario
+                Ver matriculas
               </Link>
             </div>
             <div className="space-y-3">
-              {stats.schedules.by_day.map((day) => (
-                <div key={day.day}>
+              {periodEntries.map((entry) => (
+                <div key={entry.period}>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600 w-24">{day.day_name}</span>
-                    <span className="font-medium">{day.count} clases</span>
+                    <span className="text-gray-600 w-24">
+                      Periodo {entry.period}
+                    </span>
+                    <span className="font-medium">
+                      {entry.count} estudiantes
+                    </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3">
                     <div
                       className="bg-cyan-500 h-3 rounded-full transition-all duration-500"
                       style={{
-                        width: `${(day.count / maxClassesByDay) * 100}%`,
+                        width: `${(entry.count / maxStudentsByPeriod) * 100}%`,
                       }}
                     />
                   </div>

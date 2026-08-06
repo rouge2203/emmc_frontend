@@ -558,10 +558,32 @@ export async function generateEnrollmentReport(
       statusCounts[e.status] = (statusCounts[e.status] || 0) + 1;
     });
 
+    // --- Estudiantes distintos ---------------------------------------------
+    // Counted over exactly the rows this report prints, "retirado" included: the
+    // payload already reflects whatever status filter the drawer applied, so
+    // narrowing it again here would leave this number impossible to reconcile
+    // with the "Total general" printed right above it. The dashboard chart
+    // deliberately counts differently. Identity is the student id, as in
+    // buildStudentCareers — student_full_name is not unique.
+    const distinctIds = new Set<number>();
+    enrollments.forEach((e) => {
+      const id = e.student?.id;
+      if (id != null) distinctIds.add(id);
+    });
+    const distinctStudents = distinctIds.size;
+    // An over-filtered report can legitimately end up with no identifiable
+    // students, so the ratio degrades to a dash rather than printing NaN.
+    const avgPerStudent =
+      distinctStudents > 0
+        ? (enrollments.length / distinctStudents).toFixed(2)
+        : "—";
+
     const totalsBody = [
       ["Total matrículas", String(matriculas.length)],
       ["Total cursos", String(courses.length)],
       ["Total general", String(enrollments.length)],
+      ["Estudiantes distintos", String(distinctStudents)],
+      ["Promedio por estudiante", avgPerStudent],
       ...Object.entries(statusCounts).map(([st, count]) => [
         st.charAt(0).toUpperCase() + st.slice(1),
         String(count),
@@ -580,6 +602,52 @@ export async function generateEnrollmentReport(
       },
     });
     startY = lastTableY() + sp(6);
+
+    // --- Por período (half-width) ---
+    // Periods are discovered from the data instead of a fixed I/II/III list: the
+    // report is filtered and may legitimately carry a single period.
+    const periodStats = new Map<
+      number,
+      { label: string; rows: number; students: Set<number> }
+    >();
+    enrollments.forEach((e) => {
+      let stat = periodStats.get(e.period);
+      if (!stat) {
+        stat = { label: "", rows: 0, students: new Set<number>() };
+        periodStats.set(e.period, stat);
+      }
+      if (!stat.label && e.period_display) stat.label = e.period_display;
+      stat.rows += 1;
+      const id = e.student?.id;
+      if (id != null) stat.students.add(id);
+    });
+
+    if (periodStats.size > 0) {
+      ensureSpace(sp(15));
+      autoTable(doc, {
+        startY,
+        // "Registros", not "Matrículas": this column is a row count over both
+        // MAT_ and non-MAT_ rows, so it reconciles with "Total general" above.
+        // Calling it "Matrículas" would contradict "Total matrículas", which
+        // counts only MAT_ rows and is frequently 0.
+        head: [["Por período", "Registros", "Estudiantes"]],
+        body: Array.from(periodStats.entries())
+          .sort((a, b) => a[0] - b[0])
+          .map(([period, stat]) => [
+            stat.label || `Período ${period}`,
+            String(stat.rows),
+            String(stat.students.size),
+          ]),
+        margin: { left: margin, right: pageWidth / 2 + 2 },
+        ...tableStyles,
+        columnStyles: {
+          0: { fontStyle: "bold" },
+          1: { halign: "center", cellWidth: sp(20) },
+          2: { halign: "center", cellWidth: sp(20) },
+        },
+      });
+      startY = lastTableY() + sp(6);
+    }
 
     // --- Estudiantes por carrera (derived the same way as the groups above) ---
     const studentsByCareer: Record<string, number> = {};
