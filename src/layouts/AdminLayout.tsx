@@ -35,6 +35,7 @@ import {
   PiArrowCounterClockwiseFill,
   PiGuitar,
   PiListBulletsBold,
+  PiPianoKeys,
 } from "react-icons/pi";
 import {
   HiOutlineBuildingLibrary,
@@ -140,6 +141,12 @@ const navigation = [
     current: false,
   },
   {
+    name: "Sala de práctica",
+    href: "/admin/instrumentos/practica",
+    icon: PiPianoKeys,
+    current: false,
+  },
+  {
     name: "Documents",
     href: "/admin/documents",
     icon: DocumentDuplicateIcon,
@@ -214,6 +221,7 @@ export default function AdminLayout() {
     const detailRouteMap: Record<string, string> = {
       registro: "Registro",
       inventario: "Inventario",
+      practica: "Sala de práctica",
     };
 
     if (segments.length >= 2 && segments[1] === "dashboard") {

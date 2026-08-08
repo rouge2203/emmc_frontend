@@ -1,5 +1,20 @@
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+// jspdf is heavy (~350 kB gzipped with autotable); load it only when a
+// report is actually generated instead of shipping it in the page bundle.
+type JsPDFModule = typeof import("jspdf");
+type AutoTableModule = typeof import("jspdf-autotable");
+let jsPDF: JsPDFModule["default"];
+let autoTable: AutoTableModule["default"];
+
+async function ensurePdfLibs(): Promise<void> {
+  if (!jsPDF) {
+    const [jspdfMod, autoTableMod] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
+    jsPDF = jspdfMod.default;
+    autoTable = autoTableMod.default;
+  }
+}
 
 interface PaymentData {
   id: number;
@@ -90,6 +105,7 @@ export async function generateIndividualPaymentReport(
   studentName: string,
   printedBy: string,
 ): Promise<void> {
+  await ensurePdfLibs();
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();

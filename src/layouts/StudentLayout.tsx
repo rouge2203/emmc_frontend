@@ -12,6 +12,7 @@ import {
   BanknotesIcon,
   MusicalNoteIcon,
 } from "@heroicons/react/24/outline";
+import { PiPianoKeys } from "react-icons/pi";
 
 import useAuth from "../hooks/useAuth";
 import useLogout from "../hooks/useLogout";
@@ -30,6 +31,7 @@ export default function StudentLayout() {
     { name: "Inicio", href: "/student/dashboard", icon: HomeIcon },
     { name: "Pagos", href: "/student/pagos", icon: BanknotesIcon },
     { name: "Alquileres", href: "/student/alquileres", icon: MusicalNoteIcon },
+    { name: "Instrumentos", href: "/student/instrumentos", icon: PiPianoKeys },
   ];
 
   const isNavItemActive = (href: string) => {
@@ -44,7 +46,7 @@ export default function StudentLayout() {
 
   return (
     <div className="min-h-full bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
+      <header className="bg-white border-b border-gray-200 short:hidden">
         <nav
           aria-label="Global"
           className="mx-auto flex max-w-7xl items-center justify-between p-4 lg:px-8"

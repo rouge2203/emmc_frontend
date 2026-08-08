@@ -1,5 +1,20 @@
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+// jspdf is heavy (~350 kB gzipped with autotable); load it only when a
+// report is actually generated instead of shipping it in the page bundle.
+type JsPDFModule = typeof import("jspdf");
+type AutoTableModule = typeof import("jspdf-autotable");
+let jsPDF: JsPDFModule["default"];
+let autoTable: AutoTableModule["default"];
+
+async function ensurePdfLibs(): Promise<void> {
+  if (!jsPDF) {
+    const [jspdfMod, autoTableMod] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
+    jsPDF = jspdfMod.default;
+    autoTable = autoTableMod.default;
+  }
+}
 
 interface EnrollmentSchedule {
   day_display: string | null;
@@ -188,6 +203,7 @@ export async function generateEnrollmentReport(
   userName: string,
   fontScale: number = 1,
 ): Promise<void> {
+  await ensurePdfLibs();
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -824,6 +840,7 @@ export async function generateProfessorReport(
   userName: string,
   fontScale: number = 1,
 ): Promise<void> {
+  await ensurePdfLibs();
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
