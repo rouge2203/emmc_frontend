@@ -161,7 +161,7 @@ function drawCertificationClosingSection(
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(17, 24, 39);
-  doc.text("M.M. Federico Molina Campos", rowLeft + sigLineW / 2, y, {
+  doc.text("Lic. Osvaldo Portuguez Granados", rowLeft + sigLineW / 2, y, {
     align: "center",
   });
   y += 4.5;
@@ -365,16 +365,7 @@ export async function generateStudentCertificationReport({
   autoTable(doc, {
     startY: y,
     showHead: "everyPage",
-    head: [
-      [
-        "Código",
-        "Curso",
-        "Nota",
-        "Semestre",
-        "Fecha",
-        "Estado",
-      ],
-    ],
+    head: [["Código", "Curso", "Nota", "Semestre", "Fecha", "Estado"]],
     body: tableBody,
     margin: {
       left: margin,
