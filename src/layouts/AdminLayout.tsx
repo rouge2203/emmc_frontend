@@ -16,8 +16,6 @@ import {
 import {
   Bars3Icon,
   CalendarIcon,
-  ChartPieIcon,
-  DocumentDuplicateIcon,
   FolderIcon,
   HomeIcon,
   UsersIcon,
@@ -151,18 +149,6 @@ const navigation = [
     icon: PiPianoKeys,
     current: false,
   },
-  {
-    name: "Documents",
-    href: "/admin/documents",
-    icon: DocumentDuplicateIcon,
-    current: false,
-  },
-  {
-    name: "Reports",
-    href: "/admin/reports",
-    icon: ChartPieIcon,
-    current: false,
-  },
 ];
 
 function classNames(...classes: (string | boolean | undefined)[]): string {
@@ -208,8 +194,6 @@ export default function AdminLayout() {
       teams: "Teams",
       projects: "Projects",
       calendar: "Calendar",
-      documents: "Documents",
-      reports: "Reports",
       instrumentos: "Instrumentos",
       administradores: "Administradores",
       estudiantes: "Estudiantes",
@@ -288,7 +272,8 @@ export default function AdminLayout() {
   const breadcrumbs = generateBreadcrumbs();
 
   const userNavigation = [
-    { name: "Tu perfil", href: "#" },
+    // Template placeholder — desktop only until a real profile page exists
+    { name: "Tu perfil", href: "#", mobileHidden: true },
     { name: "Cerrar sesión", onClick: logout },
   ];
 
@@ -560,7 +545,7 @@ export default function AdminLayout() {
             <div className="flex items-center gap-x-4 lg:gap-x-6">
               <button
                 type="button"
-                className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500"
+                className="-m-2.5 hidden p-2.5 text-gray-400 hover:text-gray-500 lg:block"
               >
                 <span className="sr-only">View notifications</span>
                 <BellIcon aria-hidden="true" className="size-6" />
@@ -609,7 +594,9 @@ export default function AdminLayout() {
                       ) : (
                         <a
                           href={item.href}
-                          className="block px-3 py-1 text-sm/6 text-gray-900 data-[focus]:bg-gray-50 data-[focus]:outline-hidden"
+                          className={`px-3 py-1 text-sm/6 text-gray-900 data-[focus]:bg-gray-50 data-[focus]:outline-hidden ${
+                            item.mobileHidden ? "hidden lg:block" : "block"
+                          }`}
                         >
                           {item.name}
                         </a>

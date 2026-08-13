@@ -27,8 +27,6 @@ const TeamDetail = lazy(() => import("./pages/admin/TeamDetail"));
 const Projects = lazy(() => import("./pages/admin/Projects"));
 const ProjectDetail = lazy(() => import("./pages/admin/ProjectDetail"));
 const Calendar = lazy(() => import("./pages/admin/Calendar"));
-const Documents = lazy(() => import("./pages/admin/Documents"));
-const Reports = lazy(() => import("./pages/admin/Reports"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const StudentUsers = lazy(() => import("./pages/admin/StudentUsers"));
 const Becados = lazy(() => import("./pages/admin/Becados"));
@@ -120,14 +118,6 @@ export const router = createBrowserRouter([
                   {
                     path: "/admin/calendario-de-cursos",
                     element: <Calendar />,
-                  },
-                  {
-                    path: "/admin/documents",
-                    element: <Documents />,
-                  },
-                  {
-                    path: "/admin/reports",
-                    element: <Reports />,
                   },
                   // New routes
                   {
