@@ -256,6 +256,38 @@ const CourseEnrollments = () => {
           urlParamsProcessed.current = true;
           setSearchParams({}, { replace: true });
         }
+      } else if (!urlParamsProcessed.current) {
+        // Dashboard entry points: quick action (?action=new) and the alert
+        // links, which carry their year/period so the list matches the count
+        // that was clicked (yearFilter otherwise defaults to "todos").
+        const actionParam = searchParams.get("action");
+        const missingProfessorParam = searchParams.get("missing_professor");
+        const missingScheduleParam = searchParams.get("missing_schedule");
+        const yearParam = searchParams.get("year");
+        const periodParam = searchParams.get("period");
+        let handled = false;
+
+        if (actionParam === "new") {
+          setIsCreateDrawerOpen(true);
+          handled = true;
+        }
+        if (missingProfessorParam === "true") {
+          setMissingProfessorFilter(true);
+          handled = true;
+        }
+        if (missingScheduleParam === "true") {
+          setMissingScheduleFilter(true);
+          handled = true;
+        }
+        if (handled) {
+          const parsedYear = parseInt(yearParam || "", 10);
+          if (!isNaN(parsedYear)) setYearFilter(parsedYear);
+          const parsedPeriod = parseInt(periodParam || "", 10);
+          if (!isNaN(parsedPeriod)) setPeriodFilter(parsedPeriod);
+          setPage(1);
+          urlParamsProcessed.current = true;
+          setSearchParams({}, { replace: true });
+        }
       }
       setIsInitialized(true);
     }
@@ -485,8 +517,9 @@ const CourseEnrollments = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4">
-            {/* Search */}
-            <div className="flex-1">
+            {/* Search: min width so the fixed-width selects wrap below
+                instead of crushing it at mid viewport sizes */}
+            <div className="flex-1 sm:min-w-64">
               <label
                 htmlFor="studentSearch"
                 className="block text-xs font-medium text-gray-700 mb-1"

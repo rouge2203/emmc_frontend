@@ -170,6 +170,7 @@ const Payments = () => {
   const [paymentTypeFilter, setPaymentTypeFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [overdueFilter, setOverdueFilter] = useState(false);
+  const [urlParamsReady, setUrlParamsReady] = useState(false);
   const [yearFilter, setYearFilter] = useState<string>("");
   const [periodFilter, setPeriodFilter] = useState<string>("");
   const [monthFilter, setMonthFilter] = useState<string>("");
@@ -401,12 +402,28 @@ const Payments = () => {
         setSearchParams({});
       }
     }
+
+    // Dashboard entry points: quick action and the "pagos atrasados" alert.
+    if (searchParams.get("action") === "new") {
+      setIsCreatePaymentDrawerOpen(true);
+      setSearchParams({}, { replace: true });
+    } else if (searchParams.get("overdue") === "true") {
+      setOverdueFilter(true);
+      setPage(1);
+      setSearchParams({}, { replace: true });
+    }
+    // Release the fetch effect only once URL filters have been applied, so an
+    // unfiltered first request can't resolve late and overwrite the filtered one.
+    setUrlParamsReady(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Effect to fetch payments when filters change
   useEffect(() => {
+    if (!urlParamsReady) return;
     fetchPayments(page);
   }, [
+    urlParamsReady,
     page,
     selectedStudent,
     paymentTypeFilter,
@@ -704,9 +721,10 @@ const Payments = () => {
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Student Search */}
-            <div className="flex-1 relative" ref={studentDropdownRef}>
+          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap">
+            {/* Student Search: min width so the fixed-width selects wrap below
+                instead of crushing it at mid viewport sizes */}
+            <div className="flex-1 sm:min-w-64 relative" ref={studentDropdownRef}>
               <label
                 htmlFor="studentSearch"
                 className="block text-xs font-medium text-gray-700 mb-1"

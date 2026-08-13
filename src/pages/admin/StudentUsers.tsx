@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import { PiStudent } from "react-icons/pi";
 
@@ -78,6 +78,7 @@ const ACTION_BUTTON_CLASS =
 
 const StudentUsers = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const axiosPrivate = useAxiosPrivate();
   const [users, setUsers] = useState<StudentUser[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
@@ -174,6 +175,15 @@ const StudentUsers = () => {
   useEffect(() => {
     fetchUsers(page);
   }, [fetchUsers, page]);
+
+  // Dashboard quick action: /admin/estudiantes?action=new opens the create
+  // drawer straight away. Params are cleared so back/refresh doesn't replay it.
+  useEffect(() => {
+    if (searchParams.get("action") === "new") {
+      setIsCreateDrawerOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleSearch = () => {
     setSearchQuery(searchInput);
@@ -333,9 +343,10 @@ const StudentUsers = () => {
               </button>
             )}
           </div>
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Search Input */}
-            <div className="flex-1">
+          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap">
+            {/* Search Input: min width so the fixed-width selects wrap below
+                instead of crushing it at mid viewport sizes */}
+            <div className="flex-1 sm:min-w-64">
               <label
                 htmlFor="search"
                 className="block text-xs font-medium text-gray-700 mb-1"

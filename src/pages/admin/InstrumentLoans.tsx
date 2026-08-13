@@ -169,6 +169,10 @@ const InstrumentLoans = () => {
         fetchLoanByInstrument(instrumentId);
         setSearchParams({});
       }
+    } else if (action === "new") {
+      // Dashboard quick action.
+      setIsCreateDrawerOpen(true);
+      setSearchParams({});
     } else if (userSearchParam) {
       setUserSearchInput(userSearchParam);
       setUserSearch(userSearchParam);
