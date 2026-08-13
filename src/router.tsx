@@ -31,6 +31,7 @@ const Documents = lazy(() => import("./pages/admin/Documents"));
 const Reports = lazy(() => import("./pages/admin/Reports"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const StudentUsers = lazy(() => import("./pages/admin/StudentUsers"));
+const Becados = lazy(() => import("./pages/admin/Becados"));
 const InstrumentTypes = lazy(() => import("./pages/admin/InstrumentTypes"));
 const Inventario = lazy(() => import("./pages/admin/Inventario"));
 const InstrumentLoans = lazy(() => import("./pages/admin/InstrumentLoans"));
@@ -140,6 +141,10 @@ export const router = createBrowserRouter([
                   {
                     path: "/admin/estudiantes",
                     element: <StudentUsers />,
+                  },
+                  {
+                    path: "/admin/becados",
+                    element: <Becados />,
                   },
                   {
                     path: "/admin/instrumentos/registro",

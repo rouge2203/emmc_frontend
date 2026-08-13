@@ -42,7 +42,7 @@ import {
   HiOutlineAcademicCap,
   HiOutlineBuildingOffice2,
 } from "react-icons/hi2";
-import { LuListChecks } from "react-icons/lu";
+import { LuListChecks, LuBadgePercent } from "react-icons/lu";
 
 import useAuth from "../hooks/useAuth";
 import useLogout from "../hooks/useLogout";
@@ -73,6 +73,11 @@ const navigation = [
         name: "Estudiantes",
         href: "/admin/estudiantes",
         icon: PiStudent,
+      },
+      {
+        name: "Becados",
+        href: "/admin/becados",
+        icon: LuBadgePercent,
       },
     ],
   },
@@ -208,6 +213,7 @@ export default function AdminLayout() {
       instrumentos: "Instrumentos",
       administradores: "Administradores",
       estudiantes: "Estudiantes",
+      becados: "Becados",
       catedra: "Catedra",
       cursos: "Cursos",
       "cursos-matriculados": "Cursos Matriculados",

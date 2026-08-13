@@ -10,11 +10,12 @@ import {
   BarsArrowUpIcon,
   BanknotesIcon,
   AcademicCapIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import StudentInfoDrawer from "../../components/drawers/StudentInfoDrawer";
 import StudentCreateDrawer from "../../components/drawers/StudentCreateDrawer";
 import UserObservationsDrawer from "../../components/drawers/UserObservationsDrawer";
-import BecadoApplyDrawer from "../../components/drawers/BecadoApplyDrawer";
+import EncargadoDrawer from "../../components/drawers/EncargadoDrawer";
 import { RiMailCloseFill } from "react-icons/ri";
 import { HiOutlineAcademicCap } from "react-icons/hi2";
 import { LuVote } from "react-icons/lu";
@@ -72,6 +73,9 @@ interface PaginatedResponse {
   pagination: PaginationInfo;
 }
 
+const ACTION_BUTTON_CLASS =
+  "inline-flex items-center justify-center gap-1 rounded-sm border border-gray-300 px-2 py-0.5 font-semibold text-gray-900 shadow-sm hover:bg-gray-100 hover:text-primary hover:cursor-pointer whitespace-nowrap";
+
 const StudentUsers = () => {
   const navigate = useNavigate();
   const axiosPrivate = useAxiosPrivate();
@@ -94,10 +98,8 @@ const StudentUsers = () => {
   const [noEmailFilter, setNoEmailFilter] = useState(false);
   const [enrollmentFilter, setEnrollmentFilter] = useState("");
   const [becadoFilter, setBecadoFilter] = useState("");
-  const [becadoApplyUserId, setBecadoApplyUserId] = useState<number | null>(
-    null,
-  );
-  const [isBecadoApplyOpen, setIsBecadoApplyOpen] = useState(false);
+  const [encargadoUserId, setEncargadoUserId] = useState<number | null>(null);
+  const [isEncargadoOpen, setIsEncargadoOpen] = useState(false);
 
   const fetchUsers = useCallback(
     async (pageNum: number) => {
@@ -250,15 +252,22 @@ const StudentUsers = () => {
     enrollmentFilter !== "" ||
     becadoFilter !== "";
 
-  const handleOpenBecadoApply = (user: StudentUser) => {
-    setBecadoApplyUserId(user.id);
-    setIsBecadoApplyOpen(true);
+  const handleEncargado = (user: StudentUser) => {
+    setEncargadoUserId(user.id);
+    setIsEncargadoOpen(true);
   };
 
-  // Placeholder image URL
+  // Placeholder image URL. Names can carry markers like "(B)" — strip
+  // anything that isn't a letter so the avatar initials stay clean.
   const getPlaceholderImage = (name: string) => {
+    const cleanName =
+      name
+        .replace(/\([^)]*\)/g, " ")
+        .replace(/[^\p{L}\s]/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim() || "?";
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      name,
+      cleanName,
     )}&background=155c95&color=fff&size=128`;
   };
 
@@ -667,8 +676,34 @@ const StudentUsers = () => {
                             {/* <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
                               {user.profile?.carnet || "—"}
                             </td> */}
-                            <td className="py-5 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
-                              <div className="flex gap-2 justify-end">
+                            <td className="py-3 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
+                              {/* Mobile: one scrollable row. sm+: two rows of
+                                  3 — kept shorter than the name cell so the
+                                  row height does not grow. */}
+                              <div className="ml-auto flex w-max gap-1 sm:grid sm:w-fit sm:grid-cols-3">
+                                <button
+                                  onClick={() => handleEdit(user)}
+                                  className={ACTION_BUTTON_CLASS}
+                                >
+                                  Detalles
+                                  <span className="sr-only">, {fullName}</span>
+                                </button>
+                                <button
+                                  onClick={() => handleEncargado(user)}
+                                  className={ACTION_BUTTON_CLASS}
+                                  title="Ver y editar la información del encargado"
+                                >
+                                  <UserGroupIcon className="h-4 w-4" />
+                                  Encargado
+                                  <span className="sr-only">, {fullName}</span>
+                                </button>
+                                <button
+                                  onClick={() => handleObservations(user)}
+                                  className={ACTION_BUTTON_CLASS}
+                                >
+                                  Observaciones
+                                  <span className="sr-only">, {fullName}</span>
+                                </button>
                                 <button
                                   onClick={() => {
                                     // If last_name is null or blank, search only by first_name
@@ -682,7 +717,7 @@ const StudentUsers = () => {
                                       )}`,
                                     );
                                   }}
-                                  className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm flex items-center gap-1"
+                                  className={ACTION_BUTTON_CLASS}
                                 >
                                   <HiOutlineAcademicCap className="h-4 w-4" />
                                   Cursos
@@ -694,7 +729,7 @@ const StudentUsers = () => {
                                       `/admin/centro-de-pagos?student_id=${user.id}`,
                                     )
                                   }
-                                  className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm flex items-center gap-1"
+                                  className={ACTION_BUTTON_CLASS}
                                 >
                                   <BanknotesIcon className="h-4 w-4" />
                                   Pagos
@@ -710,37 +745,10 @@ const StudentUsers = () => {
                                       )}`,
                                     );
                                   }}
-                                  className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm flex items-center gap-1"
+                                  className={ACTION_BUTTON_CLASS}
                                 >
                                   <GiClarinet className="h-4 w-4" />
                                   Alquileres
-                                  <span className="sr-only">, {fullName}</span>
-                                </button>
-                                {user.profile?.is_becado && (
-                                  <button
-                                    onClick={() => handleOpenBecadoApply(user)}
-                                    className="text-amber-800 bg-amber-50 hover:bg-amber-100 shadow-sm hover:cursor-pointer border border-amber-300 font-semibold py-0.5 px-2 rounded-sm flex items-center gap-1"
-                                    title="Aplicar becado a pagos pendientes"
-                                  >
-                                    <AcademicCapIcon className="h-4 w-4" />
-                                    Becado
-                                    <span className="sr-only">
-                                      , {fullName}
-                                    </span>
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => handleEdit(user)}
-                                  className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm"
-                                >
-                                  Detalles
-                                  <span className="sr-only">, {fullName}</span>
-                                </button>
-                                <button
-                                  onClick={() => handleObservations(user)}
-                                  className="text-gray-900 hover:bg-gray-100 hover:text-primary shadow-sm hover:cursor-pointer border-gray-300 font-semibold hover:text-gray-70 border py-0.5 px-2 rounded-sm"
-                                >
-                                  Observaciones
                                   <span className="sr-only">, {fullName}</span>
                                 </button>
                               </div>
@@ -808,10 +816,13 @@ const StudentUsers = () => {
         isOpen={isDrawerOpen}
         onClose={handleCloseDrawer}
         onSaveSuccess={(updatedUser) => {
-          // Update the specific user in the table without refetching
+          // Merge rather than replace: the update response carries no
+          // enrollment annotations, so replacing would blank the Matrícula cell.
           setUsers((prevUsers) =>
             prevUsers.map((user) =>
-              user.id === updatedUser.id ? updatedUser : user,
+              user.id === updatedUser.id
+                ? { ...user, ...updatedUser }
+                : user,
             ),
           );
         }}
@@ -832,15 +843,23 @@ const StudentUsers = () => {
         onClose={handleCloseObservationsDrawer}
       />
 
-      {/* Becado Apply Drawer */}
-      <BecadoApplyDrawer
-        isOpen={isBecadoApplyOpen}
+      {/* Encargado Drawer */}
+      <EncargadoDrawer
+        userId={encargadoUserId}
+        isOpen={isEncargadoOpen}
         onClose={() => {
-          setIsBecadoApplyOpen(false);
-          setBecadoApplyUserId(null);
+          setIsEncargadoOpen(false);
+          setEncargadoUserId(null);
         }}
-        studentId={becadoApplyUserId}
-        onApplied={() => fetchUsers(page)}
+        onSaveSuccess={(updatedUser) => {
+          setUsers((prevUsers) =>
+            prevUsers.map((user) =>
+              user.id === updatedUser.id
+                ? { ...user, ...updatedUser }
+                : user,
+            ),
+          );
+        }}
       />
     </div>
   );

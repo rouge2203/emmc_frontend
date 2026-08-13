@@ -280,6 +280,10 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
       let hasProfileChanges = false;
 
       if (user?.profile) {
+        if (carnet.trim() !== (user.profile.carnet || "")) {
+          profileData.carnet = carnet.trim() || null;
+          hasProfileChanges = true;
+        }
         if (birthdate !== formatDateForInput(user.profile.birthdate)) {
           profileData.birthdate = birthdate || null;
           hasProfileChanges = true;
@@ -378,6 +382,7 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
         setOriginalIsActive(updatedUserData.is_active);
 
         if (updatedUserData.profile) {
+          setCarnet(updatedUserData.profile.carnet || "");
           setBirthdate(formatDateForInput(updatedUserData.profile.birthdate));
           setAddress(updatedUserData.profile.address || "");
           setGender(updatedUserData.profile.gender || "");
@@ -907,10 +912,16 @@ const StudentInfoDrawer: React.FC<StudentInfoDrawerProps> = ({
                                   id="carnet"
                                   name="carnet"
                                   type="text"
+                                  maxLength={30}
                                   value={carnet}
-                                  disabled
-                                  className="block w-full rounded-md bg-gray-100 px-3 py-1.5 text-base text-gray-500 outline-1 -outline-offset-1 outline-gray-300 sm:text-sm/6 cursor-not-allowed"
+                                  onChange={(e) => setCarnet(e.target.value)}
+                                  placeholder="Sin carnet asignado"
+                                  className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                                 />
+                                <p className="mt-1 ml-0.5 text-xs text-gray-500">
+                                  El carnet no se puede repetir entre
+                                  estudiantes.
+                                </p>
                               </div>
                             </div>
 
