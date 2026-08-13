@@ -10,13 +10,15 @@ export interface DashboardStats {
     total_admins: number;
     total_users: number;
     // Every record on file, regardless of portal access (is_active).
-    total_students_all: number;
-    total_professors_all: number;
+    // Optional: the frontend and backend deploy independently, so a newer
+    // frontend can briefly talk to a backend that doesn't send these yet.
+    total_students_all?: number;
+    total_professors_all?: number;
   };
   enrollments: {
     active_count: number;
     active_students: number;
-    active_becados: number;
+    active_becados?: number;
     by_status: {
       cursando: number;
       aprobado: number;
@@ -28,7 +30,7 @@ export interface DashboardStats {
     by_year: { year: number; count: number }[];
     by_career: { career: string; count: number }[];
     /** All years, matricula enrollments only — careers live on those courses. */
-    matriculas_by_career_all_time: { career: string; count: number }[];
+    matriculas_by_career_all_time?: { career: string; count: number }[];
     missing_professor: number;
     missing_schedule: number;
   };
@@ -54,13 +56,13 @@ export interface DashboardStats {
     incomplete: number;
     overdue: number;
   };
-  classrooms: {
+  classrooms?: {
     total: number;
   };
   courses: {
     total: number;
     total_careers: number;
-    total_real: number;
+    total_real?: number;
   };
 }
 

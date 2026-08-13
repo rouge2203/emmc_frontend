@@ -179,7 +179,7 @@ const AdminDashboard = () => {
                 />
                 <StatTile
                   label="Becados con matrícula"
-                  value={stats.enrollments.active_becados}
+                  value={stats.enrollments.active_becados ?? 0}
                   icon={<AcademicCapIcon className="size-5" />}
                   to="/admin/becados"
                 />
@@ -351,26 +351,29 @@ const AdminDashboard = () => {
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
                 <StatTile
                   label="Aulas"
-                  value={stats.classrooms.total}
+                  value={stats.classrooms?.total ?? 0}
                   icon={<BuildingOffice2Icon className="size-5" />}
                   to="/admin/aulas"
                 />
                 <StatTile
                   label="Expedientes"
-                  value={stats.users.total_students_all}
+                  value={stats.users.total_students_all ?? stats.users.total_students}
                   icon={<IdentificationIcon className="size-5" />}
                   to="/admin/estudiantes"
                   hint="estudiantes registrados"
                 />
                 <StatTile
                   label="Profesores"
-                  value={stats.users.total_professors_all}
+                  value={
+                    stats.users.total_professors_all ??
+                    stats.users.total_professors
+                  }
                   icon={<UserGroupIcon className="size-5" />}
                   to="/admin/profesores"
                 />
                 <StatTile
                   label="Cursos"
-                  value={stats.courses.total_real}
+                  value={stats.courses.total_real ?? stats.courses.total}
                   icon={<ClipboardDocumentListIcon className="size-5" />}
                   to="/admin/cursos"
                   hint="sin contar matrículas"
@@ -390,9 +393,12 @@ const AdminDashboard = () => {
                   subtitle="Histórico completo, todos los años"
                 >
                   <HBarList
-                    items={stats.enrollments.matriculas_by_career_all_time.map(
-                      (item) => ({ label: item.career, value: item.count }),
-                    )}
+                    items={(
+                      stats.enrollments.matriculas_by_career_all_time ?? []
+                    ).map((item) => ({
+                      label: item.career,
+                      value: item.count,
+                    }))}
                     emptyMessage="Sin matrículas registradas"
                   />
                 </ChartCard>
