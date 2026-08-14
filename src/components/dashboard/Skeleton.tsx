@@ -15,6 +15,13 @@ const DashboardSkeleton = () => (
       ))}
     </div>
     <Block className="h-56" />
+    <Block className="h-72" />
+    {/* The two historical age cards are full-width rows, not a 2-up grid: one
+        bar per year of age runs the histogram past 80 columns, and the trend
+        stacks one row per year, so neither fits half a row. The trend block is
+        the taller of the two — 15 year rows plus its axis. */}
+    <Block className="h-96" />
+    <Block className="h-[31rem]" />
   </div>
 );
 

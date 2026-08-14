@@ -21,6 +21,8 @@ import SectionHeading from "../../components/dashboard/SectionHeading";
 import AlertStrip from "../../components/dashboard/AlertStrip";
 import QuickAction from "../../components/dashboard/QuickAction";
 import DashboardSkeleton from "../../components/dashboard/Skeleton";
+import AgeDistributionChart from "../../components/dashboard/charts/AgeDistributionChart";
+import AgeTrendByYear from "../../components/dashboard/charts/AgeTrendByYear";
 import DonutChart from "../../components/dashboard/charts/DonutChart";
 import HBarList from "../../components/dashboard/charts/HBarList";
 import MiniBarChart from "../../components/dashboard/charts/MiniBarChart";
@@ -316,6 +318,15 @@ const AdminDashboard = () => {
                   emptyMessage="Aún no hay horarios asignados para este periodo"
                 />
               </ChartCard>
+
+              {/* "ages" ships whenever the backend deploys, which is not
+                  necessarily with this frontend — until it arrives the card
+                  simply is not part of the page. */}
+              {stats.ages && (
+                <ChartCard title="Distribución de edades" subtitle={scopeLabel}>
+                  <AgeDistributionChart data={stats.ages.by_period} />
+                </ChartCard>
+              )}
             </section>
 
             {/* ============ GENERAL (UNFILTERED) SECTION ============ */}
@@ -419,6 +430,34 @@ const AdminDashboard = () => {
                   />
                 </ChartCard>
               </div>
+
+              {stats.ages && (
+                <>
+                  {/* One bar per year across the full observed range means up to
+                      ~80 bars — these two need the whole row, not half of it. */}
+                  <ChartCard
+                    title="Distribución de edades (histórico)"
+                    subtitle="Todos los años · un registro por estudiante y año"
+                  >
+                    <AgeDistributionChart
+                      data={stats.ages.all_time}
+                      emptyMessage="Sin datos históricos de edad"
+                      unitSingular="registro"
+                      unitPlural="registros"
+                    />
+                  </ChartCard>
+
+                  <ChartCard
+                    title="Evolución por año"
+                    subtitle="Mediana y rango de mayor presencia"
+                  >
+                    <AgeTrendByYear
+                      points={stats.ages.trend_by_year}
+                      selectedYear={selectedYear}
+                    />
+                  </ChartCard>
+                </>
+              )}
             </section>
           </>
         )}

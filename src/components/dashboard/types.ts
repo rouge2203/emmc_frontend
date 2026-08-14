@@ -64,6 +64,66 @@ export interface DashboardStats {
     total_careers: number;
     total_real?: number;
   };
+  /**
+   * Student age distribution. Optional: the frontend and backend deploy
+   * independently, so a newer frontend can briefly talk to a backend that
+   * doesn't send this yet.
+   */
+  ages?: {
+    /** Reference date the period-scoped ages were computed against (ISO). */
+    reference_date: string;
+    /** Students with non-retirado enrollments in the selected year/period. */
+    by_period: AgeDistribution;
+    /** Every year on record, counted once per student per year they attended. */
+    all_time: AgeDistribution;
+    trend_by_year: AgeTrendPoint[];
+  };
+}
+
+/**
+ * One bar of the histogram: exactly one year of age, never a tail bucket, so
+ * `label` is a plain number ("7"). The buckets cover every year of the observed
+ * range, zero-count years included, which keeps all the bin widths equal.
+ */
+export interface AgeBucket {
+  age: number;
+  label: string;
+  count: number;
+}
+
+/**
+ * The densest fixed five-year window: the five consecutive ages holding the
+ * most students — the "span with the most presence" — or the whole range when
+ * the data spans fewer than five years. A fixed width keeps it a peak rather
+ * than a description of half the school, which a variable-width rule becomes on
+ * a broad or bimodal distribution. Computed backend-side so the histogram and
+ * the year trend can never disagree about it.
+ */
+export interface AgeSpan {
+  from: number;
+  to: number;
+  count: number;
+  percentage: number;
+  label: string;
+}
+
+export interface AgeDistribution {
+  buckets: AgeBucket[];
+  /** Students counted in `buckets`; excludes `unknown_count`. */
+  total: number;
+  /** Missing profile, null birthdate, or a birthdate implying an absurd age. */
+  unknown_count: number;
+  median: number | null;
+  average: number | null;
+  /** Null when there is no age data to summarise. */
+  dominant_span: AgeSpan | null;
+}
+
+export interface AgeTrendPoint {
+  year: number;
+  total: number;
+  median: number | null;
+  dominant_span: AgeSpan | null;
 }
 
 /**
