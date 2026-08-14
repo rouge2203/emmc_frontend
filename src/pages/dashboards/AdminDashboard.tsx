@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   AcademicCapIcon,
+  ArrowDownTrayIcon,
   BookOpenIcon,
   BuildingOffice2Icon,
   CalendarDaysIcon,
@@ -14,6 +15,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { GiClarinet } from "react-icons/gi";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
+import useAuth from "../../hooks/useAuth";
+import PrintAgeReportDrawer from "../../components/drawers/PrintAgeReportDrawer";
 
 import StatTile from "../../components/dashboard/StatTile";
 import ChartCard from "../../components/dashboard/ChartCard";
@@ -49,6 +52,8 @@ const AdminDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedPeriod, setSelectedPeriod] = useState<string>("");
+  const [isAgeReportOpen, setIsAgeReportOpen] = useState(false);
+  const { auth } = useAuth();
 
   const fetchStats = useCallback(async () => {
     try {
@@ -323,7 +328,20 @@ const AdminDashboard = () => {
                   necessarily with this frontend — until it arrives the card
                   simply is not part of the page. */}
               {stats.ages && (
-                <ChartCard title="Distribución de edades" subtitle={scopeLabel}>
+                <ChartCard
+                  title="Distribución de edades"
+                  subtitle={scopeLabel}
+                  action={
+                    <button
+                      type="button"
+                      onClick={() => setIsAgeReportOpen(true)}
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+                    >
+                      <ArrowDownTrayIcon className="size-4" />
+                      Reporte
+                    </button>
+                  }
+                >
                   <AgeDistributionChart data={stats.ages.by_period} />
                 </ChartCard>
               )}
@@ -459,6 +477,26 @@ const AdminDashboard = () => {
                 </>
               )}
             </section>
+
+            {/* Keyed on the dashboard's scope so the drawer's prefilled year
+                and period follow the filters instead of freezing at whatever
+                they were when the page first mounted. */}
+            <PrintAgeReportDrawer
+              key={`${selectedYear}-${selectedPeriod}`}
+              isOpen={isAgeReportOpen}
+              onClose={() => setIsAgeReportOpen(false)}
+              availableYears={stats.filters.available_years}
+              axiosPrivate={axiosPrivate}
+              // Joined rather than interpolated: an admin with no last name on
+              // file would otherwise be printed as "Nombre null".
+              userName={
+                [auth?.user?.first_name, auth?.user?.last_name]
+                  .filter(Boolean)
+                  .join(" ") || "Admin"
+              }
+              initialYear={String(selectedYear)}
+              initialPeriod={selectedPeriod}
+            />
           </>
         )}
       </div>
