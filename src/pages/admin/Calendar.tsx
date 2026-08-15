@@ -8,6 +8,7 @@ import {
   ClockIcon,
   PencilIcon,
   CalendarIcon,
+  CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
 import CourseEnrollmentCreateDrawer from "../../components/drawers/CourseEnrollmentCreateDrawer";
 import CourseEnrollmentEditDrawer from "../../components/drawers/CourseEnrollmentEditDrawer";
@@ -76,6 +77,10 @@ interface ProfessorsResponse {
   professors: Professor[];
 }
 
+interface YearsResponse {
+  years: number[];
+}
+
 interface EnrollmentsResponse {
   results: CourseEnrollment[];
   pagination: any;
@@ -137,12 +142,23 @@ const eventColors = [
   },
 ];
 
+// The calendar always shows one academic year; it opens on the current one.
+const DEFAULT_YEAR = new Date().getFullYear();
+
+const PERIOD_OPTIONS: { value: number | null; label: string }[] = [
+  { value: null, label: "Todos" },
+  { value: 1, label: "I" },
+  { value: 2, label: "II" },
+  { value: 3, label: "III" },
+];
+
 const Calendar = () => {
   const axiosPrivate = useAxiosPrivate();
   const [dayEvents, setDayEvents] = useState<DayEvents[]>([]);
   const enrollmentColorsRef = useRef<Map<number, number>>(new Map());
   const [careers, setCareers] = useState<Career[]>([]);
   const [professors, setProfessors] = useState<Professor[]>([]);
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [counts, setCounts] = useState<{
     missing_professor_count: number;
     missing_schedule_count: number;
@@ -154,6 +170,12 @@ const Calendar = () => {
   >([]);
   const [enrollmentsMissingProfessor, setEnrollmentsMissingProfessor] =
     useState<CourseEnrollment[]>([]);
+
+  // Main view selectors: which academic year/period the calendar shows.
+  // These are not part of "Limpiar filtros" — a year is always selected.
+  const [yearFilter, setYearFilter] = useState<number>(DEFAULT_YEAR);
+  // null = every period of the selected year
+  const [periodFilter, setPeriodFilter] = useState<number | null>(null);
 
   // Filters
   const [studentSearch, setStudentSearch] = useState("");
@@ -229,6 +251,17 @@ const Calendar = () => {
     }
   };
 
+  const fetchAvailableYears = async () => {
+    try {
+      const response = await axiosPrivate.get<YearsResponse>(
+        "courses/enrollment-years",
+      );
+      setAvailableYears(response.data.years);
+    } catch (err: any) {
+      console.error("Error fetching available years:", err);
+    }
+  };
+
   const fetchProfessors = async () => {
     try {
       const response = await axiosPrivate.get<ProfessorsResponse>(
@@ -246,7 +279,9 @@ const Calendar = () => {
         status: "cursando",
         missing_schedule: true,
         page_size: 1000,
+        year: yearFilter,
       };
+      if (periodFilter) params.period = periodFilter;
       if (studentSearch) params.student_search = studentSearch;
       if (careerFilter) params.career_id = careerFilter;
       if (professorFilter) params.professor_id = professorFilter;
@@ -269,7 +304,9 @@ const Calendar = () => {
         status: "cursando",
         missing_professor: true,
         page_size: 1000,
+        year: yearFilter,
       };
+      if (periodFilter) params.period = periodFilter;
       if (studentSearch) params.student_search = studentSearch;
       if (careerFilter) params.career_id = careerFilter;
       if (professorFilter) params.professor_id = professorFilter;
@@ -294,7 +331,9 @@ const Calendar = () => {
         include_schedules: true,
         status: "cursando",
         page_size: 1000, // Get all matching enrollments
+        year: yearFilter,
       };
+      if (periodFilter) params.period = periodFilter;
       if (studentSearch) params.student_search = studentSearch;
       if (careerFilter) params.career_id = careerFilter;
       if (professorFilter) params.professor_id = professorFilter;
@@ -365,6 +404,7 @@ const Calendar = () => {
   useEffect(() => {
     fetchCareers();
     fetchProfessors();
+    fetchAvailableYears();
   }, [axiosPrivate]);
 
   useEffect(() => {
@@ -372,6 +412,8 @@ const Calendar = () => {
     fetchCalendarSchedules();
   }, [
     axiosPrivate,
+    yearFilter,
+    periodFilter,
     studentSearch,
     careerFilter,
     professorFilter,
@@ -389,6 +431,8 @@ const Calendar = () => {
   }, [
     missingScheduleFilter,
     axiosPrivate,
+    yearFilter,
+    periodFilter,
     studentSearch,
     careerFilter,
     professorFilter,
@@ -403,6 +447,8 @@ const Calendar = () => {
   }, [
     missingProfessorFilter,
     axiosPrivate,
+    yearFilter,
+    periodFilter,
     studentSearch,
     careerFilter,
     professorFilter,
@@ -501,6 +547,12 @@ const Calendar = () => {
     // useEffect will handle fetching
   };
 
+  // Always offer the selected year even if the years endpoint hasn't
+  // answered (or has no enrollments for it yet), so the select never shows blank.
+  const yearOptions = availableYears.includes(yearFilter)
+    ? availableYears
+    : [yearFilter, ...availableYears].sort((a, b) => b - a);
+
   if (error && !isLoading) {
     return (
       <div className="px-4 sm:px-6 lg:px-8">
@@ -532,8 +584,84 @@ const Calendar = () => {
         </div>
       </div>
 
+      {/* Main selectors: year + period */}
+      <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
+        <div className="sm:w-44">
+          <label
+            htmlFor="calendarYear"
+            className="text-xs font-medium text-gray-700 mb-1 flex items-center gap-1"
+          >
+            <CalendarDaysIcon className="h-4 w-4" />
+            Año
+          </label>
+          <div className="mt-1 grid grid-cols-1">
+            <select
+              id="calendarYear"
+              value={yearFilter}
+              onChange={(e) => setYearFilter(parseInt(e.target.value, 10))}
+              className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-2.5 pr-10 pl-4 text-lg font-semibold text-gray-900 shadow-xs outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900"
+            >
+              {yearOptions.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+            <svg
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              data-slot="icon"
+              aria-hidden="true"
+              className="pointer-events-none col-start-1 row-start-1 mr-3 size-5 self-center justify-self-end text-gray-500"
+            >
+              <path
+                d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                clipRule="evenodd"
+                fillRule="evenodd"
+              />
+            </svg>
+          </div>
+        </div>
+
+        <div className="flex-1">
+          <span
+            id="calendarPeriodLabel"
+            className="text-xs font-medium text-gray-700 mb-1 flex items-center gap-1"
+          >
+            <CalendarDaysIcon className="h-4 w-4" />
+            Período
+          </span>
+          <div
+            role="group"
+            aria-labelledby="calendarPeriodLabel"
+            className="mt-1 flex w-full rounded-md shadow-xs isolate sm:inline-flex sm:w-auto"
+          >
+            {PERIOD_OPTIONS.map((option, index, all) => {
+              const isActive = periodFilter === option.value;
+              return (
+                <button
+                  key={option.label}
+                  type="button"
+                  onClick={() => setPeriodFilter(option.value)}
+                  aria-pressed={isActive}
+                  className={`relative -ml-px flex-1 px-4 py-2.5 text-base font-semibold ring-1 ring-inset focus:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 transition-colors sm:flex-none sm:px-8 sm:text-lg ${
+                    index === 0 ? "ml-0 rounded-l-md" : ""
+                  } ${index === all.length - 1 ? "rounded-r-md" : ""} ${
+                    isActive
+                      ? "z-10 bg-primary text-white ring-primary hover:bg-primary/90"
+                      : "bg-white text-gray-700 ring-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       {/* Filters */}
-      <div className="mb-4 mt-6">
+      <div className="mb-4 mt-4">
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-gray-900">Filtros</h3>

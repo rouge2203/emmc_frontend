@@ -18,6 +18,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
+import TimeSelect from "../TimeSelect";
 
 interface Classroom {
   id: number;
@@ -487,28 +488,6 @@ const CourseEnrollmentScheduleDrawer: React.FC<
     }
   };
 
-  const formatTimeForInput = (timeStr: string | null): string => {
-    if (!timeStr) return "";
-    // If timeStr is already in HH:MM format, return it
-    if (timeStr.match(/^\d{2}:\d{2}$/)) {
-      return timeStr;
-    }
-    // If timeStr is in HH:MM:SS format, extract HH:MM
-    if (timeStr.match(/^\d{2}:\d{2}:\d{2}/)) {
-      return timeStr.substring(0, 5);
-    }
-    // Try to parse as time string
-    try {
-      const parts = timeStr.split(":");
-      if (parts.length >= 2) {
-        return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}`;
-      }
-    } catch {
-      return "";
-    }
-    return "";
-  };
-
   return (
     <>
       <Dialog open={isOpen} onClose={onClose} className="relative z-10">
@@ -622,8 +601,8 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                       key={schedule.id}
                                       className="border border-gray-200 rounded-lg p-4"
                                     >
-                                      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
-                                        <div className="w-full min-w-0 flex-1">
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="w-full min-w-0">
                                           <label className="block text-xs font-medium text-gray-700 mb-1">
                                             Día
                                           </label>
@@ -672,136 +651,64 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                             </svg>
                                           </div>
                                         </div>
-                                        <div className="w-full min-w-0 flex-1">
-                                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                                            Hora
-                                          </label>
-                                          <input
-                                            type="time"
-                                            value={
-                                              editingSchedule.hour
-                                                ? formatTimeForInput(
-                                                    editingSchedule.hour,
+                                        <div className="flex items-end gap-2 min-w-0">
+                                          <div className="w-full min-w-0 flex-1">
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                                              Aula
+                                            </label>
+                                            <div className="grid grid-cols-1">
+                                              <select
+                                                value={
+                                                  editingSchedule.classroom_id ??
+                                                  ""
+                                                }
+                                                onChange={(e) =>
+                                                  handleClassroomSelectForExisting(
+                                                    schedule.id,
+                                                    e.target.value
+                                                      ? Number(e.target.value)
+                                                      : null,
+                                                    editingSchedule.day,
                                                   )
-                                                : ""
-                                            }
-                                            onChange={(e) =>
-                                              handleEditScheduleChange(
-                                                schedule.id,
-                                                "hour",
-                                                e.target.value,
-                                              )
-                                            }
-                                            disabled={isReadOnly}
-                                            className={`block w-full max-w-full min-w-0 rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 ${
-                                              isReadOnly
-                                                ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                                : "bg-white text-gray-900 focus-visible:outline-gray-900"
-                                            }`}
-                                            style={{
-                                              width: "100%",
-                                              maxWidth: "100%",
-                                              minWidth: "0",
-                                              WebkitAppearance: "none",
-                                              appearance: "none",
-                                              boxSizing: "border-box",
-                                              MozAppearance: "textfield",
-                                            }}
-                                          />
-                                        </div>
-                                        <div className="w-full min-w-0 flex-1">
-                                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                                            Hora Fin
-                                          </label>
-                                          <input
-                                            type="time"
-                                            value={
-                                              editingSchedule.end_hour
-                                                ? formatTimeForInput(
-                                                    editingSchedule.end_hour,
-                                                  )
-                                                : ""
-                                            }
-                                            onChange={(e) =>
-                                              handleEditScheduleChange(
-                                                schedule.id,
-                                                "end_hour",
-                                                e.target.value,
-                                              )
-                                            }
-                                            disabled={isReadOnly}
-                                            className={`block w-full max-w-full min-w-0 rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 ${
-                                              isReadOnly
-                                                ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                                : "bg-white text-gray-900 focus-visible:outline-gray-900"
-                                            }`}
-                                            style={{
-                                              width: "100%",
-                                              maxWidth: "100%",
-                                              minWidth: "0",
-                                              WebkitAppearance: "none",
-                                              appearance: "none",
-                                              boxSizing: "border-box",
-                                              MozAppearance: "textfield",
-                                            }}
-                                          />
-                                        </div>
-                                        <div className="w-full min-w-0 flex-1">
-                                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                                            Aula
-                                          </label>
-                                          <div className="grid grid-cols-1">
-                                            <select
-                                              value={
-                                                editingSchedule.classroom_id ??
-                                                ""
-                                              }
-                                              onChange={(e) =>
-                                                handleClassroomSelectForExisting(
-                                                  schedule.id,
-                                                  e.target.value
-                                                    ? Number(e.target.value)
-                                                    : null,
-                                                  editingSchedule.day,
-                                                )
-                                              }
-                                              disabled={isReadOnly}
-                                              className={`col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 ${
-                                                isReadOnly
-                                                  ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                                  : ""
-                                              }`}
-                                            >
-                                              <option value="">Sin aula</option>
-                                              {classrooms.map((classroom) => (
-                                                <option
-                                                  key={classroom.id}
-                                                  value={classroom.id}
-                                                >
-                                                  Aula {classroom.number}
+                                                }
+                                                disabled={isReadOnly}
+                                                className={`col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 ${
+                                                  isReadOnly
+                                                    ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                                                    : ""
+                                                }`}
+                                              >
+                                                <option value="">
+                                                  Sin aula
                                                 </option>
-                                              ))}
-                                            </select>
-                                            <svg
-                                              viewBox="0 0 16 16"
-                                              fill="currentColor"
-                                              data-slot="icon"
-                                              aria-hidden="true"
-                                              className={`pointer-events-none col-start-1 row-start-1 mr-2 size-4 self-center justify-self-end text-gray-500 ${
-                                                isReadOnly
-                                                  ? "text-gray-400"
-                                                  : ""
-                                              }`}
-                                            >
-                                              <path
-                                                d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
-                                                clipRule="evenodd"
-                                                fillRule="evenodd"
-                                              />
-                                            </svg>
+                                                {classrooms.map((classroom) => (
+                                                  <option
+                                                    key={classroom.id}
+                                                    value={classroom.id}
+                                                  >
+                                                    Aula {classroom.number}
+                                                  </option>
+                                                ))}
+                                              </select>
+                                              <svg
+                                                viewBox="0 0 16 16"
+                                                fill="currentColor"
+                                                data-slot="icon"
+                                                aria-hidden="true"
+                                                className={`pointer-events-none col-start-1 row-start-1 mr-2 size-4 self-center justify-self-end text-gray-500 ${
+                                                  isReadOnly
+                                                    ? "text-gray-400"
+                                                    : ""
+                                                }`}
+                                              >
+                                                <path
+                                                  d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                                                  clipRule="evenodd"
+                                                  fillRule="evenodd"
+                                                />
+                                              </svg>
+                                            </div>
                                           </div>
-                                        </div>
-                                        <div className="flex items-end gap-2">
                                           {!isReadOnly && (
                                             <button
                                               type="button"
@@ -810,11 +717,46 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                                   schedule.id,
                                                 )
                                               }
-                                              className="rounded-md bg-red-800 px-3 py-1.5 text-sm font-semibold text-white shadow-xs hover:bg-red-900"
+                                              className="shrink-0 rounded-md bg-red-800 px-3 py-1.5 text-sm font-semibold text-white shadow-xs hover:bg-red-900"
+                                              title="Eliminar horario"
                                             >
-                                              <TrashIcon className="size-4" />
+                                              <TrashIcon className="size-5" />
                                             </button>
                                           )}
+                                        </div>
+                                        <div className="w-full min-w-0">
+                                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                                            Hora
+                                          </label>
+                                          <TimeSelect
+                                            ariaLabel="Hora de inicio"
+                                            value={editingSchedule.hour}
+                                            onChange={(val) =>
+                                              handleEditScheduleChange(
+                                                schedule.id,
+                                                "hour",
+                                                val,
+                                              )
+                                            }
+                                            disabled={isReadOnly}
+                                          />
+                                        </div>
+                                        <div className="w-full min-w-0">
+                                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                                            Hora Fin
+                                          </label>
+                                          <TimeSelect
+                                            ariaLabel="Hora de fin"
+                                            value={editingSchedule.end_hour}
+                                            onChange={(val) =>
+                                              handleEditScheduleChange(
+                                                schedule.id,
+                                                "end_hour",
+                                                val,
+                                              )
+                                            }
+                                            disabled={isReadOnly}
+                                          />
                                         </div>
                                       </div>
                                     </div>
@@ -852,8 +794,8 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                     key={newSchedule.tempId}
                                     className="border border-gray-200 rounded-lg p-4"
                                   >
-                                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
-                                      <div className="w-full min-w-0 flex-1">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                      <div className="w-full min-w-0">
                                         <label className="block text-xs font-medium text-gray-700 mb-1">
                                           Día{" "}
                                           <span className="text-red-500">
@@ -899,121 +841,59 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                           </svg>
                                         </div>
                                       </div>
-                                      <div className="w-full min-w-0 flex-1">
-                                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                                          Hora
-                                        </label>
-                                        <input
-                                          type="time"
-                                          value={newSchedule.hour}
-                                          onChange={(e) =>
-                                            handleNewScheduleChange(
-                                              newSchedule.tempId,
-                                              "hour",
-                                              e.target.value,
-                                            )
-                                          }
-                                          disabled={isReadOnly}
-                                          className={`block w-full max-w-full min-w-0 rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 ${
-                                            isReadOnly
-                                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                              : "bg-white text-gray-900 focus-visible:outline-gray-900"
-                                          }`}
-                                          style={{
-                                            width: "100%",
-                                            maxWidth: "100%",
-                                            minWidth: "0",
-                                            WebkitAppearance: "none",
-                                            appearance: "none",
-                                            boxSizing: "border-box",
-                                            MozAppearance: "textfield",
-                                          }}
-                                        />
-                                      </div>
-                                      <div className="w-full min-w-0 flex-1">
-                                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                                          Hora Fin
-                                        </label>
-                                        <input
-                                          type="time"
-                                          value={newSchedule.end_hour}
-                                          onChange={(e) =>
-                                            handleNewScheduleChange(
-                                              newSchedule.tempId,
-                                              "end_hour",
-                                              e.target.value,
-                                            )
-                                          }
-                                          disabled={isReadOnly}
-                                          className={`block w-full max-w-full min-w-0 rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 ${
-                                            isReadOnly
-                                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                              : "bg-white text-gray-900 focus-visible:outline-gray-900"
-                                          }`}
-                                          style={{
-                                            width: "100%",
-                                            maxWidth: "100%",
-                                            minWidth: "0",
-                                            WebkitAppearance: "none",
-                                            appearance: "none",
-                                            boxSizing: "border-box",
-                                            MozAppearance: "textfield",
-                                          }}
-                                        />
-                                      </div>
-                                      <div className="w-full min-w-0 flex-1">
-                                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                                          Aula
-                                        </label>
-                                        <div className="grid grid-cols-1">
-                                          <select
-                                            value={
-                                              newSchedule.classroom_id ?? ""
-                                            }
-                                            onChange={(e) =>
-                                              handleClassroomSelectForNew(
-                                                newSchedule.tempId,
-                                                e.target.value
-                                                  ? Number(e.target.value)
-                                                  : null,
-                                                newSchedule.day,
-                                              )
-                                            }
-                                            disabled={isReadOnly}
-                                            className={`col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 ${
-                                              isReadOnly
-                                                ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                                : ""
-                                            }`}
-                                          >
-                                            <option value="">Sin aula</option>
-                                            {classrooms.map((classroom) => (
-                                              <option
-                                                key={classroom.id}
-                                                value={classroom.id}
-                                              >
-                                                Aula {classroom.number}
-                                              </option>
-                                            ))}
-                                          </select>
-                                          <svg
-                                            viewBox="0 0 16 16"
-                                            fill="currentColor"
-                                            data-slot="icon"
-                                            aria-hidden="true"
-                                            className={`pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4 ${
-                                              isReadOnly ? "text-gray-400" : ""
-                                            }`}
-                                          >
-                                            <path
-                                              d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
-                                              clipRule="evenodd"
-                                              fillRule="evenodd"
-                                            />
-                                          </svg>
+                                      <div className="flex items-end gap-2 min-w-0">
+                                        <div className="w-full min-w-0 flex-1">
+                                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                                            Aula
+                                          </label>
+                                          <div className="grid grid-cols-1">
+                                            <select
+                                              value={
+                                                newSchedule.classroom_id ?? ""
+                                              }
+                                              onChange={(e) =>
+                                                handleClassroomSelectForNew(
+                                                  newSchedule.tempId,
+                                                  e.target.value
+                                                    ? Number(e.target.value)
+                                                    : null,
+                                                  newSchedule.day,
+                                                )
+                                              }
+                                              disabled={isReadOnly}
+                                              className={`col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 ${
+                                                isReadOnly
+                                                  ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                                                  : ""
+                                              }`}
+                                            >
+                                              <option value="">Sin aula</option>
+                                              {classrooms.map((classroom) => (
+                                                <option
+                                                  key={classroom.id}
+                                                  value={classroom.id}
+                                                >
+                                                  Aula {classroom.number}
+                                                </option>
+                                              ))}
+                                            </select>
+                                            <svg
+                                              viewBox="0 0 16 16"
+                                              fill="currentColor"
+                                              data-slot="icon"
+                                              aria-hidden="true"
+                                              className={`pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4 ${
+                                                isReadOnly ? "text-gray-400" : ""
+                                              }`}
+                                            >
+                                              <path
+                                                d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                                                clipRule="evenodd"
+                                                fillRule="evenodd"
+                                              />
+                                            </svg>
+                                          </div>
                                         </div>
-                                      </div>
-                                      <div className="flex items-end gap-2">
                                         {!isReadOnly && (
                                           <button
                                             type="button"
@@ -1022,11 +902,46 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                                 newSchedule.tempId,
                                               )
                                             }
-                                            className="rounded-md bg-red-800 px-3 py-1.5 text-sm font-semibold text-white shadow-xs hover:bg-red-900"
+                                            className="shrink-0 rounded-md bg-red-800 px-3 py-1.5 text-sm font-semibold text-white shadow-xs hover:bg-red-900"
+                                            title="Quitar horario"
                                           >
-                                            <TrashIcon className="h-4 w-4" />
+                                            <TrashIcon className="size-5" />
                                           </button>
                                         )}
+                                      </div>
+                                      <div className="w-full min-w-0">
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          Hora
+                                        </label>
+                                        <TimeSelect
+                                          ariaLabel="Hora de inicio"
+                                          value={newSchedule.hour}
+                                          onChange={(val) =>
+                                            handleNewScheduleChange(
+                                              newSchedule.tempId,
+                                              "hour",
+                                              val,
+                                            )
+                                          }
+                                          disabled={isReadOnly}
+                                        />
+                                      </div>
+                                      <div className="w-full min-w-0">
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          Hora Fin
+                                        </label>
+                                        <TimeSelect
+                                          ariaLabel="Hora de fin"
+                                          value={newSchedule.end_hour}
+                                          onChange={(val) =>
+                                            handleNewScheduleChange(
+                                              newSchedule.tempId,
+                                              "end_hour",
+                                              val,
+                                            )
+                                          }
+                                          disabled={isReadOnly}
+                                        />
                                       </div>
                                     </div>
                                   </div>
