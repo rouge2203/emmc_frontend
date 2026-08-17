@@ -1,39 +1,71 @@
 // One grid row (memoized). Renders the read-only Info column plus the seven
 // addressable sub-cells (professor + three horarios, each a stacked time/aula
-// pair). Only `activeCol` changes when selection moves, so memo keeps every
-// other row from re-rendering. `renderCell` is an optional seam for later tasks
-// to swap in editing-aware cells; when omitted the built-in read-only cells
-// render.
+// pair). Only the per-selection props (activeCol/editingCol/activeFocused) and
+// this row's `statuses` object change when selection/saves move, so memo keeps
+// every other row from re-rendering. All callbacks are stable (from the hooks),
+// so they never break the memo. `renderCell` is an optional seam for editing-
+// aware cells; when omitted the built-in cells render.
 import { memo } from "react";
 import type { ReactNode } from "react";
 import { formatSlotLabel } from "./time";
-import type { ColKey, GridRow } from "./types";
-import type { CellAddress } from "./types";
+import type { CellAddress, CellSaveState, ColKey, GridRow, MoveDir } from "./types";
 import type { GridRefData } from "./useGridData";
-import type { RenderCell } from "./cellIds";
+import type { CellProps, RenderCell } from "./cellIds";
 import ProfessorCell from "./cells/ProfessorCell";
 import TimeCell from "./cells/TimeCell";
 import AulaCell from "./cells/AulaCell";
 
 export interface GridRowViewProps {
   row: GridRow;
+  /** The active col on THIS row, or null when the active cell is elsewhere. */
   activeCol: ColKey | null;
+  /** The col being edited on THIS row, or null. */
+  editingCol: ColKey | null;
+  /** Seed char for the editing cell (only meaningful when editingCol != null). */
+  editSeed: string | null;
+  /** Grid container focus state, forwarded to the active cell for its ring. */
+  activeFocused: boolean;
+  /** This row's autosave statuses, keyed by col. */
+  statuses?: Partial<Record<ColKey, CellSaveState>>;
   refData: GridRefData;
   onCellMouseDown: (address: CellAddress) => void;
+  onCellDoubleClick: (address: CellAddress) => void;
+  onCommitProfessor: (enrollmentId: number, teacherId: number | null, move: MoveDir) => void;
+  onCancelEdit: (move: MoveDir) => void;
   renderCell?: RenderCell;
 }
 
 function GridRowViewInner({
   row,
   activeCol,
+  editingCol,
+  editSeed,
+  activeFocused,
+  statuses,
   refData,
   onCellMouseDown,
+  onCellDoubleClick,
+  onCommitProfessor,
+  onCancelEdit,
   renderCell,
 }: GridRowViewProps) {
   const cellFor = (col: ColKey): ReactNode => {
-    const active = activeCol === col;
-    if (renderCell) return renderCell({ row, col, active, refData, onMouseDown: onCellMouseDown });
-    const props = { row, col, active, onMouseDown: onCellMouseDown, refData };
+    const editing = editingCol === col;
+    const props: CellProps = {
+      row,
+      col,
+      active: activeCol === col,
+      focused: activeFocused,
+      editing,
+      seed: editing ? editSeed : null,
+      saveState: statuses?.[col],
+      onMouseDown: onCellMouseDown,
+      onDoubleClick: onCellDoubleClick,
+      onCommitProfessor,
+      onCancelEdit,
+      refData,
+    };
+    if (renderCell) return renderCell(props);
     if (col === "prof") return <ProfessorCell {...props} />;
     if (col === "t0" || col === "t1" || col === "t2") return <TimeCell {...props} />;
     return <AulaCell {...props} />;

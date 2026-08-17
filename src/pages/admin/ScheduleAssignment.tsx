@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { FocusEvent } from "react";
 import {
   TableCellsIcon,
   ArrowPathIcon,
@@ -10,11 +11,15 @@ import {
   UserIcon,
 } from "@heroicons/react/24/outline";
 import { HiOutlineBuildingLibrary } from "react-icons/hi2";
+import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import ScheduleGrid from "../../components/schedule-grid/ScheduleGrid";
+import GridToast from "../../components/schedule-grid/GridToast";
 import { useGridData } from "../../components/schedule-grid/useGridData";
+import { useGridNavigation } from "../../components/schedule-grid/useGridNavigation";
+import { useAutosave } from "../../components/schedule-grid/useAutosave";
 import { filterRows, liveCounts } from "../../components/schedule-grid/filters";
 import type { GridFilters } from "../../components/schedule-grid/filters";
-import type { CellAddress } from "../../components/schedule-grid/types";
+import type { CellAddress, MoveDir } from "../../components/schedule-grid/types";
 
 // The grid always shows one academic year; it opens on the current one. Year
 // and period are the main view selectors — they are NOT reset by "Limpiar
@@ -33,10 +38,12 @@ export default function ScheduleAssignment() {
   // null = every period of the selected year.
   const [periodFilter, setPeriodFilter] = useState<number | null>(null);
 
-  const { rows, snapshot, loading, error, truncated, reload, ref, refError } = useGridData({
-    year: yearFilter,
-    period: periodFilter,
-  });
+  const axiosPrivate = useAxiosPrivate();
+  const { rows, setRows, rowsRef, snapshot, loading, error, truncated, reload, ref, refError } =
+    useGridData({
+      year: yearFilter,
+      period: periodFilter,
+    });
 
   // Client-side filters (search is live; the "missing" toggles are mutually
   // exclusive and their membership is frozen from the load-time snapshot).
@@ -45,14 +52,6 @@ export default function ScheduleAssignment() {
   const [professorId, setProfessorId] = useState<number | null>(null);
   const [missingProfessor, setMissingProfessor] = useState(false);
   const [missingSchedule, setMissingSchedule] = useState(false);
-
-  // Selection lives here for now; Task 9 replaces it with useGridNavigation.
-  const [activeCell, setActiveCell] = useState<CellAddress | null>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
-
-  const onCellMouseDown = useCallback((address: CellAddress) => {
-    setActiveCell(address);
-  }, []);
 
   // Career filter compares NAMES (see filters.ts), resolved from the id here.
   const careerName = useMemo(
@@ -68,6 +67,129 @@ export default function ScheduleAssignment() {
     [rows, filters, snapshot],
   );
   const counts = useMemo(() => liveCounts(rows), [rows]);
+
+  // Keyboard navigation (one active cell, arrows/Tab/Enter/typing) and autosave
+  // (per-cell status + error toast). All callbacks below are stable so the
+  // memoized grid rows never re-render just because selection or a save moved.
+  const {
+    active,
+    setActive,
+    editing,
+    startEdit,
+    stopEdit,
+    move,
+    gridRef,
+    onGridKeyDown,
+    registerNavActions,
+  } = useGridNavigation(visibleRows);
+
+  // onSaved is a Task 12 placeholder (refresh the notification summary).
+  const { save, rowStatuses, toast, dismissToast } = useAutosave({ onSaved: () => {} });
+
+  const [gridHasFocus, setGridHasFocus] = useState(false);
+  const onGridFocus = useCallback(() => setGridHasFocus(true), []);
+  const onGridBlur = useCallback((e: FocusEvent<HTMLDivElement>) => {
+    // Keep focus "on" while it stays inside the grid (e.g. into the editor).
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+    setGridHasFocus(false);
+  }, []);
+
+  // Optimistic professor edit: update the row now, PUT in the background, revert
+  // on failure. Navigation (stopEdit + move) never waits for the network.
+  const commitProfessor = useCallback(
+    (enrollmentId: number, teacherId: number | null, dir: MoveDir) => {
+      const teacher = teacherId !== null ? ref.teacherById.get(teacherId) ?? null : null;
+      const prev = rowsRef.current.find((r) => r.enrollmentId === enrollmentId);
+      const prevId = prev?.professorId ?? null;
+      const prevName = prev?.professorName ?? null;
+
+      setRows((current) =>
+        current.map((r) =>
+          r.enrollmentId === enrollmentId
+            ? {
+                ...r,
+                professorId: teacherId,
+                professorName: teacher ? `${teacher.last_name} ${teacher.first_name}` : null,
+              }
+            : r,
+        ),
+      );
+
+      const revert = (): void => {
+        setRows((current) =>
+          current.map((r) =>
+            r.enrollmentId === enrollmentId
+              ? { ...r, professorId: prevId, professorName: prevName }
+              : r,
+          ),
+        );
+      };
+
+      save({
+        serialKey: `enr:${enrollmentId}`,
+        cellKey: `${enrollmentId}:prof`,
+        request: () =>
+          axiosPrivate.put<{ enrollment?: { professor_full_name?: string | null } }>(
+            "courses/manage-enrollments",
+            { enrollment_id: enrollmentId, professor_id: teacherId },
+          ),
+        onSuccess: (r) => {
+          const full = r.data.enrollment?.professor_full_name;
+          if (full === undefined) return;
+          // Only sync the display name if this edit is still the current one for
+          // the row (professorId unchanged). A stale in-flight response for an
+          // already-superseded edit must not flip the name back.
+          setRows((current) =>
+            current.map((row) =>
+              row.enrollmentId === enrollmentId && row.professorId === teacherId
+                ? { ...row, professorName: full ?? null }
+                : row,
+            ),
+          );
+        },
+        revert,
+      });
+
+      stopEdit();
+      if (dir !== "none") move(dir);
+    },
+    [ref.teacherById, rowsRef, setRows, save, axiosPrivate, stopEdit, move],
+  );
+
+  const cancelEdit = useCallback(
+    (dir: MoveDir) => {
+      stopEdit();
+      if (dir !== "none") move(dir);
+    },
+    [stopEdit, move],
+  );
+
+  const onCellDoubleClick = useCallback(
+    (address: CellAddress) => {
+      setActive(address);
+      // Only the professor editor exists in Task 9; other cols stay in nav mode.
+      if (address.col === "prof") startEdit(null);
+    },
+    [setActive, startEdit],
+  );
+
+  // What Delete and typing do per cell type. canEdit gates edit-mode entry;
+  // Task 10 broadens it to the time/aula columns (time → always; aula → only
+  // when the slot has a schedule, else setHint) and adds their delete handling.
+  const canEdit = useCallback((a: CellAddress): boolean => a.col === "prof", []);
+  const onDeleteCell = useCallback(
+    (a: CellAddress) => {
+      if (a.col === "prof") {
+        const row = rowsRef.current.find((r) => r.enrollmentId === a.enrollmentId);
+        if (row && row.professorId !== null) commitProfessor(a.enrollmentId, null, "none");
+      }
+    },
+    [rowsRef, commitProfessor],
+  );
+
+  useEffect(() => {
+    registerNavActions({ onDeleteCell, canEdit });
+  }, [registerNavActions, onDeleteCell, canEdit]);
 
   const toggleMissingProfessor = () => {
     setMissingProfessor((v) => !v);
@@ -127,6 +249,11 @@ export default function ScheduleAssignment() {
           </button>
         </div>
       </div>
+
+      {/* Keyboard hint (Task 11 replaces this with a collapsible legend). */}
+      <p className="mt-2 text-xs text-gray-400">
+        Use ↑ ↓ ← → para moverse, Enter o escribir para editar, Tab para avanzar
+      </p>
 
       {/* Main selectors: year + period */}
       <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
@@ -446,12 +573,23 @@ export default function ScheduleAssignment() {
           <ScheduleGrid
             rows={visibleRows}
             refData={ref}
-            active={activeCell}
-            onCellMouseDown={onCellMouseDown}
+            active={active}
+            editing={editing}
+            gridHasFocus={gridHasFocus}
+            onCellMouseDown={setActive}
+            onCellDoubleClick={onCellDoubleClick}
+            onKeyDown={onGridKeyDown}
+            onGridFocus={onGridFocus}
+            onGridBlur={onGridBlur}
+            rowStatuses={rowStatuses}
+            onCommitProfessor={commitProfessor}
+            onCancelEdit={cancelEdit}
             gridRef={gridRef}
           />
         )}
       </div>
+
+      <GridToast show={toast.show} message={toast.message} onClose={dismissToast} />
     </div>
   );
 }

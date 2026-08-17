@@ -1,20 +1,31 @@
 // The excel-like grid shell: a scrollable, focusable role="grid" container with
-// a sticky header and one memoized GridRowView per row. This task renders the
-// active-cell styling and reports mouse-downs; keyboard navigation and editing
-// are layered on in Tasks 9-12. Prop surface is deliberately small and typed:
-// `gridRef` exposes the scroll container for keyboard focus/scroll (Task 9) and
-// `renderCell` lets a later task swap in editing-aware cells.
-import type { RefObject } from "react";
-import type { CellAddress, GridRow } from "./types";
+// a sticky header and one memoized GridRowView per row. It renders the active-
+// cell styling, forwards keyboard/focus/mouse to useGridNavigation, and threads
+// per-row edit + autosave props down. The container is the ONLY focusable grid
+// element in nav mode; the editor takes focus in edit mode.
+import type { FocusEvent, KeyboardEvent, MouseEvent, RefObject } from "react";
+import type { CellAddress, CellSaveState, ColKey, GridRow, MoveDir } from "./types";
 import type { GridRefData } from "./useGridData";
 import type { RenderCell } from "./cellIds";
+import type { EditingState } from "./useGridNavigation";
 import GridRowView from "./GridRowView";
 
 export interface ScheduleGridProps {
   rows: GridRow[];
   refData: GridRefData;
   active: CellAddress | null;
+  editing: EditingState | null;
+  /** Grid container has focus → primary selection ring; else gray inactive ring. */
+  gridHasFocus: boolean;
   onCellMouseDown: (address: CellAddress) => void;
+  onCellDoubleClick: (address: CellAddress) => void;
+  onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
+  onGridFocus: (e: FocusEvent<HTMLDivElement>) => void;
+  onGridBlur: (e: FocusEvent<HTMLDivElement>) => void;
+  /** Returns this row's autosave statuses (stable ref per row for memo). */
+  rowStatuses: (enrollmentId: number) => Partial<Record<ColKey, CellSaveState>> | undefined;
+  onCommitProfessor: (enrollmentId: number, teacherId: number | null, move: MoveDir) => void;
+  onCancelEdit: (move: MoveDir) => void;
   gridRef?: RefObject<HTMLDivElement | null>;
   renderCell?: RenderCell;
 }
@@ -25,15 +36,38 @@ export default function ScheduleGrid({
   rows,
   refData,
   active,
+  editing,
+  gridHasFocus,
   onCellMouseDown,
+  onCellDoubleClick,
+  onKeyDown,
+  onGridFocus,
+  onGridBlur,
+  rowStatuses,
+  onCommitProfessor,
+  onCancelEdit,
   gridRef,
   renderCell,
 }: ScheduleGridProps) {
+  // Mousedown anywhere outside an editor: suppress text selection and give the
+  // grid container keyboard focus. Clicks inside [data-editor] are left alone.
+  const handleMouseDown = (e: MouseEvent<HTMLDivElement>): void => {
+    const target = e.target as HTMLElement;
+    if (!target.closest("[data-editor]")) {
+      e.preventDefault();
+      gridRef?.current?.focus({ preventScroll: true });
+    }
+  };
+
   return (
     <div
       ref={gridRef}
       role="grid"
       tabIndex={0}
+      onKeyDown={onKeyDown}
+      onFocus={onGridFocus}
+      onBlur={onGridBlur}
+      onMouseDown={handleMouseDown}
       className="overflow-auto rounded-md border border-gray-200 focus:outline-none max-h-[calc(100vh-18rem)]"
     >
       <table className="min-w-full border-separate border-spacing-0 text-sm">
@@ -50,18 +84,28 @@ export default function ScheduleGrid({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <GridRowView
-              key={row.enrollmentId}
-              row={row}
-              activeCol={
-                active && active.enrollmentId === row.enrollmentId ? active.col : null
-              }
-              refData={refData}
-              onCellMouseDown={onCellMouseDown}
-              renderCell={renderCell}
-            />
-          ))}
+          {rows.map((row) => {
+            const isActiveRow = active?.enrollmentId === row.enrollmentId;
+            const activeCol = isActiveRow ? active.col : null;
+            const editingCol = isActiveRow && editing ? editing.col : null;
+            return (
+              <GridRowView
+                key={row.enrollmentId}
+                row={row}
+                activeCol={activeCol}
+                editingCol={editingCol}
+                editSeed={editingCol ? (editing?.seed ?? null) : null}
+                activeFocused={isActiveRow ? gridHasFocus : false}
+                statuses={rowStatuses(row.enrollmentId)}
+                refData={refData}
+                onCellMouseDown={onCellMouseDown}
+                onCellDoubleClick={onCellDoubleClick}
+                onCommitProfessor={onCommitProfessor}
+                onCancelEdit={onCancelEdit}
+                renderCell={renderCell}
+              />
+            );
+          })}
         </tbody>
       </table>
     </div>

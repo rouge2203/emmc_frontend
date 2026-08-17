@@ -1,48 +1,69 @@
 // Shared, React-light plumbing for the schedule grid's addressable sub-cells.
 // Every sub-cell (the professor cell and each horario's time/aula cells) has a
-// stable DOM id and a shared className so later tasks can scroll to, focus and
-// highlight a cell by its CellAddress. Keyboard navigation (Task 9) resolves
-// cells by these ids; editors/conflict badges (Tasks 10-11) reuse CellProps.
+// stable DOM id and a shared className so navigation/editing can scroll to,
+// focus and highlight a cell by its CellAddress. Keyboard navigation (Task 9)
+// resolves cells by these ids; editors/status badges reuse CellProps.
 import type { ReactNode } from "react";
-import type { CellAddress, ColKey, GridRow } from "./types";
+import type { CellAddress, CellSaveState, ColKey, GridRow, MoveDir, SaveStatus } from "./types";
 import type { GridRefData } from "./useGridData";
 
 /** Stable DOM id for one addressable sub-cell, e.g. `sg-42-t0`. */
 export const cellDomId = (a: CellAddress): string => `sg-${a.enrollmentId}-${a.col}`;
 
+/** Visual state inputs for a sub-cell wrapper. */
+export interface CellVisual {
+  active: boolean;
+  /** Grid container has focus → primary ring; else the Excel-like gray inactive selection. */
+  focused?: boolean;
+  /** Transient autosave status (error → red ring, saved → green flash). */
+  status?: SaveStatus;
+}
+
 /**
- * Shared className for a sub-cell. Adds the active ring + tint when this cell
- * is the selected one. Keyboard/editing tasks build on the same base so the
- * visual contract stays in one place.
+ * Shared className for a sub-cell wrapper. Owns the selection ring (focused vs
+ * inactive) and the transient save styling; an error ring wins over the active
+ * ring so a failed save is always visible. `relative` anchors the CellStatus
+ * overlay; `scroll-mt-10` keeps the sticky header from covering it on scroll.
  */
-export const cellClass = (active: boolean): string =>
-  `rounded-sm px-2 py-1 cursor-default select-none${
-    active ? " ring-2 ring-primary ring-inset bg-primary/5" : ""
-  }`;
+export const cellClass = (v: CellVisual): string => {
+  const parts = ["relative rounded-sm px-2 py-1 cursor-default select-none scroll-mt-10"];
+  if (v.status === "error") {
+    parts.push("ring-2 ring-red-500 ring-inset");
+  } else if (v.active) {
+    parts.push("ring-2 ring-inset", v.focused ? "ring-primary bg-primary/5" : "ring-gray-400");
+  }
+  if (v.status === "saved") parts.push("bg-green-50 transition-colors");
+  return parts.join(" ");
+};
 
 /**
  * Props shared by every leaf cell component (ProfessorCell/TimeCell/AulaCell).
- * Kept intentionally small: Tasks 10-11 add optional `editing`/`saveState`
- * props here without changing GridRowView's contract. `refData` is optional so
- * a cell that doesn't need the reference lists can ignore it.
+ * The navigation/editing fields are optional so a read-only render still works.
  */
 export interface CellProps {
   row: GridRow;
   col: ColKey;
   active: boolean;
+  /** Whether the grid container currently has focus (only meaningful when active). */
+  focused?: boolean;
+  /** This exact cell is in edit mode → mount its editor. */
+  editing?: boolean;
+  /** First typed char (Excel replace-typing) or null; only set while editing. */
+  seed?: string | null;
+  /** This cell's autosave status (spinner/check/error dot). */
+  saveState?: CellSaveState;
   onMouseDown: (address: CellAddress) => void;
+  onDoubleClick?: (address: CellAddress) => void;
+  /** Commit a new professor for this row (professor cell only). */
+  onCommitProfessor?: (enrollmentId: number, teacherId: number | null, move: MoveDir) => void;
+  /** Leave edit mode without saving, optionally moving the active cell. */
+  onCancelEdit?: (move: MoveDir) => void;
   refData?: GridRefData;
 }
 
 /**
- * Optional per-cell render override for ScheduleGrid/GridRowView. Left as a
- * seam for later tasks to inject editing-aware cells without touching the
- * grid's structure; when omitted the built-in read-only cells are rendered.
+ * Optional per-cell render override for ScheduleGrid/GridRowView — a seam for
+ * injecting editing-aware cells without touching the grid's structure. When
+ * omitted the built-in cells render.
  */
-export type RenderCell = (params: {
-  row: GridRow;
-  col: ColKey;
-  active: boolean;
-  refData: GridRefData;
-  onMouseDown: (address: CellAddress) => void;
-}) => ReactNode;
+export type RenderCell = (props: CellProps) => ReactNode;
