@@ -193,6 +193,13 @@ export function useNotificationSummary(): UseNotificationSummaryResult {
     try {
       const res = await axiosPrivate.post<SendResponse>(SEND_URL, {});
       const batch = res.data.batch;
+      // Invalidate any GET already in flight: this optimistic write is newer
+      // than it, but the GET's own requestId was minted before send() ever
+      // touched latestRequestId, so its stale guard would otherwise still
+      // pass and let it clobber active_batch back to null (falsely firing
+      // justFinished, clearing `sending`, and re-arming the slow 60 s poll)
+      // when it resolves after us.
+      latestRequestId.current += 1;
       prevActiveRef.current = batch;
       setSummary((prev) => (prev ? { ...prev, active_batch: batch } : prev));
       // Fast-forward polling to the "running" cadence so progress shows up
