@@ -6,6 +6,7 @@
 import type { FocusEvent, KeyboardEvent, MouseEvent, RefObject } from "react";
 import type { CellAddress, CellSaveState, ColKey, GridRow, MoveDir } from "./types";
 import type { GridRefData } from "./useGridData";
+import { cellDomId } from "./cellIds";
 import type { RenderCell } from "./cellIds";
 import type { EditingState } from "./useGridNavigation";
 import GridRowView from "./GridRowView";
@@ -64,6 +65,7 @@ export default function ScheduleGrid({
       ref={gridRef}
       role="grid"
       tabIndex={0}
+      aria-activedescendant={active ? cellDomId(active) : undefined}
       onKeyDown={onKeyDown}
       onFocus={onGridFocus}
       onBlur={onGridBlur}
