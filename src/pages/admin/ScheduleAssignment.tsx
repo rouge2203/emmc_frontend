@@ -14,6 +14,8 @@ import { HiOutlineBuildingLibrary } from "react-icons/hi2";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import ScheduleGrid from "../../components/schedule-grid/ScheduleGrid";
 import GridToast from "../../components/schedule-grid/GridToast";
+import KeyboardLegend from "../../components/schedule-grid/KeyboardLegend";
+import { computeConflicts } from "../../components/schedule-grid/conflicts";
 import { useGridData } from "../../components/schedule-grid/useGridData";
 import { useGridNavigation } from "../../components/schedule-grid/useGridNavigation";
 import { useAutosave } from "../../components/schedule-grid/useAutosave";
@@ -68,6 +70,12 @@ export default function ScheduleAssignment() {
     [rows, filters, snapshot],
   );
   const counts = useMemo(() => liveCounts(rows), [rows]);
+
+  // Aula/professor double-booking warnings, swept across ALL rows (not just the
+  // visible ones — a conflict can be with a row that a filter hid). Re-runs on
+  // every optimistic edit; returns fresh objects only for conflicting rows so
+  // the memoized grid rows stay put.
+  const conflicts = useMemo(() => computeConflicts(rows), [rows]);
 
   // Keyboard navigation (one active cell, arrows/Tab/Enter/typing) and autosave
   // (per-cell status + error toast). All callbacks below are stable so the
@@ -206,6 +214,10 @@ export default function ScheduleAssignment() {
               Asigne profesor, horarios y aula a cada matrícula. Los cambios se guardan
               automáticamente.
             </p>
+            <p className="mt-1 flex items-center gap-1 text-xs text-gray-400">
+              <ExclamationTriangleIcon className="size-3.5 text-amber-500" aria-hidden="true" />
+              conflicto de aula/profesor (solo aviso)
+            </p>
           </div>
         </div>
         <div className="mt-4 sm:mt-0 sm:ml-6 sm:flex-none flex items-center gap-3">
@@ -223,11 +235,6 @@ export default function ScheduleAssignment() {
           </button>
         </div>
       </div>
-
-      {/* Keyboard hint (Task 11 replaces this with a collapsible legend). */}
-      <p className="mt-2 text-xs text-gray-400">
-        Use ↑ ↓ ← → para moverse, Enter o escribir para editar, Tab para avanzar
-      </p>
 
       {/* Main selectors: year + period */}
       <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
@@ -505,6 +512,9 @@ export default function ScheduleAssignment() {
         </div>
       </div>
 
+      {/* Keyboard shortcuts legend (collapsible) */}
+      <KeyboardLegend />
+
       {/* Truncated banner */}
       {truncated && (
         <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
@@ -556,6 +566,7 @@ export default function ScheduleAssignment() {
             onGridFocus={onGridFocus}
             onGridBlur={onGridBlur}
             rowStatuses={rowStatuses}
+            conflicts={conflicts}
             onCommitProfessor={commitProfessor}
             onCommitTime={commitTime}
             onCancelTime={cancelTime}

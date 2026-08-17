@@ -7,7 +7,8 @@ import { formatSlotLabel } from "../time";
 import { colSlotIndex } from "../types";
 import { cellClass, cellDomId } from "../cellIds";
 import type { CellProps } from "../cellIds";
-import CellStatus from "./CellStatus";
+import { slotConflictLines } from "../conflictLines";
+import CellCorner from "./CellCorner";
 import TimeRangeEditor from "./TimeRangeEditor";
 
 export default function TimeCell({
@@ -22,11 +23,14 @@ export default function TimeCell({
   onDoubleClick,
   onCommitTime,
   onCancelTime,
+  slotConflicts,
+  refData,
 }: CellProps) {
   const slotIndex = colSlotIndex(col);
   const slot = row.slots[slotIndex];
   const { text, muted } = formatSlotLabel(slot);
   const address = { enrollmentId: row.enrollmentId, col };
+  const conflictLines = slotConflictLines(slotConflicts, refData?.classroomById);
   return (
     <div
       id={cellDomId(address)}
@@ -46,7 +50,7 @@ export default function TimeCell({
       ) : (
         <>
           <span className={`font-mono ${muted ? "text-gray-400" : "text-gray-900"}`}>{text}</span>
-          <CellStatus state={saveState} />
+          <CellCorner saveState={saveState} conflictLines={conflictLines} />
         </>
       )}
     </div>

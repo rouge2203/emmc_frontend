@@ -4,7 +4,8 @@
 // the page/hooks.
 import { cellClass, cellDomId } from "../cellIds";
 import type { CellProps } from "../cellIds";
-import CellStatus from "./CellStatus";
+import { profConflictLines } from "../conflictLines";
+import CellCorner from "./CellCorner";
 import ProfessorEditor from "./ProfessorEditor";
 
 export default function ProfessorCell({
@@ -19,9 +20,11 @@ export default function ProfessorCell({
   onDoubleClick,
   onCommitProfessor,
   onCancelEdit,
+  profConflicts,
   refData,
 }: CellProps) {
   const address = { enrollmentId: row.enrollmentId, col };
+  const conflictLines = profConflictLines(profConflicts);
 
   return (
     <div
@@ -51,7 +54,7 @@ export default function ProfessorCell({
           ) : (
             <span className="text-gray-400 italic">Sin profesor</span>
           )}
-          <CellStatus state={saveState} />
+          <CellCorner saveState={saveState} conflictLines={conflictLines} />
         </>
       )}
     </div>

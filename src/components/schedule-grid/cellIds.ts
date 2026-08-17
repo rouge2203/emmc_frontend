@@ -14,6 +14,7 @@ import type {
   SlotIndex,
   TimeRangeValue,
 } from "./types";
+import type { ScheduleRef, SlotConflicts } from "./conflicts";
 import type { GridRefData } from "./useGridData";
 
 /** Stable DOM id for one addressable sub-cell, e.g. `sg-42-t0`. */
@@ -88,6 +89,10 @@ export interface CellProps {
   ) => void;
   /** Leave edit mode without saving, optionally moving the active cell (professor/aula cells). */
   onCancelEdit?: (move: MoveDir) => void;
+  /** This slot's aula/prof double-bookings (time cells only) → time-cell ConflictBadge. */
+  slotConflicts?: SlotConflicts;
+  /** The row's professor double-bookings (professor cell only) → prof-cell ConflictBadge. */
+  profConflicts?: ScheduleRef[];
   refData?: GridRefData;
 }
 

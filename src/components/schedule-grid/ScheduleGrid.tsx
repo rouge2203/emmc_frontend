@@ -14,6 +14,7 @@ import type {
   TimeRangeValue,
 } from "./types";
 import type { GridRefData } from "./useGridData";
+import type { ConflictIndex } from "./conflicts";
 import { cellDomId } from "./cellIds";
 import type { RenderCell } from "./cellIds";
 import type { EditingState } from "./useGridNavigation";
@@ -33,6 +34,8 @@ export interface ScheduleGridProps {
   onGridBlur: (e: FocusEvent<HTMLDivElement>) => void;
   /** Returns this row's autosave statuses (stable ref per row for memo). */
   rowStatuses: (enrollmentId: number) => Partial<Record<ColKey, CellSaveState>> | undefined;
+  /** Aula/professor double-bookings across the whole (unfiltered) year. */
+  conflicts: ConflictIndex;
   onCommitProfessor: (enrollmentId: number, teacherId: number | null, move: MoveDir) => void;
   onCommitTime: (
     enrollmentId: number,
@@ -71,6 +74,7 @@ export default function ScheduleGrid({
   onGridFocus,
   onGridBlur,
   rowStatuses,
+  conflicts,
   onCommitProfessor,
   onCommitTime,
   onCancelTime,
@@ -128,6 +132,7 @@ export default function ScheduleGrid({
                 editSeed={editingCol ? (editing?.seed ?? null) : null}
                 activeFocused={isActiveRow ? gridHasFocus : false}
                 statuses={rowStatuses(row.enrollmentId)}
+                conflicts={conflicts.get(row.enrollmentId)}
                 refData={refData}
                 onCellMouseDown={onCellMouseDown}
                 onCellDoubleClick={onCellDoubleClick}

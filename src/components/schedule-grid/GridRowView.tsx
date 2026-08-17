@@ -8,15 +8,17 @@
 import { memo } from "react";
 import type { ReactNode } from "react";
 import { formatSlotLabel } from "./time";
-import type {
-  CellAddress,
-  CellSaveState,
-  ColKey,
-  GridRow,
-  MoveDir,
-  SlotIndex,
-  TimeRangeValue,
+import {
+  colSlotIndex,
+  type CellAddress,
+  type CellSaveState,
+  type ColKey,
+  type GridRow,
+  type MoveDir,
+  type SlotIndex,
+  type TimeRangeValue,
 } from "./types";
+import type { RowConflicts } from "./conflicts";
 import type { GridRefData } from "./useGridData";
 import type { CellProps, RenderCell } from "./cellIds";
 import ProfessorCell from "./cells/ProfessorCell";
@@ -35,6 +37,12 @@ export interface GridRowViewProps {
   activeFocused: boolean;
   /** This row's autosave statuses, keyed by col. */
   statuses?: Partial<Record<ColKey, CellSaveState>>;
+  /**
+   * This row's schedule conflicts (undefined for the vast majority of rows).
+   * `computeConflicts` returns a fresh object only for conflicting rows, so
+   * this stays reference-stable per row → the memo keeps holding.
+   */
+  conflicts?: RowConflicts;
   refData: GridRefData;
   onCellMouseDown: (address: CellAddress) => void;
   onCellDoubleClick: (address: CellAddress) => void;
@@ -68,6 +76,7 @@ function GridRowViewInner({
   editSeed,
   activeFocused,
   statuses,
+  conflicts,
   refData,
   onCellMouseDown,
   onCellDoubleClick,
@@ -80,6 +89,7 @@ function GridRowViewInner({
 }: GridRowViewProps) {
   const cellFor = (col: ColKey): ReactNode => {
     const editing = editingCol === col;
+    const isTime = col === "t0" || col === "t1" || col === "t2";
     const props: CellProps = {
       row,
       col,
@@ -95,6 +105,8 @@ function GridRowViewInner({
       onCancelTime,
       onCommitAula,
       onCancelEdit,
+      slotConflicts: isTime ? conflicts?.slots[colSlotIndex(col)] : undefined,
+      profConflicts: col === "prof" ? conflicts?.prof : undefined,
       refData,
     };
     if (renderCell) return renderCell(props);
@@ -140,7 +152,7 @@ function GridRowViewInner({
               {cellFor(aulaCol)}
               {i === 2 && row.extraSchedules.length > 0 && (
                 <span
-                  className="mt-0.5 inline-flex w-fit rounded-sm bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500"
+                  className="ml-1 inline-flex w-fit items-center rounded-full bg-gray-100 px-1.5 text-[10px] text-gray-600"
                   title={row.extraSchedules.map((s) => formatSlotLabel(s).text).join("\n")}
                 >
                   +{row.extraSchedules.length} más
