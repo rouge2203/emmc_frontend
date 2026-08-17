@@ -11,6 +11,7 @@ import {
   ClockIcon,
   AcademicCapIcon,
   CheckCircleIcon,
+  TableCellsIcon,
 } from "@heroicons/react/24/outline";
 import CourseEnrollmentCreateDrawer from "../../components/drawers/CourseEnrollmentCreateDrawer";
 import CourseEnrollmentEditDrawer from "../../components/drawers/CourseEnrollmentEditDrawer";
@@ -475,6 +476,13 @@ const CourseEnrollments = () => {
             <CgFileDocument className="size-4" />
             Imprimir reporte
           </button>
+          <Link
+            to="/admin/asignacion-de-horarios"
+            className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+          >
+            <TableCellsIcon className="size-4" aria-hidden="true" />
+            Asignación rápida
+          </Link>
           <button
             type="button"
             onClick={() => {

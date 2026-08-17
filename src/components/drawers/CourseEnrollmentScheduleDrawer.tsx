@@ -362,6 +362,8 @@ const CourseEnrollmentScheduleDrawer: React.FC<
     setShowConfirmDialog(false);
     setIsSaving(true);
     try {
+      const failures: string[] = [];
+
       // First, delete all schedules marked for deletion
       for (const scheduleId of schedulesToDelete) {
         try {
@@ -370,6 +372,9 @@ const CourseEnrollmentScheduleDrawer: React.FC<
           });
         } catch (err: any) {
           console.error(`Error deleting schedule ${scheduleId}:`, err);
+          failures.push(
+            err?.response?.data?.error || "Error al guardar un horario",
+          );
           // Continue with other operations even if one delete fails
         }
       }
@@ -412,6 +417,9 @@ const CourseEnrollmentScheduleDrawer: React.FC<
             );
           } catch (err: any) {
             console.error(`Error updating schedule ${scheduleId}:`, err);
+            failures.push(
+              err?.response?.data?.error || "Error al guardar un horario",
+            );
             // Continue with other operations
           }
         }
@@ -444,6 +452,9 @@ const CourseEnrollmentScheduleDrawer: React.FC<
           );
         } catch (err: any) {
           console.error("Error creating schedule:", err);
+          failures.push(
+            err?.response?.data?.error || "Error al guardar un horario",
+          );
           // Continue with other operations
         }
       }
@@ -452,7 +463,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
       await fetchSchedules();
 
       // Send notification email if checkbox is enabled (after all operations)
-      if (notifyUser) {
+      if (notifyUser && failures.length === 0) {
         try {
           await axiosPrivate.post("courses/manage-enrollment-schedules", {
             course_enrollment_id: enrollmentId,
@@ -464,11 +475,24 @@ const CourseEnrollmentScheduleDrawer: React.FC<
         }
       }
 
-      // Show success notification
-      setShowSuccessNotification(true);
-      setTimeout(() => {
-        setShowSuccessNotification(false);
-      }, 3000);
+      if (failures.length > 0) {
+        // Surface per-item save errors instead of the success notification
+        setErrorNotificationMessage(
+          failures.length === 1
+            ? failures[0]
+            : `${failures.length} horarios no se guardaron: ${failures[0]}`,
+        );
+        setShowErrorNotification(true);
+        setTimeout(() => {
+          setShowErrorNotification(false);
+        }, 5000);
+      } else {
+        // Show success notification
+        setShowSuccessNotification(true);
+        setTimeout(() => {
+          setShowSuccessNotification(false);
+        }, 3000);
+      }
 
       // Notify parent to refresh
       if (onScheduleUpdated) {
