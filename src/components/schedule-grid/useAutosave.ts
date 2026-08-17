@@ -17,6 +17,7 @@ import type { CellSaveState, ColKey } from "./types";
 
 const SAVED_CLEAR_MS = 1200;
 const HINT_CLEAR_MS = 2500;
+const TRANSIENT_ERROR_CLEAR_MS = 3000;
 const TOAST_HIDE_MS = 5000;
 
 type RowStatuses = Partial<Record<ColKey, CellSaveState>>;
@@ -26,6 +27,8 @@ export interface UseAutosaveResult {
   statusFor: (enrollmentId: number, col: ColKey) => CellSaveState | undefined;
   rowStatuses: (enrollmentId: number) => RowStatuses | undefined;
   setHint: (enrollmentId: number, col: ColKey, message: string) => void;
+  /** Show a transient red error dot on a cell (e.g. a blur-invalid time), auto-clearing after 3 s. Not tied to a queued save. */
+  setTransientError: (enrollmentId: number, col: ColKey, message: string) => void;
   idle: () => Promise<void>;
   pendingCount: () => number;
   toast: { show: boolean; message: string };
@@ -137,6 +140,16 @@ export function useAutosave(opts: { onSaved?: () => void }): UseAutosaveResult {
     [setCellStatus, scheduleClear],
   );
 
+  // A page-driven error (not a queued save's failure): show the red dot but
+  // auto-clear it, unlike a save error which persists until the next save.
+  const setTransientError = useCallback(
+    (enrollmentId: number, col: ColKey, message: string) => {
+      setCellStatus(enrollmentId, col, { status: "error", message, at: Date.now() });
+      scheduleClear(enrollmentId, col, TRANSIENT_ERROR_CLEAR_MS);
+    },
+    [setCellStatus, scheduleClear],
+  );
+
   const statusFor = useCallback(
     (enrollmentId: number, col: ColKey) => statuses.get(enrollmentId)?.[col],
     [statuses],
@@ -163,6 +176,7 @@ export function useAutosave(opts: { onSaved?: () => void }): UseAutosaveResult {
     statusFor,
     rowStatuses,
     setHint,
+    setTransientError,
     idle,
     pendingCount,
     toast,

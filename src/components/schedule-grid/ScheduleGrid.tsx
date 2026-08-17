@@ -4,7 +4,15 @@
 // per-row edit + autosave props down. The container is the ONLY focusable grid
 // element in nav mode; the editor takes focus in edit mode.
 import type { FocusEvent, KeyboardEvent, MouseEvent, RefObject } from "react";
-import type { CellAddress, CellSaveState, ColKey, GridRow, MoveDir } from "./types";
+import type {
+  CellAddress,
+  CellSaveState,
+  ColKey,
+  GridRow,
+  MoveDir,
+  SlotIndex,
+  TimeRangeValue,
+} from "./types";
 import type { GridRefData } from "./useGridData";
 import { cellDomId } from "./cellIds";
 import type { RenderCell } from "./cellIds";
@@ -26,6 +34,24 @@ export interface ScheduleGridProps {
   /** Returns this row's autosave statuses (stable ref per row for memo). */
   rowStatuses: (enrollmentId: number) => Partial<Record<ColKey, CellSaveState>> | undefined;
   onCommitProfessor: (enrollmentId: number, teacherId: number | null, move: MoveDir) => void;
+  onCommitTime: (
+    enrollmentId: number,
+    slotIndex: SlotIndex,
+    value: TimeRangeValue,
+    move: MoveDir,
+  ) => void;
+  onCancelTime: (
+    enrollmentId: number,
+    slotIndex: SlotIndex,
+    move: MoveDir,
+    error?: string,
+  ) => void;
+  onCommitAula: (
+    enrollmentId: number,
+    slotIndex: SlotIndex,
+    classroomId: number | null,
+    move: MoveDir,
+  ) => void;
   onCancelEdit: (move: MoveDir) => void;
   gridRef?: RefObject<HTMLDivElement | null>;
   renderCell?: RenderCell;
@@ -46,6 +72,9 @@ export default function ScheduleGrid({
   onGridBlur,
   rowStatuses,
   onCommitProfessor,
+  onCommitTime,
+  onCancelTime,
+  onCommitAula,
   onCancelEdit,
   gridRef,
   renderCell,
@@ -103,6 +132,9 @@ export default function ScheduleGrid({
                 onCellMouseDown={onCellMouseDown}
                 onCellDoubleClick={onCellDoubleClick}
                 onCommitProfessor={onCommitProfessor}
+                onCommitTime={onCommitTime}
+                onCancelTime={onCancelTime}
+                onCommitAula={onCommitAula}
                 onCancelEdit={onCancelEdit}
                 renderCell={renderCell}
               />

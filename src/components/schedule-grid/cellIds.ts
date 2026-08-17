@@ -4,7 +4,16 @@
 // focus and highlight a cell by its CellAddress. Keyboard navigation (Task 9)
 // resolves cells by these ids; editors/status badges reuse CellProps.
 import type { ReactNode } from "react";
-import type { CellAddress, CellSaveState, ColKey, GridRow, MoveDir, SaveStatus } from "./types";
+import type {
+  CellAddress,
+  CellSaveState,
+  ColKey,
+  GridRow,
+  MoveDir,
+  SaveStatus,
+  SlotIndex,
+  TimeRangeValue,
+} from "./types";
 import type { GridRefData } from "./useGridData";
 
 /** Stable DOM id for one addressable sub-cell, e.g. `sg-42-t0`. */
@@ -56,7 +65,28 @@ export interface CellProps {
   onDoubleClick?: (address: CellAddress) => void;
   /** Commit a new professor for this row (professor cell only). */
   onCommitProfessor?: (enrollmentId: number, teacherId: number | null, move: MoveDir) => void;
-  /** Leave edit mode without saving, optionally moving the active cell. */
+  /** Commit a new day/time range for a horario slot (time cell only). */
+  onCommitTime?: (
+    enrollmentId: number,
+    slotIndex: SlotIndex,
+    value: TimeRangeValue,
+    move: MoveDir,
+  ) => void;
+  /** Leave a time cell without saving; an error paints a transient cell error (time cell only). */
+  onCancelTime?: (
+    enrollmentId: number,
+    slotIndex: SlotIndex,
+    move: MoveDir,
+    error?: string,
+  ) => void;
+  /** Commit (or clear, with null) a horario slot's classroom (aula cell only). */
+  onCommitAula?: (
+    enrollmentId: number,
+    slotIndex: SlotIndex,
+    classroomId: number | null,
+    move: MoveDir,
+  ) => void;
+  /** Leave edit mode without saving, optionally moving the active cell (professor/aula cells). */
   onCancelEdit?: (move: MoveDir) => void;
   refData?: GridRefData;
 }

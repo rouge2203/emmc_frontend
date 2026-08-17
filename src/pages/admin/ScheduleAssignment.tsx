@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FocusEvent } from "react";
 import {
   TableCellsIcon,
@@ -17,9 +17,10 @@ import GridToast from "../../components/schedule-grid/GridToast";
 import { useGridData } from "../../components/schedule-grid/useGridData";
 import { useGridNavigation } from "../../components/schedule-grid/useGridNavigation";
 import { useAutosave } from "../../components/schedule-grid/useAutosave";
+import { useGridCommits } from "../../components/schedule-grid/useGridCommits";
 import { filterRows, liveCounts } from "../../components/schedule-grid/filters";
 import type { GridFilters } from "../../components/schedule-grid/filters";
-import type { CellAddress, MoveDir } from "../../components/schedule-grid/types";
+import type { CellAddress } from "../../components/schedule-grid/types";
 
 // The grid always shows one academic year; it opens on the current one. Year
 // and period are the main view selectors — they are NOT reset by "Limpiar
@@ -84,7 +85,9 @@ export default function ScheduleAssignment() {
   } = useGridNavigation(visibleRows);
 
   // onSaved is a Task 12 placeholder (refresh the notification summary).
-  const { save, rowStatuses, toast, dismissToast } = useAutosave({ onSaved: () => {} });
+  const { save, rowStatuses, setHint, setTransientError, toast, dismissToast } = useAutosave({
+    onSaved: () => {},
+  });
 
   const [gridHasFocus, setGridHasFocus] = useState(false);
   const onGridFocus = useCallback(() => setGridHasFocus(true), []);
@@ -94,97 +97,68 @@ export default function ScheduleAssignment() {
     setGridHasFocus(false);
   }, []);
 
-  // Optimistic professor edit: update the row now, PUT in the background, revert
-  // on failure. Navigation (stopEdit + move) never waits for the network.
-  const commitProfessor = useCallback(
-    (enrollmentId: number, teacherId: number | null, dir: MoveDir) => {
-      const teacher = teacherId !== null ? ref.teacherById.get(teacherId) ?? null : null;
-      const prev = rowsRef.current.find((r) => r.enrollmentId === enrollmentId);
-      const prevId = prev?.professorId ?? null;
-      const prevName = prev?.professorName ?? null;
-
-      setRows((current) =>
-        current.map((r) =>
-          r.enrollmentId === enrollmentId
-            ? {
-                ...r,
-                professorId: teacherId,
-                professorName: teacher ? `${teacher.last_name} ${teacher.first_name}` : null,
-              }
-            : r,
-        ),
-      );
-
-      const revert = (): void => {
-        setRows((current) =>
-          current.map((r) =>
-            r.enrollmentId === enrollmentId
-              ? { ...r, professorId: prevId, professorName: prevName }
-              : r,
-          ),
-        );
-      };
-
-      save({
-        serialKey: `enr:${enrollmentId}`,
-        cellKey: `${enrollmentId}:prof`,
-        request: () =>
-          axiosPrivate.put<{ enrollment?: { professor_full_name?: string | null } }>(
-            "courses/manage-enrollments",
-            { enrollment_id: enrollmentId, professor_id: teacherId },
-          ),
-        onSuccess: (r) => {
-          const full = r.data.enrollment?.professor_full_name;
-          if (full === undefined) return;
-          // Only sync the display name if this edit is still the current one for
-          // the row (professorId unchanged). A stale in-flight response for an
-          // already-superseded edit must not flip the name back.
-          setRows((current) =>
-            current.map((row) =>
-              row.enrollmentId === enrollmentId && row.professorId === teacherId
-                ? { ...row, professorName: full ?? null }
-                : row,
-            ),
-          );
-        },
-        revert,
-      });
-
-      stopEdit();
-      if (dir !== "none") move(dir);
+  // Delete-undo toast (info variant with a "Deshacer" action, 6 s). Page-owned
+  // because it is not tied to a queued save the way the error toast is.
+  const [undoToast, setUndoToast] = useState<{
+    show: boolean;
+    message: string;
+    onUndo: (() => void) | null;
+  }>({ show: false, message: "", onUndo: null });
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showUndoToast = useCallback((message: string, onUndo: () => void) => {
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    setUndoToast({ show: true, message, onUndo });
+    undoTimer.current = setTimeout(() => setUndoToast((t) => ({ ...t, show: false })), 6000);
+  }, []);
+  const dismissUndo = useCallback(() => {
+    if (undoTimer.current) {
+      clearTimeout(undoTimer.current);
+      undoTimer.current = null;
+    }
+    setUndoToast((t) => ({ ...t, show: false }));
+  }, []);
+  const handleUndo = useCallback(() => {
+    undoToast.onUndo?.();
+    dismissUndo();
+  }, [undoToast, dismissUndo]);
+  useEffect(
+    () => () => {
+      if (undoTimer.current) clearTimeout(undoTimer.current);
     },
-    [ref.teacherById, rowsRef, setRows, save, axiosPrivate, stopEdit, move],
+    [],
   );
 
-  const cancelEdit = useCallback(
-    (dir: MoveDir) => {
-      stopEdit();
-      if (dir !== "none") move(dir);
-    },
-    [stopEdit, move],
-  );
+  // Optimistic commit handlers (professor/time/aula + delete/undo). Every one
+  // updates the row now, saves in the background and reverts on failure;
+  // navigation never waits for the network.
+  const {
+    commitProfessor,
+    commitTime,
+    commitAula,
+    cancelEdit,
+    cancelTime,
+    onDeleteCell,
+    canEdit,
+  } = useGridCommits({
+    axiosPrivate,
+    teacherById: ref.teacherById,
+    rowsRef,
+    setRows,
+    save,
+    setHint,
+    setTransientError,
+    stopEdit,
+    move,
+    showUndoToast,
+  });
 
   const onCellDoubleClick = useCallback(
     (address: CellAddress) => {
       setActive(address);
-      // Only the professor editor exists in Task 9; other cols stay in nav mode.
-      if (address.col === "prof") startEdit(null);
+      // canEdit shows the aula "add a schedule first" hint when appropriate.
+      if (canEdit(address)) startEdit(null);
     },
-    [setActive, startEdit],
-  );
-
-  // What Delete and typing do per cell type. canEdit gates edit-mode entry;
-  // Task 10 broadens it to the time/aula columns (time → always; aula → only
-  // when the slot has a schedule, else setHint) and adds their delete handling.
-  const canEdit = useCallback((a: CellAddress): boolean => a.col === "prof", []);
-  const onDeleteCell = useCallback(
-    (a: CellAddress) => {
-      if (a.col === "prof") {
-        const row = rowsRef.current.find((r) => r.enrollmentId === a.enrollmentId);
-        if (row && row.professorId !== null) commitProfessor(a.enrollmentId, null, "none");
-      }
-    },
-    [rowsRef, commitProfessor],
+    [setActive, canEdit, startEdit],
   );
 
   useEffect(() => {
@@ -583,6 +557,9 @@ export default function ScheduleAssignment() {
             onGridBlur={onGridBlur}
             rowStatuses={rowStatuses}
             onCommitProfessor={commitProfessor}
+            onCommitTime={commitTime}
+            onCancelTime={cancelTime}
+            onCommitAula={commitAula}
             onCancelEdit={cancelEdit}
             gridRef={gridRef}
           />
@@ -590,6 +567,13 @@ export default function ScheduleAssignment() {
       </div>
 
       <GridToast show={toast.show} message={toast.message} onClose={dismissToast} />
+      <GridToast
+        show={undoToast.show}
+        message={undoToast.message}
+        variant="info"
+        action={undoToast.onUndo ? { label: "Deshacer", onClick: handleUndo } : undefined}
+        onClose={dismissUndo}
+      />
     </div>
   );
 }

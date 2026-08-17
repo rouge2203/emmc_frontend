@@ -8,7 +8,15 @@
 import { memo } from "react";
 import type { ReactNode } from "react";
 import { formatSlotLabel } from "./time";
-import type { CellAddress, CellSaveState, ColKey, GridRow, MoveDir } from "./types";
+import type {
+  CellAddress,
+  CellSaveState,
+  ColKey,
+  GridRow,
+  MoveDir,
+  SlotIndex,
+  TimeRangeValue,
+} from "./types";
 import type { GridRefData } from "./useGridData";
 import type { CellProps, RenderCell } from "./cellIds";
 import ProfessorCell from "./cells/ProfessorCell";
@@ -31,6 +39,24 @@ export interface GridRowViewProps {
   onCellMouseDown: (address: CellAddress) => void;
   onCellDoubleClick: (address: CellAddress) => void;
   onCommitProfessor: (enrollmentId: number, teacherId: number | null, move: MoveDir) => void;
+  onCommitTime: (
+    enrollmentId: number,
+    slotIndex: SlotIndex,
+    value: TimeRangeValue,
+    move: MoveDir,
+  ) => void;
+  onCancelTime: (
+    enrollmentId: number,
+    slotIndex: SlotIndex,
+    move: MoveDir,
+    error?: string,
+  ) => void;
+  onCommitAula: (
+    enrollmentId: number,
+    slotIndex: SlotIndex,
+    classroomId: number | null,
+    move: MoveDir,
+  ) => void;
   onCancelEdit: (move: MoveDir) => void;
   renderCell?: RenderCell;
 }
@@ -46,6 +72,9 @@ function GridRowViewInner({
   onCellMouseDown,
   onCellDoubleClick,
   onCommitProfessor,
+  onCommitTime,
+  onCancelTime,
+  onCommitAula,
   onCancelEdit,
   renderCell,
 }: GridRowViewProps) {
@@ -62,6 +91,9 @@ function GridRowViewInner({
       onMouseDown: onCellMouseDown,
       onDoubleClick: onCellDoubleClick,
       onCommitProfessor,
+      onCommitTime,
+      onCancelTime,
+      onCommitAula,
       onCancelEdit,
       refData,
     };
