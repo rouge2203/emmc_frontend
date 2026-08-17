@@ -22,6 +22,7 @@ import {
   XMarkIcon,
   BellIcon,
   BanknotesIcon,
+  TableCellsIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronRightIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 import { HomeIcon as HomeIconSolid } from "@heroicons/react/20/solid";
@@ -138,6 +139,12 @@ const navigation = [
     current: false,
   },
   {
+    name: "Asignación de Horarios",
+    href: "/admin/asignacion-de-horarios",
+    icon: TableCellsIcon,
+    current: false,
+  },
+  {
     name: "Noticias",
     href: "/admin/news",
     icon: FolderIcon,
@@ -204,6 +211,7 @@ export default function AdminLayout() {
       "enrollment-grades": "Notas del curso",
       "centro-de-pagos": "Centro de Pagos",
       "calendario-de-cursos": "Calendario de Cursos",
+      "asignacion-de-horarios": "Asignación de Horarios",
       news: "Noticias",
     };
 
