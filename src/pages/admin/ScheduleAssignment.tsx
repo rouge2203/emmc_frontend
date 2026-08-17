@@ -15,11 +15,14 @@ import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import ScheduleGrid from "../../components/schedule-grid/ScheduleGrid";
 import GridToast from "../../components/schedule-grid/GridToast";
 import KeyboardLegend from "../../components/schedule-grid/KeyboardLegend";
+import NotifyPendingButton from "../../components/schedule-grid/NotifyPendingButton";
+import NotifyPreviewDialog from "../../components/schedule-grid/NotifyPreviewDialog";
 import { computeConflicts } from "../../components/schedule-grid/conflicts";
 import { useGridData } from "../../components/schedule-grid/useGridData";
 import { useGridNavigation } from "../../components/schedule-grid/useGridNavigation";
 import { useAutosave } from "../../components/schedule-grid/useAutosave";
 import { useGridCommits } from "../../components/schedule-grid/useGridCommits";
+import { useNotificationSummary } from "../../components/schedule-grid/useNotificationSummary";
 import { filterRows, liveCounts } from "../../components/schedule-grid/filters";
 import type { GridFilters } from "../../components/schedule-grid/filters";
 import type { CellAddress } from "../../components/schedule-grid/types";
@@ -92,10 +95,39 @@ export default function ScheduleAssignment() {
     registerNavActions,
   } = useGridNavigation(visibleRows);
 
-  // onSaved is a Task 12 placeholder (refresh the notification summary).
-  const { save, rowStatuses, setHint, setTransientError, toast, dismissToast } = useAutosave({
-    onSaved: () => {},
-  });
+  // The pending-notification summary/button/preview + per-row envelope icon.
+  // Polls on its own; a save that leaves a row pending (see useGridCommits)
+  // triggers a debounced refresh so the count/preview/icon catch up quickly
+  // without every keystroke hammering the endpoint.
+  const notif = useNotificationSummary();
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const { save, rowStatuses, setHint, setTransientError, toast, dismissToast, showToast } =
+    useAutosave({ onSaved: notif.refresh });
+
+  // Reuse the page's autosave error toast for send() failures (load-summary
+  // failures share the same `error` field but are comparatively rare/quiet —
+  // this only re-fires when the message actually changes, so a long-lived
+  // polling outage doesn't spam the toast every cycle).
+  useEffect(() => {
+    if (notif.error) showToast(notif.error, "error");
+  }, [notif.error, showToast]);
+
+  // A batch that finished cleanly (no failures) means every row that was
+  // pending when it started is now genuinely notified server-side — clear the
+  // envelope icons locally instead of calling reload() (which would reorder
+  // rows mid-assignment). A batch with failures, or one still visible from
+  // before this admin's tab opened, leaves the icons as-is; a later
+  // "Recargar" resyncs them from the server. This can, in principle, also
+  // clear a row that became pending again *after* the batch was dispatched
+  // (a rare race) — accepted per the brief; Recargar is the source of truth.
+  useEffect(() => {
+    if (notif.justFinished?.status === "done" && notif.justFinished.failed_count === 0) {
+      setRows((current) =>
+        current.map((r) => (r.notificationPending ? { ...r, notificationPending: false } : r)),
+      );
+    }
+  }, [notif.justFinished, setRows]);
 
   const [gridHasFocus, setGridHasFocus] = useState(false);
   const onGridFocus = useCallback(() => setGridHasFocus(true), []);
@@ -220,10 +252,17 @@ export default function ScheduleAssignment() {
             </p>
           </div>
         </div>
-        <div className="mt-4 sm:mt-0 sm:ml-6 sm:flex-none flex items-center gap-3">
-          <span className="text-xs text-gray-500">
+        <div className="mt-4 sm:mt-0 sm:ml-6 sm:flex-none flex items-start gap-3">
+          <span className="mt-2 text-xs text-gray-500">
             {visibleRows.length} de {rows.length} matrículas
           </span>
+          <NotifyPendingButton
+            summary={notif.summary}
+            sending={notif.sending}
+            justFinished={notif.justFinished}
+            onSend={notif.send}
+            onOpenPreview={() => setPreviewOpen(true)}
+          />
           <button
             type="button"
             onClick={() => void reload()}
@@ -577,13 +616,25 @@ export default function ScheduleAssignment() {
         )}
       </div>
 
-      <GridToast show={toast.show} message={toast.message} onClose={dismissToast} />
+      <GridToast
+        show={toast.show}
+        message={toast.message}
+        variant={toast.variant}
+        onClose={dismissToast}
+      />
       <GridToast
         show={undoToast.show}
         message={undoToast.message}
         variant="info"
         action={undoToast.onUndo ? { label: "Deshacer", onClick: handleUndo } : undefined}
         onClose={dismissUndo}
+      />
+      <NotifyPreviewDialog
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        summary={notif.summary}
+        sending={notif.sending}
+        onSend={notif.send}
       />
     </div>
   );

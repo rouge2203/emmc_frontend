@@ -119,6 +119,10 @@ export function useGridCommits({
       const prev = findRow(enrollmentId);
       const prevId = prev?.professorId ?? null;
       const prevName = prev?.professorName ?? null;
+      const prevNotif = prev?.notificationPending ?? false;
+      // Mirrors the backend's mark_schedule_notification: a professor change
+      // only flags the row pending when it already has >=1 slot (Task 12).
+      const hasSlot = prev?.slots.some((s) => s !== null) ?? false;
 
       applyRows((current) =>
         current.map((r) =>
@@ -127,6 +131,7 @@ export function useGridCommits({
                 ...r,
                 professorId: teacherId,
                 professorName: teacher ? `${teacher.last_name} ${teacher.first_name}` : null,
+                notificationPending: hasSlot ? true : r.notificationPending,
               }
             : r,
         ),
@@ -136,7 +141,12 @@ export function useGridCommits({
         applyRows((current) =>
           current.map((r) =>
             r.enrollmentId === enrollmentId
-              ? { ...r, professorId: prevId, professorName: prevName }
+              ? {
+                  ...r,
+                  professorId: prevId,
+                  professorName: prevName,
+                  notificationPending: prevNotif,
+                }
               : r,
           ),
         );
@@ -227,6 +237,22 @@ export function useGridCommits({
         onSuccess: (r) => {
           const id = r.data?.schedule?.id;
           if (!id) return;
+          // Orphan guard: the user may have deleted this horario while the
+          // POST was in flight. That delete was a no-op server-side (the slot
+          // still had scheduleId:null at the time, so onDeleteCell's request
+          // was just Promise.resolve()) — so the row the server just created
+          // for `id` would otherwise never be cleaned up. If the target slot
+          // is (still) null now, enqueue a same-serialKey DELETE for it
+          // instead of writing the id into a slot that no longer exists.
+          if (findRow(enrollmentId)?.slots[slotIndex] === null) {
+            save({
+              serialKey: `enr:${enrollmentId}`,
+              cellKey: `${enrollmentId}:t${slotIndex}`,
+              request: () => axiosPrivate.delete(SCHEDULE_URL, { data: { schedule_id: id } }),
+              revert: () => {},
+            });
+            return;
+          }
           applyRows((current) =>
             current.map((row) =>
               row.enrollmentId === enrollmentId
@@ -252,7 +278,8 @@ export function useGridCommits({
   // --- Aula (classroom) -----------------------------------------------------
   const commitAula = useCallback(
     (enrollmentId: number, slotIndex: SlotIndex, classroomId: number | null, dir: MoveDir) => {
-      const slot = findRow(enrollmentId)?.slots[slotIndex] ?? null;
+      const row = findRow(enrollmentId);
+      const slot = row?.slots[slotIndex] ?? null;
       // No slot to attach the aula to → hint and bail (defensive; canEdit gates
       // edit-mode entry on empty aula cells).
       if (!slot) {
@@ -263,11 +290,18 @@ export function useGridCommits({
       }
 
       const prevClassroom = slot.classroomId;
+      const prevNotif = row?.notificationPending ?? false;
 
       applyRows((current) =>
         current.map((r) =>
           r.enrollmentId === enrollmentId
-            ? { ...r, slots: mapSlot(r.slots, slotIndex, (s) => (s ? { ...s, classroomId } : s)) }
+            ? {
+                ...r,
+                slots: mapSlot(r.slots, slotIndex, (s) => (s ? { ...s, classroomId } : s)),
+                // The slot we just attached an aula to already counts as >=1
+                // slot on this row → mark it pending (Task 12).
+                notificationPending: true,
+              }
             : r,
         ),
       );
@@ -281,6 +315,7 @@ export function useGridCommits({
                   slots: mapSlot(r.slots, slotIndex, (s) =>
                     s ? { ...s, classroomId: prevClassroom } : s,
                   ),
+                  notificationPending: prevNotif,
                 }
               : r,
           ),

@@ -21,6 +21,7 @@ const TRANSIENT_ERROR_CLEAR_MS = 3000;
 const TOAST_HIDE_MS = 5000;
 
 type RowStatuses = Partial<Record<ColKey, CellSaveState>>;
+export type ToastVariant = "error" | "info";
 
 export interface UseAutosaveResult {
   save: <T>(job: AutosaveJob<T>) => void;
@@ -31,8 +32,10 @@ export interface UseAutosaveResult {
   setTransientError: (enrollmentId: number, col: ColKey, message: string) => void;
   idle: () => Promise<void>;
   pendingCount: () => number;
-  toast: { show: boolean; message: string };
+  toast: { show: boolean; message: string; variant: ToastVariant };
   dismissToast: () => void;
+  /** Reuse the page-level toast for a page-driven message (e.g. Task 12's notification send errors). */
+  showToast: (message: string, variant?: ToastVariant) => void;
 }
 
 /** `${enrollmentId}:${col}` → its parts. col may itself contain no ':'. */
@@ -46,9 +49,10 @@ const parseCellKey = (cellKey: string): { enrollmentId: number; col: ColKey } =>
 
 export function useAutosave(opts: { onSaved?: () => void }): UseAutosaveResult {
   const [statuses, setStatuses] = useState<Map<number, RowStatuses>>(() => new Map());
-  const [toast, setToast] = useState<{ show: boolean; message: string }>({
+  const [toast, setToast] = useState<{ show: boolean; message: string; variant: ToastVariant }>({
     show: false,
     message: "",
+    variant: "error",
   });
 
   const clearTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -96,8 +100,8 @@ export function useAutosave(opts: { onSaved?: () => void }): UseAutosaveResult {
     [setCellStatus],
   );
 
-  const showToast = useCallback((message: string) => {
-    setToast({ show: true, message });
+  const showToast = useCallback((message: string, variant: ToastVariant = "error") => {
+    setToast({ show: true, message, variant });
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => {
       setToast((t) => ({ ...t, show: false }));
@@ -181,5 +185,6 @@ export function useAutosave(opts: { onSaved?: () => void }): UseAutosaveResult {
     pendingCount,
     toast,
     dismissToast,
+    showToast,
   };
 }

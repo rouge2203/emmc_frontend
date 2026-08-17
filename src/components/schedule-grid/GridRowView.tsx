@@ -7,6 +7,7 @@
 // aware cells; when omitted the built-in cells render.
 import { memo } from "react";
 import type { ReactNode } from "react";
+import { EnvelopeIcon } from "@heroicons/react/16/solid";
 import { formatSlotLabel } from "./time";
 import {
   colSlotIndex,
@@ -133,8 +134,13 @@ function GridRowViewInner({
               {row.year} · {row.periodDisplay}
             </div>
           </div>
-          {/* Task 12: pending-notification icon slot */}
-          <div className="shrink-0" />
+          <div className="shrink-0">
+            {row.notificationPending && (
+              <span title="Pendiente de notificar">
+                <EnvelopeIcon className="size-3.5 text-amber-500" aria-hidden="true" />
+              </span>
+            )}
+          </div>
         </div>
       </td>
 
