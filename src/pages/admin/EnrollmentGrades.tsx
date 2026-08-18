@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -6,6 +7,7 @@ import {
   DialogPanel,
   DialogTitle,
   DialogBackdrop,
+  Transition,
 } from "@headlessui/react";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import {
@@ -15,6 +17,7 @@ import {
   FolderIcon,
   PlusIcon,
   CheckCircleIcon,
+  XCircleIcon,
   XMarkIcon,
   EllipsisVerticalIcon,
   DocumentArrowDownIcon,
@@ -78,6 +81,13 @@ interface CourseData {
       description: string | null;
     };
     career_name: string | null;
+    is_matricula: boolean;
+    assigned_course: {
+      id: number;
+      name: string;
+      code: string;
+      career_name?: string | null;
+    } | null;
     student: {
       id: number;
       first_name: string;
@@ -180,6 +190,18 @@ export default function EnrollmentGrades() {
 
   const [submitting, setSubmitting] = useState(false);
 
+  // Assign-subject (for matricula enrollments)
+  const [assignCourseDialogOpen, setAssignCourseDialogOpen] = useState(false);
+  const [assignCourseSearch, setAssignCourseSearch] = useState("");
+  const [assignCourseOptions, setAssignCourseOptions] = useState<
+    { id: number; code: string; name: string; is_matricula: boolean }[]
+  >([]);
+
+  // Notification states
+  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [showErrorNotification, setShowErrorNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState("");
+
   // Read-only mode when status is not "cursando"
   const isReadOnly = courseData?.enrollment.status !== "cursando";
 
@@ -206,6 +228,64 @@ export default function EnrollmentGrades() {
       fetchCourseData();
     }
   }, [enrollmentId]);
+
+  // Load the course catalog (non-matricula subjects) for the assign-subject dialog
+  useEffect(() => {
+    if (!assignCourseDialogOpen) return;
+    const controller = new AbortController();
+    const fetchOptions = async () => {
+      try {
+        const response = await axiosPrivate.get(
+          "courses/list-courses-for-enrollment",
+          {
+            params: assignCourseSearch ? { search: assignCourseSearch } : {},
+            signal: controller.signal,
+          },
+        );
+        setAssignCourseOptions(
+          (response.data.courses || []).filter(
+            (c: { is_matricula: boolean }) => !c.is_matricula,
+          ),
+        );
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          console.error("Error fetching courses:", err);
+        }
+      }
+    };
+    fetchOptions();
+    return () => controller.abort();
+  }, [assignCourseDialogOpen, assignCourseSearch]);
+
+  const handleAssignCourse = async (assignedCourseId: number | null) => {
+    setSubmitting(true);
+    try {
+      await axiosPrivate.post(
+        `courses/teacher-assign-course/${enrollmentId}`,
+        { assigned_course_id: assignedCourseId },
+      );
+      setAssignCourseDialogOpen(false);
+      setAssignCourseSearch("");
+      setNotificationMessage(
+        assignedCourseId
+          ? "Asignatura asignada correctamente"
+          : "Asignatura removida correctamente",
+      );
+      setShowSuccessNotification(true);
+      setTimeout(() => setShowSuccessNotification(false), 5000);
+      fetchCourseData();
+    } catch (err: unknown) {
+      console.error("Error assigning course:", err);
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data
+          ?.error || "Error al asignar la asignatura";
+      setNotificationMessage(message);
+      setShowErrorNotification(true);
+      setTimeout(() => setShowErrorNotification(false), 5000);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const openAssignmentDrawer = (week: number, assignment?: Assignment) => {
     if (isReadOnly) return;
@@ -367,8 +447,15 @@ export default function EnrollmentGrades() {
       });
       setFinalizeDialogOpen(false);
       fetchCourseData();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Error finalizing enrollment:", err);
+      setFinalizeDialogOpen(false);
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data
+          ?.error || "Error al cerrar la calificación";
+      setNotificationMessage(message);
+      setShowErrorNotification(true);
+      setTimeout(() => setShowErrorNotification(false), 5000);
     } finally {
       setSubmitting(false);
     }
@@ -567,6 +654,50 @@ export default function EnrollmentGrades() {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Matricula: assign the actual subject before closing the grade */}
+        {enrollment.is_matricula && (
+          <div
+            className={`mb-8 rounded-lg border px-4 py-4 ${
+              enrollment.assigned_course
+                ? "border-green-200 bg-green-50"
+                : "border-yellow-200 bg-yellow-50"
+            }`}
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm">
+                {enrollment.assigned_course ? (
+                  <p className="text-green-800">
+                    Asignatura asignada:{" "}
+                    <span className="font-semibold">
+                      {enrollment.assigned_course.name} (
+                      {enrollment.assigned_course.code})
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-yellow-800">
+                    Esta es una matrícula. Asigne la asignatura específica antes
+                    de cerrar la calificación.
+                  </p>
+                )}
+              </div>
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAssignCourseSearch("");
+                    setAssignCourseDialogOpen(true);
+                  }}
+                  className="shrink-0 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
+                >
+                  {enrollment.assigned_course
+                    ? "Cambiar asignatura"
+                    : "Asignar asignatura"}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Enrollment Info Cards */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
           <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -1538,6 +1669,180 @@ export default function EnrollmentGrades() {
           </div>
         </div>
       </Dialog>
+
+      {/* Assign Subject Dialog (for matricula enrollments) */}
+      <Dialog
+        open={assignCourseDialogOpen}
+        onClose={() => setAssignCourseDialogOpen(false)}
+        className="relative z-50"
+      >
+        <DialogBackdrop className="fixed inset-0 bg-gray-500/75" />
+        <div className="fixed inset-0 z-50 w-screen overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <DialogPanel className="relative w-full max-w-lg transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl sm:my-8 sm:p-6">
+              <div className="absolute right-0 top-0 pr-4 pt-4">
+                <button
+                  type="button"
+                  className="rounded-md bg-white text-gray-400 hover:text-gray-500"
+                  onClick={() => setAssignCourseDialogOpen(false)}
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <DialogTitle
+                as="h3"
+                className="text-base font-semibold text-gray-900"
+              >
+                Asignar asignatura
+              </DialogTitle>
+              <p className="mt-1 text-sm text-gray-500">
+                Seleccione la asignatura específica para esta matrícula.
+              </p>
+              <div className="mt-4">
+                <input
+                  type="text"
+                  value={assignCourseSearch}
+                  onChange={(e) => setAssignCourseSearch(e.target.value)}
+                  placeholder="Buscar por código o nombre..."
+                  className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                />
+                <ul className="mt-2 max-h-64 overflow-auto divide-y divide-gray-100 rounded-md border border-gray-200">
+                  {assignCourseOptions.length === 0 ? (
+                    <li className="px-3 py-3 text-sm text-gray-500">
+                      No hay asignaturas que coincidan.
+                    </li>
+                  ) : (
+                    assignCourseOptions.map((c) => (
+                      <li key={c.id}>
+                        <button
+                          type="button"
+                          disabled={submitting}
+                          onClick={() => handleAssignCourse(c.id)}
+                          className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          <span className="font-medium text-gray-900">
+                            {c.name}
+                          </span>
+                          <span className="text-xs text-gray-500">{c.code}</span>
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
+              <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                {courseData?.enrollment.assigned_course && (
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => handleAssignCourse(null)}
+                    className="inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-red-600 shadow-xs ring-1 ring-inset ring-red-300 hover:bg-red-50 disabled:opacity-50 sm:ml-3 sm:w-auto"
+                  >
+                    Quitar asignatura
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setAssignCourseDialogOpen(false)}
+                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </DialogPanel>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Success Notification */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <div
+            aria-live="assertive"
+            className="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:items-start sm:p-6 z-[9999]"
+          >
+            <div className="flex w-full flex-col items-center space-y-4 sm:items-end">
+              <Transition show={showSuccessNotification}>
+                <div className="pointer-events-auto w-full max-w-sm rounded-lg bg-white shadow-lg outline-1 outline-black/5 ring-1 ring-black/5 transition data-closed:opacity-0 data-enter:transform data-enter:duration-300 data-enter:ease-out data-closed:data-enter:translate-y-2 data-leave:duration-100 data-leave:ease-in data-closed:data-enter:sm:translate-x-2 data-closed:data-enter:sm:translate-y-0">
+                  <div className="p-4">
+                    <div className="flex items-start">
+                      <div className="shrink-0">
+                        <CheckCircleIcon
+                          aria-hidden="true"
+                          className="size-6 text-primary"
+                        />
+                      </div>
+                      <div className="ml-3 w-0 flex-1 pt-0.5">
+                        <p className="text-sm font-medium text-gray-900">
+                          ¡Éxito!
+                        </p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {notificationMessage}
+                        </p>
+                      </div>
+                      <div className="ml-4 flex shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setShowSuccessNotification(false)}
+                          className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
+                        >
+                          <span className="sr-only">Cerrar</span>
+                          <XMarkIcon aria-hidden="true" className="size-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Transition>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {/* Error Notification */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <div
+            aria-live="assertive"
+            className="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:items-start sm:p-6 z-[9999]"
+          >
+            <div className="flex w-full flex-col items-center space-y-4 sm:items-end">
+              <Transition show={showErrorNotification}>
+                <div className="pointer-events-auto w-full max-w-sm rounded-lg bg-white shadow-lg outline-1 outline-black/5 ring-1 ring-black/5 transition data-closed:opacity-0 data-enter:transform data-enter:duration-300 data-enter:ease-out data-closed:data-enter:translate-y-2 data-leave:duration-100 data-leave:ease-in data-closed:data-enter:sm:translate-x-2 data-closed:data-enter:sm:translate-y-0">
+                  <div className="p-4">
+                    <div className="flex items-start">
+                      <div className="shrink-0">
+                        <XCircleIcon
+                          aria-hidden="true"
+                          className="size-6 text-red-600"
+                        />
+                      </div>
+                      <div className="ml-3 w-0 flex-1 pt-0.5">
+                        <p className="text-sm font-medium text-gray-900">
+                          Error
+                        </p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {notificationMessage}
+                        </p>
+                      </div>
+                      <div className="ml-4 flex shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setShowErrorNotification(false)}
+                          className="inline-flex hover:cursor-pointer rounded-md text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-gray-900"
+                        >
+                          <span className="sr-only">Cerrar</span>
+                          <XMarkIcon aria-hidden="true" className="size-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Transition>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
