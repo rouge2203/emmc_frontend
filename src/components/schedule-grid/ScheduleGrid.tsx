@@ -28,7 +28,7 @@ export interface ScheduleGridProps {
   /** Grid container has focus → primary selection ring; else gray inactive ring. */
   gridHasFocus: boolean;
   onCellMouseDown: (address: CellAddress) => void;
-  onCellDoubleClick: (address: CellAddress) => void;
+  onCellClick: (address: CellAddress) => void;
   onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
   onGridFocus: (e: FocusEvent<HTMLDivElement>) => void;
   onGridBlur: (e: FocusEvent<HTMLDivElement>) => void;
@@ -69,7 +69,7 @@ export default function ScheduleGrid({
   editing,
   gridHasFocus,
   onCellMouseDown,
-  onCellDoubleClick,
+  onCellClick,
   onKeyDown,
   onGridFocus,
   onGridBlur,
@@ -130,12 +130,13 @@ export default function ScheduleGrid({
                 activeCol={activeCol}
                 editingCol={editingCol}
                 editSeed={editingCol ? (editing?.seed ?? null) : null}
+                editViaMouse={editingCol ? !!editing?.viaMouse : false}
                 activeFocused={isActiveRow ? gridHasFocus : false}
                 statuses={rowStatuses(row.enrollmentId)}
                 conflicts={conflicts.get(row.enrollmentId)}
                 refData={refData}
                 onCellMouseDown={onCellMouseDown}
-                onCellDoubleClick={onCellDoubleClick}
+                onCellClick={onCellClick}
                 onCommitProfessor={onCommitProfessor}
                 onCommitTime={onCommitTime}
                 onCancelTime={onCancelTime}

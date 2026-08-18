@@ -63,6 +63,12 @@ export const format12h = (min: number): string => {
   return `${String(hour12).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${period}`;
 };
 
+/** Formats minutes since midnight as "9:00 AM" (no leading zero on the hour). */
+export const format12hShort = (min: number): string => {
+  const { hour12, minute, period } = to12h(min);
+  return `${hour12}:${String(minute).padStart(2, "0")} ${period}`;
+};
+
 /** "00:00 – 00:00" is the placeholder used for unassigned horarios. */
 const PLACEHOLDER_RANGE = "00:00 – 00:00";
 
@@ -76,6 +82,21 @@ export const formatSlotLabel = (slot: Slot | null): { text: string; muted: boole
     return { text: `${slot.day} ${PLACEHOLDER_RANGE}`, muted: true };
   }
   return { text: PLACEHOLDER_RANGE, muted: true };
+};
+
+/**
+ * Nav-mode label for a horario's select-styled box: "L · 9:00 AM – 10:00 AM"
+ * (day code · 12h times without a leading zero on the hour), or the muted
+ * "Día · hora" placeholder when the slot is empty/incomplete.
+ */
+export const formatSlotBox = (slot: Slot | null): { text: string; muted: boolean } => {
+  if (slot && slot.day && slot.start !== null && slot.end !== null) {
+    return {
+      text: `${slot.day} · ${format12hShort(slot.start)} – ${format12hShort(slot.end)}`,
+      muted: false,
+    };
+  }
+  return { text: "Día · hora", muted: true };
 };
 
 // When an admin picks an hour on an empty field, guess the half of the day the

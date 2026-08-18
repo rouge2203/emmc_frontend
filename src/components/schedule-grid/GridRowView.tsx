@@ -34,6 +34,8 @@ export interface GridRowViewProps {
   editingCol: ColKey | null;
   /** Seed char for the editing cell (only meaningful when editingCol != null). */
   editSeed: string | null;
+  /** Whether the editing cell was opened by a mouse click (→ showPicker). */
+  editViaMouse: boolean;
   /** Grid container focus state, forwarded to the active cell for its ring. */
   activeFocused: boolean;
   /** This row's autosave statuses, keyed by col. */
@@ -46,7 +48,7 @@ export interface GridRowViewProps {
   conflicts?: RowConflicts;
   refData: GridRefData;
   onCellMouseDown: (address: CellAddress) => void;
-  onCellDoubleClick: (address: CellAddress) => void;
+  onCellClick: (address: CellAddress) => void;
   onCommitProfessor: (enrollmentId: number, teacherId: number | null, move: MoveDir) => void;
   onCommitTime: (
     enrollmentId: number,
@@ -70,17 +72,21 @@ export interface GridRowViewProps {
   renderCell?: RenderCell;
 }
 
+const PERIOD_ROMAN = ["", "I", "II", "III"];
+const periodRoman = (period: number): string => PERIOD_ROMAN[period] ?? String(period);
+
 function GridRowViewInner({
   row,
   activeCol,
   editingCol,
   editSeed,
+  editViaMouse,
   activeFocused,
   statuses,
   conflicts,
   refData,
   onCellMouseDown,
-  onCellDoubleClick,
+  onCellClick,
   onCommitProfessor,
   onCommitTime,
   onCancelTime,
@@ -98,16 +104,16 @@ function GridRowViewInner({
       focused: activeFocused,
       editing,
       seed: editing ? editSeed : null,
+      viaMouse: editing ? editViaMouse : false,
       saveState: statuses?.[col],
       onMouseDown: onCellMouseDown,
-      onDoubleClick: onCellDoubleClick,
+      onClick: onCellClick,
       onCommitProfessor,
       onCommitTime,
       onCancelTime,
       onCommitAula,
       onCancelEdit,
       slotConflicts: isTime ? conflicts?.slots[colSlotIndex(col)] : undefined,
-      profConflicts: col === "prof" ? conflicts?.prof : undefined,
       refData,
     };
     if (renderCell) return renderCell(props);
@@ -116,6 +122,8 @@ function GridRowViewInner({
     return <AulaCell {...props} />;
   };
 
+  const infoLine = `${row.courseCode} · ${row.courseName} (Período ${periodRoman(row.period)})`;
+
   return (
     <tr>
       {/* Info */}
@@ -123,15 +131,8 @@ function GridRowViewInner({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="font-semibold text-gray-900">{row.studentName}</div>
-            <div className="text-xs text-gray-500">{row.carnet ?? "—"}</div>
-            <div
-              className="text-xs text-gray-600 truncate"
-              title={`${row.courseCode} · ${row.courseName}`}
-            >
-              {row.courseCode} · {row.courseName}
-            </div>
-            <div className="text-xs text-gray-400">
-              {row.year} · {row.periodDisplay}
+            <div className="text-xs text-gray-600 truncate" title={infoLine}>
+              {infoLine}
             </div>
           </div>
           <div className="shrink-0">
@@ -152,7 +153,7 @@ function GridRowViewInner({
         const timeCol = `t${i}` as ColKey;
         const aulaCol = `a${i}` as ColKey;
         return (
-          <td key={i} className="align-top p-2 border-b border-gray-100 min-w-56">
+          <td key={i} className="align-top p-2 border-b border-gray-100 min-w-[15rem]">
             <div className="flex flex-col gap-1">
               {cellFor(timeCol)}
               {cellFor(aulaCol)}

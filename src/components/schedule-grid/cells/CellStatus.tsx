@@ -1,6 +1,6 @@
 // Tiny per-cell autosave indicator icon/dot. Rendered INLINE (positioning is
-// owned by CellCorner, which places it in the absolute top-right flex row next
-// to a possible ConflictBadge so the two never overlap):
+// owned by SelectBox, which places it just left of the chevron next to a
+// possible ConflictBadge so the two never overlap):
 //   saving → spinner · saved → green check · error → red dot (title=message)
 //   hint   → amber dot (title=message)
 // The cell's error ring / saved flash still come from cellClass.

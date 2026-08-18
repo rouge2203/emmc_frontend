@@ -1,15 +1,16 @@
-// Aula sub-cell (bottom half of a horario column). Nav mode: resolves the
-// slot's classroom id against refData.classroomById and shows its display_name,
-// falling back to a muted "Aula" when there is no slot or classroom, plus the
-// autosave CellStatus. Edit mode: mounts AulaEditor (a numeric-first combobox),
-// wiring the row's commit/cancel callbacks so navigation and autosave stay in
-// the page/hooks.
+// Aula sub-cell (bottom half of a horario column). Nav mode: a select-styled
+// box with the slot's classroom display name, or a muted "Aula" when there is
+// no slot or classroom, plus the autosave status. Edit mode: a native <select>
+// (Aula + every classroom as "Aula N — name"); an empty slot is not editable
+// (canEdit shows the "Primero asigne día y hora" hint instead).
+import { useMemo } from "react";
 import { colSlotIndex } from "../types";
 import { cellClass, cellDomId } from "../cellIds";
 import type { CellProps } from "../cellIds";
-import CellCorner from "./CellCorner";
+import SelectBox from "./SelectBox";
 import CellMessage from "./CellMessage";
-import AulaEditor from "./AulaEditor";
+import SingleSelectEditor from "./SingleSelectEditor";
+import type { SelectOption } from "./SingleSelectEditor";
 
 export default function AulaCell({
   row,
@@ -18,9 +19,10 @@ export default function AulaCell({
   focused,
   editing,
   seed,
+  viaMouse,
   saveState,
   onMouseDown,
-  onDoubleClick,
+  onClick,
   onCommitAula,
   onCancelEdit,
   refData,
@@ -30,31 +32,40 @@ export default function AulaCell({
   const classroom =
     slot && slot.classroomId !== null ? refData?.classroomById.get(slot.classroomId) : undefined;
   const label = classroom?.display_name ?? "Aula";
-  const muted = !classroom;
   const address = { enrollmentId: row.enrollmentId, col };
+
+  const options = useMemo<SelectOption[]>(
+    () => [
+      { value: "", label: "Aula" },
+      ...(refData?.classrooms ?? []).map((c) => ({ value: String(c.id), label: c.display_name })),
+    ],
+    [refData?.classrooms],
+  );
+
   return (
     <div
       id={cellDomId(address)}
       role="gridcell"
       data-col={col}
       onMouseDown={editing ? undefined : () => onMouseDown(address)}
-      onDoubleClick={editing ? undefined : () => onDoubleClick?.(address)}
+      onClick={editing ? undefined : () => onClick?.(address)}
       className={cellClass({ active, focused, status: saveState?.status })}
     >
-      {editing && refData ? (
-        <AulaEditor
-          current={slot?.classroomId ?? null}
-          classrooms={refData.classrooms}
+      {editing && refData && slot ? (
+        <SingleSelectEditor
+          options={options}
+          current={slot.classroomId !== null ? String(slot.classroomId) : ""}
           seed={seed ?? null}
-          onCommit={(classroomId, move) =>
-            onCommitAula?.(row.enrollmentId, slotIndex, classroomId, move)
+          viaMouse={!!viaMouse}
+          ariaLabel="Aula"
+          onCommit={(value, move) =>
+            onCommitAula?.(row.enrollmentId, slotIndex, value === "" ? null : Number(value), move)
           }
           onCancel={(move) => onCancelEdit?.(move)}
         />
       ) : (
         <>
-          <span className={`text-xs ${muted ? "text-gray-400" : "text-gray-600"}`}>{label}</span>
-          <CellCorner saveState={saveState} />
+          <SelectBox text={label} muted={!classroom} saveState={saveState} />
           <CellMessage state={saveState} />
         </>
       )}

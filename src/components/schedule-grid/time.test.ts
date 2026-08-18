@@ -4,7 +4,9 @@ import {
   defaultPeriodForHour,
   dayIndex,
   format12h,
+  format12hShort,
   formatConflictRange,
+  formatSlotBox,
   formatSlotLabel,
   from12h,
   MIN_DURATION_MINUTES,
@@ -75,6 +77,28 @@ describe("format12h", () => {
   });
   it("formats 0 (midnight) as 12:00 AM", () => {
     expect(format12h(0)).toBe("12:00 AM");
+  });
+});
+
+describe("format12hShort", () => {
+  it("drops the leading zero on the hour", () => {
+    expect(format12hShort(540)).toBe("9:00 AM");
+  });
+  it("keeps two-digit hours and pads minutes", () => {
+    expect(format12hShort(645)).toBe("10:45 AM");
+    expect(format12hShort(720)).toBe("12:00 PM");
+  });
+});
+
+describe("formatSlotBox", () => {
+  it("formats a full slot as 'L · 9:00 AM – 10:00 AM'", () => {
+    const slot: Slot = { scheduleId: 1, day: "L", start: 540, end: 600, classroomId: null };
+    expect(formatSlotBox(slot)).toEqual({ text: "L · 9:00 AM – 10:00 AM", muted: false });
+  });
+  it("shows the muted 'Día · hora' placeholder for null/incomplete slots", () => {
+    expect(formatSlotBox(null)).toEqual({ text: "Día · hora", muted: true });
+    const dayOnly: Slot = { scheduleId: 1, day: "L", start: null, end: null, classroomId: null };
+    expect(formatSlotBox(dayOnly)).toEqual({ text: "Día · hora", muted: true });
   });
 });
 
@@ -162,6 +186,18 @@ describe("validateRange", () => {
   it("accepts a 30 minute range and returns the value", () => {
     const result = validateRange({ day: "L", start: 540, end: 570 });
     expect(result).toEqual({ ok: true, value: { day: "L", start: 540, end: 570 } });
+  });
+  it("accepts two touching ranges as individually valid (11-12 then 12-13)", () => {
+    // Touching horarios are allowed: each range is valid on its own, and the
+    // aula sweep (conflicts.ts) treats a shared boundary as non-overlapping.
+    expect(validateRange({ day: "L", start: 660, end: 720 })).toEqual({
+      ok: true,
+      value: { day: "L", start: 660, end: 720 },
+    });
+    expect(validateRange({ day: "L", start: 720, end: 780 })).toEqual({
+      ok: true,
+      value: { day: "L", start: 720, end: 780 },
+    });
   });
   it("exposes the minimum duration constant used above", () => {
     expect(MIN_DURATION_MINUTES).toBe(30);

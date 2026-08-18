@@ -12,6 +12,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { HiOutlineBuildingLibrary } from "react-icons/hi2";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
+import useLocalStorage from "../../hooks/useLocalStorage";
 import ScheduleGrid from "../../components/schedule-grid/ScheduleGrid";
 import GridToast from "../../components/schedule-grid/GridToast";
 import KeyboardLegend from "../../components/schedule-grid/KeyboardLegend";
@@ -32,17 +33,29 @@ import type { CellAddress } from "../../components/schedule-grid/types";
 // filtros" (a year is always selected).
 const DEFAULT_YEAR = new Date().getFullYear();
 
-const PERIOD_OPTIONS: { value: number | null; label: string }[] = [
-  { value: null, label: "Todos" },
+const PERIOD_OPTIONS: { value: number; label: string }[] = [
   { value: 1, label: "I" },
   { value: 2, label: "II" },
   { value: 3, label: "III" },
 ];
 
+// Fallback period when nothing is remembered yet: the trimester of today's
+// month (Jan–Apr → I, May–Aug → II, Sep–Dec → III).
+const currentTrimester = (): number => {
+  const month = new Date().getMonth(); // 0 = Jan … 11 = Dec
+  if (month <= 3) return 1;
+  if (month <= 7) return 2;
+  return 3;
+};
+
 export default function ScheduleAssignment() {
   const [yearFilter, setYearFilter] = useState<number>(DEFAULT_YEAR);
-  // null = every period of the selected year.
-  const [periodFilter, setPeriodFilter] = useState<number | null>(null);
+  // Always a number (I/II/III); the last choice is remembered in localStorage
+  // and the fetch always sends it.
+  const [periodFilter, setPeriodFilter] = useLocalStorage<number>(
+    "scheduleAssignment.period",
+    currentTrimester(),
+  );
 
   const axiosPrivate = useAxiosPrivate();
 
@@ -214,11 +227,15 @@ export default function ScheduleAssignment() {
     showUndoToast,
   });
 
-  const onCellDoubleClick = useCallback(
+  // Single-click-to-edit: select the cell and open its editor (with its
+  // dropdown). Runs on `click`, i.e. AFTER a currently-open editor's mousedown
+  // blur has already committed, so clicking straight from one cell to another
+  // commits the first and opens the second. viaMouse → the editor showPicker()s.
+  const onCellClick = useCallback(
     (address: CellAddress) => {
       setActive(address);
       // canEdit shows the aula "add a schedule first" hint when appropriate.
-      if (canEdit(address)) startEdit(null);
+      if (canEdit(address)) startEdit(null, true);
     },
     [setActive, canEdit, startEdit],
   );
@@ -270,7 +287,7 @@ export default function ScheduleAssignment() {
             </p>
             <p className="mt-1 flex items-center gap-1 text-xs text-gray-400">
               <ExclamationTriangleIcon className="size-3.5 text-amber-500" aria-hidden="true" />
-              conflicto de aula/profesor (solo aviso)
+              aula ocupada por otro profesor (solo aviso)
             </p>
           </div>
         </div>
@@ -627,7 +644,7 @@ export default function ScheduleAssignment() {
             editing={editing}
             gridHasFocus={gridHasFocus}
             onCellMouseDown={setActive}
-            onCellDoubleClick={onCellDoubleClick}
+            onCellClick={onCellClick}
             onKeyDown={onGridKeyDown}
             onGridFocus={onGridFocus}
             onGridBlur={onGridBlur}

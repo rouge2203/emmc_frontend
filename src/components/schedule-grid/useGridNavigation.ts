@@ -23,10 +23,12 @@ import {
 } from "./navigation";
 import type { CellAddress, ColKey, GridRow, MoveDir } from "./types";
 
-/** seed = the first typed char (Excel replace-typing), or null (Enter/F2/dblclick keep the cell's content). */
+/** seed = the first typed char (Excel replace-typing), or null (Enter/F2/click keep the cell's content). */
 export interface EditingState {
   col: ColKey;
   seed: string | null;
+  /** Entered by a mouse click → the cell's editor opens its dropdown (showPicker). */
+  viaMouse: boolean;
 }
 
 export interface NavActions {
@@ -40,7 +42,7 @@ export interface UseGridNavigationResult {
   active: CellAddress | null;
   setActive: (a: CellAddress | null) => void;
   editing: EditingState | null;
-  startEdit: (seed: string | null) => void;
+  startEdit: (seed: string | null, viaMouse?: boolean) => void;
   stopEdit: () => void;
   move: (dir: MoveDir) => void;
   moveTab: (backwards: boolean) => boolean;
@@ -120,10 +122,10 @@ export function useGridNavigation(visibleRows: GridRow[]): UseGridNavigationResu
     prevEditing.current = editing;
   }, [editing]);
 
-  const startEdit = useCallback((seed: string | null) => {
+  const startEdit = useCallback((seed: string | null, viaMouse = false) => {
     const a = activeRef.current;
     if (!a) return;
-    setEditing({ col: a.col, seed });
+    setEditing({ col: a.col, seed, viaMouse });
   }, []);
 
   const stopEdit = useCallback(() => {

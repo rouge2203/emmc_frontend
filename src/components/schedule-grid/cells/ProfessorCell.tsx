@@ -1,13 +1,15 @@
-// Professor sub-cell. Nav mode: the assigned professor's name (or a muted "Sin
-// profesor") plus the autosave CellStatus. Edit mode: mounts ProfessorEditor,
-// wiring the row's commit/cancel callbacks so navigation and autosave stay in
-// the page/hooks.
+// Professor sub-cell. Nav mode: a select-styled box with the assigned
+// professor's name (or a muted "Sin profesor") plus the autosave status. Edit
+// mode: a native <select> (Sin profesor + every teacher as "Apellido Nombre"),
+// pre-selected to the current value; navigation and autosave stay in the
+// page/hooks via the row's commit/cancel callbacks.
+import { useMemo } from "react";
 import { cellClass, cellDomId } from "../cellIds";
 import type { CellProps } from "../cellIds";
-import { profConflictLines } from "../conflictLines";
-import CellCorner from "./CellCorner";
+import SelectBox from "./SelectBox";
 import CellMessage from "./CellMessage";
-import ProfessorEditor from "./ProfessorEditor";
+import SingleSelectEditor from "./SingleSelectEditor";
+import type { SelectOption } from "./SingleSelectEditor";
 
 export default function ProfessorCell({
   row,
@@ -16,16 +18,26 @@ export default function ProfessorCell({
   focused,
   editing,
   seed,
+  viaMouse,
   saveState,
   onMouseDown,
-  onDoubleClick,
+  onClick,
   onCommitProfessor,
   onCancelEdit,
-  profConflicts,
   refData,
 }: CellProps) {
   const address = { enrollmentId: row.enrollmentId, col };
-  const conflictLines = profConflictLines(profConflicts);
+
+  const options = useMemo<SelectOption[]>(
+    () => [
+      { value: "", label: "Sin profesor" },
+      ...(refData?.teachers ?? []).map((t) => ({
+        value: String(t.id),
+        label: `${t.last_name} ${t.first_name}`.trim(),
+      })),
+    ],
+    [refData?.teachers],
+  );
 
   return (
     <div
@@ -33,29 +45,24 @@ export default function ProfessorCell({
       role="gridcell"
       data-col={col}
       onMouseDown={editing ? undefined : () => onMouseDown(address)}
-      onDoubleClick={editing ? undefined : () => onDoubleClick?.(address)}
+      onClick={editing ? undefined : () => onClick?.(address)}
       className={cellClass({ active, focused, status: saveState?.status })}
     >
       {editing && refData ? (
-        <ProfessorEditor
-          current={
-            row.professorId !== null
-              ? { id: row.professorId, name: row.professorName ?? "" }
-              : null
-          }
-          teachers={refData.teachers}
+        <SingleSelectEditor
+          options={options}
+          current={row.professorId !== null ? String(row.professorId) : ""}
           seed={seed ?? null}
-          onCommit={(teacherId, move) => onCommitProfessor?.(row.enrollmentId, teacherId, move)}
+          viaMouse={!!viaMouse}
+          ariaLabel="Profesor"
+          onCommit={(value, move) =>
+            onCommitProfessor?.(row.enrollmentId, value === "" ? null : Number(value), move)
+          }
           onCancel={(move) => onCancelEdit?.(move)}
         />
       ) : (
         <>
-          {row.professorName ? (
-            <span className="text-gray-900">{row.professorName}</span>
-          ) : (
-            <span className="text-gray-400 italic">Sin profesor</span>
-          )}
-          <CellCorner saveState={saveState} conflictLines={conflictLines} />
+          <SelectBox text={row.professorName ?? "Sin profesor"} muted={!row.professorName} saveState={saveState} />
           <CellMessage state={saveState} />
         </>
       )}

@@ -1,11 +1,17 @@
 // Pure conflict-detection for the schedule grid. Kept React-free (like
 // time.ts/sorting.ts/filters.ts) so it is unit tested directly.
 //
-// Conflicts only WARN (never block a save): an aula double-booked or a
-// professor booked twice at overlapping times. All rows for a year/period
-// are loaded client-side, so the whole grid is re-swept in one pure pass
-// (see computeConflicts) and the caller re-runs it in a useMemo after every
-// optimistic save.
+// Only ONE kind of conflict is flagged, and it only WARNS (it never blocks a
+// save): an aula booked by TWO DIFFERENT professors at overlapping times on the
+// same day. Two students of the SAME professor may share a room at the same
+// time (a group class), and an unassigned professor never warns — so the aula
+// warning fires only when both sides have a professor and the professors
+// differ. Professor double-booking is intentionally NOT a conflict: different
+// students may have the same professor at the same time.
+//
+// All rows for a year/period are loaded client-side, so the whole grid is
+// re-swept in one pure pass (see computeConflicts) and the caller re-runs it in
+// a useMemo after every optimistic save.
 import { formatConflictRange } from "./time";
 import type { DayCode, GridRow } from "./types";
 
@@ -26,19 +32,13 @@ export interface ScheduleRef {
   courseCode: string;
 }
 
+/** Per-slot conflicts — only the aula (classroom) kind survives. */
 export interface SlotConflicts {
   aula: ScheduleRef[];
-  prof: ScheduleRef[];
 }
 
 export interface RowConflicts {
   slots: Partial<Record<0 | 1 | 2, SlotConflicts>>;
-  /**
-   * Union (deduped by the other side's enrollmentId+slotIndex) of every
-   * slot's prof conflicts — drives the single Profesor-cell icon, since a
-   * professor is assigned per-enrollment, not per-slot.
-   */
-  prof: ScheduleRef[];
 }
 
 export type ConflictIndex = Map<number /* enrollmentId */, RowConflicts>;
@@ -49,18 +49,16 @@ export function overlaps(a: { start: number; end: number }, b: { start: number; 
 }
 
 /**
- * True when `a` and `b` are the same group class occurrence: same course,
- * same professor, same time. When `forAula` is true, the aula must match
- * too (used to exempt group classes sharing one room from an aula
- * conflict; professor conflicts ignore the aula entirely).
+ * True when `a` and `b` are the same aula booking that should NOT warn: the
+ * classrooms match AND either a professor is unassigned or both sides share the
+ * same professor. Only two DIFFERENT, both-assigned professors in one room at
+ * overlapping times is a conflict.
  */
-export function isSameGroupClass(a: ScheduleRef, b: ScheduleRef, forAula: boolean): boolean {
+export function isAulaSharedAllowed(a: ScheduleRef, b: ScheduleRef): boolean {
   return (
-    a.courseId === b.courseId &&
-    a.professorId === b.professorId &&
-    a.start === b.start &&
-    a.end === b.end &&
-    (!forAula || a.classroomId === b.classroomId)
+    a.professorId === null ||
+    b.professorId === null ||
+    a.professorId === b.professorId
   );
 }
 
@@ -96,7 +94,7 @@ const flatten = (rows: GridRow[]): ScheduleRef[] => {
 const getOrCreateRow = (index: ConflictIndex, enrollmentId: number): RowConflicts => {
   let row = index.get(enrollmentId);
   if (!row) {
-    row = { slots: {}, prof: [] };
+    row = { slots: {} };
     index.set(enrollmentId, row);
   }
   return row;
@@ -106,31 +104,24 @@ const getOrCreateSlot = (row: RowConflicts, slotIndex: number): SlotConflicts =>
   const key = slotIndex as 0 | 1 | 2;
   let slot = row.slots[key];
   if (!slot) {
-    slot = { aula: [], prof: [] };
+    slot = { aula: [] };
     row.slots[key] = slot;
   }
   return slot;
 };
 
-const addConflict = (index: ConflictIndex, kind: "aula" | "prof", ref: ScheduleRef, other: ScheduleRef): void => {
+const addAulaConflict = (index: ConflictIndex, ref: ScheduleRef, other: ScheduleRef): void => {
   const row = getOrCreateRow(index, ref.enrollmentId);
-  const slot = getOrCreateSlot(row, ref.slotIndex);
-  slot[kind].push(other);
-  if (kind === "prof") {
-    const alreadyPresent = row.prof.some(
-      (p) => p.enrollmentId === other.enrollmentId && p.slotIndex === other.slotIndex,
-    );
-    if (!alreadyPresent) row.prof.push(other);
-  }
+  getOrCreateSlot(row, ref.slotIndex).aula.push(other);
 };
 
 /**
- * Sweeps every row's t0/t1/t2 slots for aula and professor double-bookings.
- * Groups refs by `${year}|${period}|${day}`, sorts each group by start, and
- * for each ref scans forward while the next ref's start is still before the
- * current ref's end (a classic interval-overlap sweep). O(n log n + k) where
- * k is the number of conflicting pairs. Only enrollments with at least one
- * conflict appear in the returned map.
+ * Sweeps every row's t0/t1/t2 slots for aula double-bookings by two different
+ * professors. Groups refs by `${year}|${period}|${day}`, sorts each group by
+ * start, and for each ref scans forward while the next ref's start is still
+ * before the current ref's end (a classic interval-overlap sweep). O(n log n +
+ * k) where k is the number of conflicting pairs. Only enrollments with at least
+ * one conflict appear in the returned map.
  */
 export function computeConflicts(rows: GridRow[]): ConflictIndex {
   const refs = flatten(rows);
@@ -161,20 +152,10 @@ export function computeConflicts(rows: GridRow[]): ConflictIndex {
           a.classroomId !== null &&
           b.classroomId !== null &&
           a.classroomId === b.classroomId &&
-          !isSameGroupClass(a, b, true)
+          !isAulaSharedAllowed(a, b)
         ) {
-          addConflict(index, "aula", a, b);
-          addConflict(index, "aula", b, a);
-        }
-
-        if (
-          a.professorId !== null &&
-          b.professorId !== null &&
-          a.professorId === b.professorId &&
-          !isSameGroupClass(a, b, false)
-        ) {
-          addConflict(index, "prof", a, b);
-          addConflict(index, "prof", b, a);
+          addAulaConflict(index, a, b);
+          addAulaConflict(index, b, a);
         }
       }
     }
@@ -183,16 +164,9 @@ export function computeConflicts(rows: GridRow[]): ConflictIndex {
   return index;
 }
 
-/** Describes a conflict for a tooltip/icon, e.g. "Aula 3 ocupada: Pérez Juan · PIA-01 · L 09:00–10:00". */
-export function describeConflict(
-  kind: "aula" | "prof",
-  other: ScheduleRef,
-  classroomLabel: string | null,
-): string {
+/** Describes an aula conflict for a tooltip, e.g. "Aula 3 ocupada por otro profesor: Pérez Juan · PIA-01 · L 09:00–10:00". */
+export function describeConflict(other: ScheduleRef, classroomLabel: string | null): string {
   const range = formatConflictRange(other.day, other.start, other.end);
   const who = `${other.studentName} · ${other.courseCode} · ${range}`;
-  if (kind === "aula") {
-    return `${classroomLabel ?? "Aula"} ocupada: ${who}`;
-  }
-  return `Profesor ocupado: ${who}`;
+  return `${classroomLabel ?? "Aula"} ocupada por otro profesor: ${who}`;
 }
