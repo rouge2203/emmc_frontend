@@ -25,6 +25,9 @@ const CELL_SHORTCUTS: Shortcut[] = [
   { keys: ["Enter"], label: "guarda y baja" },
   { keys: ["Tab", "⇧Tab"], label: "guarda y avanza / retrocede" },
   { keys: ["Esc"], label: "cancela" },
+  { keys: ["1", "0"], label: "en Horario: escribe la hora (1 y 0 = 10)" },
+  { keys: ["a", "p"], label: "en Horario: AM / PM" },
+  { keys: ["L", "K", "M", "J", "V", "S", "D"], label: "en Horario: día" },
 ];
 
 export default function KeyboardLegend() {

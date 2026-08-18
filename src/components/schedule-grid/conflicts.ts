@@ -164,9 +164,17 @@ export function computeConflicts(rows: GridRow[]): ConflictIndex {
   return index;
 }
 
-/** Describes an aula conflict for a tooltip, e.g. "Aula 3 ocupada por otro profesor: Pérez Juan · PIA-01 · L 09:00–10:00". */
-export function describeConflict(other: ScheduleRef, classroomLabel: string | null): string {
+/**
+ * Describes an aula conflict for a tooltip, naming the professor who holds the
+ * room, e.g. "Aula 3 ocupada por López María: Pérez Juan · PIA-01 · L 09:00–10:00".
+ * Falls back to "otro profesor" when the professor's name is unknown.
+ */
+export function describeConflict(
+  other: ScheduleRef,
+  classroomLabel: string | null,
+  professorLabel: string | null,
+): string {
   const range = formatConflictRange(other.day, other.start, other.end);
   const who = `${other.studentName} · ${other.courseCode} · ${range}`;
-  return `${classroomLabel ?? "Aula"} ocupada por otro profesor: ${who}`;
+  return `${classroomLabel ?? "Aula"} ocupada por ${professorLabel ?? "otro profesor"}: ${who}`;
 }

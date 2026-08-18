@@ -290,14 +290,14 @@ describe("describeConflict", () => {
     courseCode: "PIA-01",
   };
 
-  it("formats an aula conflict with the classroom label", () => {
-    expect(describeConflict(other, "Aula 3")).toBe(
-      "Aula 3 ocupada por otro profesor: Pérez Juan · PIA-01 · L 09:00–10:00",
+  it("names the classroom and the occupying professor", () => {
+    expect(describeConflict(other, "Aula 3", "López María")).toBe(
+      "Aula 3 ocupada por López María: Pérez Juan · PIA-01 · L 09:00–10:00",
     );
   });
 
-  it("falls back to 'Aula' when the classroom label is null", () => {
-    expect(describeConflict(other, null)).toBe(
+  it("falls back to 'Aula' and 'otro profesor' when labels are null", () => {
+    expect(describeConflict(other, null, null)).toBe(
       "Aula ocupada por otro profesor: Pérez Juan · PIA-01 · L 09:00–10:00",
     );
   });

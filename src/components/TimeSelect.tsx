@@ -8,6 +8,12 @@ interface TimeSelectProps {
   disabled?: boolean;
   /** Used to build accessible names, e.g. "Hora de inicio". */
   ariaLabel?: string;
+  /**
+   * AM/PM guessed when an hour is first picked on an empty field. Defaults to
+   * the internal 8–11→AM heuristic (so the drawer is unaffected); the schedule
+   * grid's "Fin" passes one that keeps fin after inicio.
+   */
+  defaultPeriodForHour?: (hour12: number) => "AM" | "PM";
 }
 
 interface TimeParts {
@@ -85,6 +91,7 @@ const TimeSelect: React.FC<TimeSelectProps> = ({
   onChange,
   disabled = false,
   ariaLabel = "Hora",
+  defaultPeriodForHour: guessPeriod = defaultPeriodForHour,
 }) => {
   const parts = parseTime(value);
   const hasHour = parts !== null;
@@ -109,7 +116,7 @@ const TimeSelect: React.FC<TimeSelectProps> = ({
     if (parts) {
       emit({ ...parts, hour12 });
     } else {
-      emit({ hour12, minute: 0, period: defaultPeriodForHour(hour12) });
+      emit({ hour12, minute: 0, period: guessPeriod(hour12) });
     }
   };
 

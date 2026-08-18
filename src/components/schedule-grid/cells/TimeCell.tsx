@@ -32,7 +32,11 @@ export default function TimeCell({
   const slot = row.slots[slotIndex];
   const { text, muted } = formatSlotBox(slot);
   const address = { enrollmentId: row.enrollmentId, col };
-  const conflictLines = slotConflictLines(slotConflicts, refData?.classroomById);
+  const conflictLines = slotConflictLines(
+    slotConflicts,
+    refData?.classroomById,
+    refData?.teacherById,
+  );
   return (
     <div
       id={cellDomId(address)}
