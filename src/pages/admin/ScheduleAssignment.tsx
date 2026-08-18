@@ -45,10 +45,24 @@ export default function ScheduleAssignment() {
   const [periodFilter, setPeriodFilter] = useState<number | null>(null);
 
   const axiosPrivate = useAxiosPrivate();
+
+  // The pending-notification summary/button/preview + per-row envelope icon.
+  // Polls on its own; a save that leaves a row pending (see useGridCommits)
+  // triggers a debounced refresh so the count/preview/icon catch up quickly
+  // without every keystroke hammering the endpoint.
+  const notif = useNotificationSummary();
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  // Autosave (per-cell status + error toast). Declared before useGridData so its
+  // `idle` awaiter can gate every (re)fetch behind a drained save queue.
+  const { save, rowStatuses, setHint, setTransientError, idle, pending, toast, dismissToast, showToast } =
+    useAutosave({ onSaved: notif.refresh });
+
   const { rows, setRows, rowsRef, snapshot, loading, error, truncated, reload, ref, refError } =
     useGridData({
       year: yearFilter,
       period: periodFilter,
+      beforeReload: idle,
     });
 
   // Client-side filters (search is live; the "missing" toggles are mutually
@@ -90,20 +104,11 @@ export default function ScheduleAssignment() {
     startEdit,
     stopEdit,
     move,
+    ensureActive,
     gridRef,
     onGridKeyDown,
     registerNavActions,
   } = useGridNavigation(visibleRows);
-
-  // The pending-notification summary/button/preview + per-row envelope icon.
-  // Polls on its own; a save that leaves a row pending (see useGridCommits)
-  // triggers a debounced refresh so the count/preview/icon catch up quickly
-  // without every keystroke hammering the endpoint.
-  const notif = useNotificationSummary();
-  const [previewOpen, setPreviewOpen] = useState(false);
-
-  const { save, rowStatuses, setHint, setTransientError, toast, dismissToast, showToast } =
-    useAutosave({ onSaved: notif.refresh });
 
   // Reuse the page's autosave error toast for send() failures (load-summary
   // failures share the same `error` field but are comparatively rare/quiet —
@@ -130,12 +135,29 @@ export default function ScheduleAssignment() {
   }, [notif.justFinished, setRows]);
 
   const [gridHasFocus, setGridHasFocus] = useState(false);
-  const onGridFocus = useCallback(() => setGridHasFocus(true), []);
+  const onGridFocus = useCallback(() => {
+    setGridHasFocus(true);
+    // Keyboard-only start: tabbing into an empty grid selects the first cell so
+    // arrow keys work right away (a click already set active, so this is a no-op).
+    ensureActive();
+  }, [ensureActive]);
   const onGridBlur = useCallback((e: FocusEvent<HTMLDivElement>) => {
     // Keep focus "on" while it stays inside the grid (e.g. into the editor).
     if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
     setGridHasFocus(false);
   }, []);
+
+  // Warn before leaving/reloading the tab while saves are still queued, so an
+  // in-flight autosave isn't lost.
+  useEffect(() => {
+    if (pending === 0) return;
+    const handler = (e: BeforeUnloadEvent): void => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [pending]);
 
   // Delete-undo toast (info variant with a "Deshacer" action, 6 s). Page-owned
   // because it is not tied to a queued save the way the error toast is.
@@ -263,10 +285,15 @@ export default function ScheduleAssignment() {
             onSend={notif.send}
             onOpenPreview={() => setPreviewOpen(true)}
           />
+          {pending > 0 && (
+            <span className="mt-2 text-xs text-amber-600">
+              Guardando {pending} {pending === 1 ? "cambio" : "cambios"}…
+            </span>
+          )}
           <button
             type="button"
             onClick={() => void reload()}
-            disabled={loading}
+            disabled={loading || pending > 0}
             className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 shadow-xs hover:bg-gray-50 disabled:opacity-50"
           >
             <ArrowPathIcon className={`size-4 ${loading ? "animate-spin" : ""}`} />

@@ -44,6 +44,8 @@ export interface UseGridNavigationResult {
   stopEdit: () => void;
   move: (dir: MoveDir) => void;
   moveTab: (backwards: boolean) => boolean;
+  /** Keyboard-only start: if nothing is active, select the first visible cell (prof col). */
+  ensureActive: () => void;
   gridRef: RefObject<HTMLDivElement | null>;
   onGridKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
   registerNavActions: (a: NavActions) => void;
@@ -102,11 +104,18 @@ export function useGridNavigation(visibleRows: GridRow[]): UseGridNavigationResu
     return () => cancelAnimationFrame(raf);
   }, [active]);
 
-  // Leaving edit mode returns focus to the grid container (never on mount).
+  // Leaving edit mode returns focus to the grid container (never on mount), but
+  // only when focus is "loose" (on <body>/nothing after the editor unmounted) or
+  // still inside the grid — never steal focus from another control the user just
+  // clicked (search box, selects, Notify button).
   const prevEditing = useRef<EditingState | null>(null);
   useEffect(() => {
     if (prevEditing.current !== null && editing === null) {
-      gridRef.current?.focus({ preventScroll: true });
+      const grid = gridRef.current;
+      const activeEl = document.activeElement;
+      const focusIsLoose = activeEl === null || activeEl === document.body;
+      const focusInGrid = !!grid && !!activeEl && grid.contains(activeEl);
+      if (grid && (focusIsLoose || focusInGrid)) grid.focus({ preventScroll: true });
     }
     prevEditing.current = editing;
   }, [editing]);
@@ -125,8 +134,21 @@ export function useGridNavigation(visibleRows: GridRow[]): UseGridNavigationResu
     if (dir === "none") return;
     const a = activeRef.current;
     if (!a) return;
-    const next = arrowTarget(a, dir, rowsRef.current);
+    // Tab commits wrap at row edges (tabTarget); arrows clamp inside the grid.
+    const next =
+      dir === "tabNext" || dir === "tabPrev"
+        ? tabTarget(a, dir === "tabPrev", rowsRef.current)
+        : arrowTarget(a, dir, rowsRef.current);
     if (next) setActive(next);
+  }, [setActive]);
+
+  // Keyboard-only start: tabbing/focusing into an empty grid selects the first
+  // visible cell so arrow keys work immediately. Reads activeRef synchronously
+  // so a click that just set the active cell is never overridden.
+  const ensureActive = useCallback(() => {
+    if (activeRef.current !== null) return;
+    const first = rowsRef.current[0];
+    if (first) setActive({ enrollmentId: first.enrollmentId, col: "prof" });
   }, [setActive]);
 
   const moveTab = useCallback(
@@ -231,6 +253,7 @@ export function useGridNavigation(visibleRows: GridRow[]): UseGridNavigationResu
     stopEdit,
     move,
     moveTab,
+    ensureActive,
     gridRef,
     onGridKeyDown,
     registerNavActions,

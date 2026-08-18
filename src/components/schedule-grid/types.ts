@@ -54,7 +54,9 @@ export interface CellSaveState {
   message?: string;
   at: number;
 }
-export type MoveDir = "down" | "up" | "right" | "left" | "none";
+// "tabNext"/"tabPrev" are Tab/Shift+Tab commits: they wrap at row edges (via
+// tabTarget) instead of clamping like the arrow directions.
+export type MoveDir = "down" | "up" | "right" | "left" | "none" | "tabNext" | "tabPrev";
 export interface Teacher {
   id: number;
   first_name: string;

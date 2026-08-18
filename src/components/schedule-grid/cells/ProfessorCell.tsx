@@ -6,6 +6,7 @@ import { cellClass, cellDomId } from "../cellIds";
 import type { CellProps } from "../cellIds";
 import { profConflictLines } from "../conflictLines";
 import CellCorner from "./CellCorner";
+import CellMessage from "./CellMessage";
 import ProfessorEditor from "./ProfessorEditor";
 
 export default function ProfessorCell({
@@ -55,6 +56,7 @@ export default function ProfessorCell({
             <span className="text-gray-400 italic">Sin profesor</span>
           )}
           <CellCorner saveState={saveState} conflictLines={conflictLines} />
+          <CellMessage state={saveState} />
         </>
       )}
     </div>

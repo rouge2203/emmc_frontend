@@ -90,9 +90,10 @@ export default function TimeRangeEditor({
       return;
     }
 
-    // commit: Enter → down, Tab → right, Shift+Tab → left.
+    // commit: Enter → down, Tab → next cell, Shift+Tab → previous cell. Tab
+    // wraps at row edges like nav-mode Tab (tabTarget), not the clamping arrows.
     e.preventDefault();
-    const dir: MoveDir = e.key === "Enter" ? "down" : e.shiftKey ? "left" : "right";
+    const dir: MoveDir = e.key === "Enter" ? "down" : e.shiftKey ? "tabPrev" : "tabNext";
 
     // Untouched or unchanged → cancel (no request), still move.
     if (!isChanged(state, initial)) {
@@ -116,15 +117,27 @@ export default function TimeRangeEditor({
   const handleBlur = (e: FocusEvent<HTMLDivElement>): void => {
     if (doneRef.current) return;
     if (rootRef.current?.contains(e.relatedTarget as Node | null)) return;
-    if (!isChanged(state, initial)) {
+    const related = e.relatedTarget as HTMLElement | null;
+    const commit = (): void => {
+      if (doneRef.current) return;
+      if (!isChanged(state, initial)) {
+        done();
+        onCancel("none");
+        return;
+      }
+      const res = resolveDraft(state);
       done();
-      onCancel("none");
-      return;
+      if (res.ok) onCommit(res.value, "none");
+      else onCancel("none", `No se guardó: ${res.error}`);
+    };
+    // Defer the commit when focus leaves to a control OUTSIDE the editor/grid so
+    // the synchronous unmount doesn't reparent focus back into the grid (see
+    // ProfessorEditor for the full rationale). Blurs back into the grid commit now.
+    if (related && related !== document.body && !related.contains(rootRef.current as Node)) {
+      setTimeout(commit, 0);
+    } else {
+      commit();
     }
-    const res = resolveDraft(state);
-    done();
-    if (res.ok) onCommit(res.value, "none");
-    else onCancel("none", `No se guardó: ${res.error}`);
   };
 
   return (

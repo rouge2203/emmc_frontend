@@ -31,6 +31,8 @@ export interface AutosaveCallbacks {
   onError: (message: string) => void;
   /** Called after every success (used to refresh the notification summary). */
   onSaved?: (job: AutosaveJob<unknown>) => void;
+  /** Called whenever the pending (enqueued-but-unsettled) count changes. */
+  onPending?: (count: number) => void;
   /** Injectable clock for tests (default Date.now). */
   now?: () => number;
 }
@@ -49,6 +51,7 @@ export class AutosaveQueue {
   private readonly onStatus: AutosaveCallbacks["onStatus"];
   private readonly onError: AutosaveCallbacks["onError"];
   private readonly onSaved: AutosaveCallbacks["onSaved"];
+  private readonly onPending: AutosaveCallbacks["onPending"];
   private readonly now: () => number;
   private readonly chains = new Map<string, Promise<void>>();
   private readonly seqByCell = new Map<string, number>();
@@ -59,14 +62,20 @@ export class AutosaveQueue {
     this.onStatus = callbacks.onStatus;
     this.onError = callbacks.onError;
     this.onSaved = callbacks.onSaved;
+    this.onPending = callbacks.onPending;
     this.now = callbacks.now ?? Date.now;
+  }
+
+  private setPending(next: number): void {
+    this.pending = next;
+    this.onPending?.(next);
   }
 
   enqueue<T>(job: AutosaveJob<T>): void {
     const seq = (this.seqByCell.get(job.cellKey) ?? 0) + 1;
     this.seqByCell.set(job.cellKey, seq);
     this.onStatus(job.cellKey, { status: "saving", at: this.now() });
-    this.pending++;
+    this.setPending(this.pending + 1);
 
     const isLatest = (): boolean => this.seqByCell.get(job.cellKey) === seq;
 
@@ -87,7 +96,7 @@ export class AutosaveQueue {
         }
         this.onError(message);
       } finally {
-        this.pending--;
+        this.setPending(this.pending - 1);
         if (this.pending === 0) {
           const waiters = this.idleWaiters;
           this.idleWaiters = [];

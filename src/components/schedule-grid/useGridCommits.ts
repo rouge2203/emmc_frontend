@@ -190,6 +190,10 @@ export function useGridCommits({
       const prevRow = findRow(enrollmentId);
       const prevSlot = prevRow?.slots[slotIndex] ?? null;
       const prevNotif = prevRow?.notificationPending ?? false;
+      // Captured at commit time: if this slot already has a schedule id, the
+      // request is always a PUT — even if a reload has since dropped the row
+      // from state, so we never POST a duplicate for an existing horario.
+      const capturedId = prevSlot?.scheduleId ?? null;
 
       const nextSlot: Slot = prevSlot
         ? { ...prevSlot, day, start, end }
@@ -210,7 +214,16 @@ export function useGridCommits({
             r.enrollmentId === enrollmentId
               ? {
                   ...r,
-                  slots: replaceSlot(r.slots, slotIndex, prevSlot),
+                  // Restore ONLY day/start/end on the current slot (keeping any
+                  // scheduleId/classroomId a concurrent write set); a POST that
+                  // had no prior slot rolls back to an empty cell.
+                  slots: prevSlot
+                    ? mapSlot(r.slots, slotIndex, (s) =>
+                        s
+                          ? { ...s, day: prevSlot.day, start: prevSlot.start, end: prevSlot.end }
+                          : s,
+                      )
+                    : replaceSlot(r.slots, slotIndex, null),
                   notificationPending: prevNotif,
                 }
               : r,
@@ -222,11 +235,13 @@ export function useGridCommits({
         serialKey: `enr:${enrollmentId}`,
         cellKey: `${enrollmentId}:t${slotIndex}`,
         request: () => {
-          const slot = findRow(enrollmentId)?.slots[slotIndex];
+          // PUT whenever an id exists (live row's, or the one captured at commit
+          // time if a reload dropped the row); POST only for a genuinely new slot.
+          const currentId = findRow(enrollmentId)?.slots[slotIndex]?.scheduleId ?? capturedId;
           const body = { day, hour: toApiTime(start), end_hour: toApiTime(end) };
-          return slot?.scheduleId
+          return currentId
             ? axiosPrivate.put<ScheduleResponse>(SCHEDULE_URL, {
-                schedule_id: slot.scheduleId,
+                schedule_id: currentId,
                 ...body,
               })
             : axiosPrivate.post<ScheduleResponse>(SCHEDULE_URL, {
@@ -237,32 +252,36 @@ export function useGridCommits({
         onSuccess: (r) => {
           const id = r.data?.schedule?.id;
           if (!id) return;
-          // Orphan guard: the user may have deleted this horario while the
-          // POST was in flight. That delete was a no-op server-side (the slot
-          // still had scheduleId:null at the time, so onDeleteCell's request
-          // was just Promise.resolve()) — so the row the server just created
-          // for `id` would otherwise never be cleaned up. If the target slot
-          // is (still) null now, enqueue a same-serialKey DELETE for it
-          // instead of writing the id into a slot that no longer exists.
-          if (findRow(enrollmentId)?.slots[slotIndex] === null) {
-            save({
-              serialKey: `enr:${enrollmentId}`,
-              cellKey: `${enrollmentId}:t${slotIndex}`,
-              request: () => axiosPrivate.delete(SCHEDULE_URL, { data: { schedule_id: id } }),
-              revert: () => {},
-            });
+          const row = findRow(enrollmentId);
+          // Row no longer loaded (e.g. reloaded into a different year) → leave
+          // the server's row as-is; a later Recargar is the source of truth.
+          if (!row) return;
+          const slot = row.slots[slotIndex];
+          // Orphan guard: the user may have deleted this horario while the POST
+          // was in flight (that delete was a no-op server-side, so the row the
+          // server just created for `id` would never be cleaned up). Only DELETE
+          // when the target slot is null AND no slot of this row holds the id.
+          if (slot === null) {
+            if (!row.slots.some((s) => s?.scheduleId === id)) {
+              save({
+                serialKey: `enr:${enrollmentId}`,
+                cellKey: `${enrollmentId}:t${slotIndex}`,
+                request: () => axiosPrivate.delete(SCHEDULE_URL, { data: { schedule_id: id } }),
+                revert: () => {},
+              });
+            }
             return;
           }
           applyRows((current) =>
-            current.map((row) =>
-              row.enrollmentId === enrollmentId
+            current.map((r2) =>
+              r2.enrollmentId === enrollmentId
                 ? {
-                    ...row,
-                    slots: mapSlot(row.slots, slotIndex, (s) =>
+                    ...r2,
+                    slots: mapSlot(r2.slots, slotIndex, (s) =>
                       s ? { ...s, scheduleId: id } : s,
                     ),
                   }
-                : row,
+                : r2,
             ),
           );
         },

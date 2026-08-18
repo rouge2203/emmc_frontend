@@ -42,8 +42,14 @@ interface EnrollmentsApiResponse {
 
 const EMPTY_SNAPSHOT: MissingSnapshot = { professor: new Set(), schedule: new Set() };
 
-export function useGridData(args: { year: number; period: number | null }): UseGridDataResult {
-  const { year, period } = args;
+export function useGridData(args: {
+  year: number;
+  period: number | null;
+  /** Awaited before any (re)fetch so a year/period change or reload never
+   *  starts until the autosave queue has drained. */
+  beforeReload?: () => Promise<void>;
+}): UseGridDataResult {
+  const { year, period, beforeReload } = args;
   const axiosPrivate = useAxiosPrivate();
 
   const [rows, setRows] = useState<GridRow[]>([]);
@@ -73,6 +79,10 @@ export function useGridData(args: { year: number; period: number | null }): UseG
     const requestId = ++latestRequestId.current;
     setLoading(true);
     setError(null);
+    // Let queued autosaves finish first so a refetch can't race an in-flight
+    // write (and overwrite the optimistic row it was about to persist).
+    if (beforeReload) await beforeReload();
+    if (requestId !== latestRequestId.current) return; // superseded while waiting
     try {
       const params: Record<string, string | number> = {
         report_schedules: "true",
@@ -102,7 +112,7 @@ export function useGridData(args: { year: number; period: number | null }): UseG
     } finally {
       if (requestId === latestRequestId.current) setLoading(false);
     }
-  }, [axiosPrivate, year, period]);
+  }, [axiosPrivate, year, period, beforeReload]);
 
   // Refetch whenever year/period change (and via reload()).
   useEffect(() => {

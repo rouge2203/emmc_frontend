@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FocusEvent, KeyboardEvent } from "react";
 import { normalize } from "../filters";
+import { resolveComboboxCommit } from "../comboboxCommit";
 import type { Classroom, MoveDir } from "../types";
 
 export interface AulaEditorProps {
@@ -40,19 +41,32 @@ export default function AulaEditor({
   onCommit,
   onCancel,
 }: AulaEditorProps) {
-  const [text, setText] = useState<string>(seed ?? "");
+  // Prefill the current aula's NUMBER when opening without a typed seed, so a
+  // plain Enter re-commits the same value (→ treated as a cancel, no request)
+  // rather than clearing it. `null` when the cell has no aula yet.
+  const prefill = useMemo<string | null>(() => {
+    if (current === null) return null;
+    const number = classrooms.find((c) => c.id === current)?.number;
+    return number !== undefined ? String(number) : null;
+  }, [classrooms, current]);
+  const initialText = seed ?? prefill ?? "";
+
+  const [text, setText] = useState<string>(initialText);
   const [highlight, setHighlight] = useState<number>(() => {
     if (current === null) return 0;
-    const idx = filterClassrooms(classrooms, seed ?? "").findIndex((c) => c.id === current);
+    const idx = filterClassrooms(classrooms, initialText).findIndex((c) => c.id === current);
     return idx >= 0 ? idx : 0;
   });
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(false);
+  // Whether the user has moved the highlight with ↑/↓ (then Enter commits the
+  // highlighted option even if the text still equals the prefill).
+  const highlightMovedRef = useRef(false);
 
-  // Autofocus. No seed (Enter/F2/dblclick) → select the seed text (usually
-  // empty); a seed char was already typed → caret at end.
+  // Autofocus. No seed (Enter/F2/dblclick) → select the prefilled number so the
+  // next keystroke replaces it; a seed char was already typed → caret at end.
   useEffect(() => {
     const input = inputRef.current;
     if (!input) return;
@@ -91,26 +105,38 @@ export default function AulaEditor({
     onCancel(move);
   };
 
-  // Enter/Tab: empty text → clear the aula (commit null); else commit the
-  // highlighted option; else (a query with no match) stay put.
+  // Enter/Tab decision, shared with ProfessorEditor via resolveComboboxCommit:
+  // unchanged prefill → cancel (no request); emptied text → clear (null);
+  // arrow-navigated or matching query → select. A non-empty query with no match
+  // is a dead-end: Enter stays put, but Tab/Shift+Tab cancel + move (never a
+  // no-op with preventDefault).
   const commitFromKeyboard = (move: MoveDir): void => {
-    if (text.trim() === "") {
-      finishCommit(null, move);
-      return;
+    const result = resolveComboboxCommit({
+      text,
+      prefill,
+      highlightMoved: highlightMovedRef.current,
+      options,
+      highlight,
+    });
+    if (!result) {
+      if (move === "tabNext" || move === "tabPrev") finishCancel(move);
+      return; // Enter on "Sin resultados" → keep editing.
     }
-    const option = options[highlight];
-    if (option) finishCommit(option.id, move);
-    // No match → keep editing (the "Sin resultados" row stays visible).
+    if (result.kind === "cancel") finishCancel(move);
+    else if (result.kind === "clear") finishCommit(null, move);
+    else finishCommit(result.option.id, move);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
+        highlightMovedRef.current = true;
         setHighlight((h) => (options.length === 0 ? 0 : (h + 1) % options.length));
         return;
       case "ArrowUp":
         e.preventDefault();
+        highlightMovedRef.current = true;
         setHighlight((h) =>
           options.length === 0 ? 0 : (h - 1 + options.length) % options.length,
         );
@@ -121,7 +147,7 @@ export default function AulaEditor({
         return;
       case "Tab":
         e.preventDefault();
-        commitFromKeyboard(e.shiftKey ? "left" : "right");
+        commitFromKeyboard(e.shiftKey ? "tabPrev" : "tabNext");
         return;
       case "Escape":
         e.preventDefault();
@@ -137,9 +163,21 @@ export default function AulaEditor({
   const handleBlur = (e: FocusEvent<HTMLDivElement>): void => {
     if (rootRef.current?.contains(e.relatedTarget as Node | null)) return;
     if (doneRef.current) return;
-    const matches = filterClassrooms(classrooms, text);
-    if (text.trim() !== "" && matches.length === 1) finishCommit(matches[0].id, "none");
-    else finishCancel("none");
+    const related = e.relatedTarget as HTMLElement | null;
+    const commit = (): void => {
+      if (doneRef.current) return;
+      const matches = filterClassrooms(classrooms, text);
+      if (text.trim() !== "" && matches.length === 1) finishCommit(matches[0].id, "none");
+      else finishCancel("none");
+    };
+    // Defer the commit when focus leaves to a control OUTSIDE the editor/grid so
+    // the synchronous unmount doesn't reparent focus back into the grid (see
+    // ProfessorEditor for the full rationale). Blurs back into the grid commit now.
+    if (related && related !== document.body && !related.contains(rootRef.current as Node)) {
+      setTimeout(commit, 0);
+    } else {
+      commit();
+    }
   };
 
   return (
@@ -152,6 +190,7 @@ export default function AulaEditor({
         onChange={(e) => {
           setText(e.target.value);
           setHighlight(0);
+          highlightMovedRef.current = false;
         }}
         placeholder="Aula..."
         className="block w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"

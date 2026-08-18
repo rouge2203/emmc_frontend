@@ -39,7 +39,7 @@ function StudentEnrollments({ student }: { student: PendingStudent }) {
         return (
           <li key={e.enrollment_id} className="text-xs text-gray-500">
             {e.course_code} · {e.course_name} · {e.year}·{e.period_display} · {e.schedules_count}{" "}
-            horarios
+            {e.schedules_count === 1 ? "horario" : "horarios"}
             {since && <span className="text-gray-400"> · desde {since}</span>}
           </li>
         );
@@ -59,6 +59,8 @@ export default function NotifyPreviewDialog({
   const withoutEmail = summary?.without_email ?? [];
   const pendingCount = summary?.pending_students ?? 0;
   const isEmpty = pending.length === 0 && withoutEmail.length === 0;
+  // A batch already running (this admin's or another's) must not be doubly sent.
+  const activeBatch = summary?.active_batch ?? null;
 
   return (
     <Dialog open={open} onClose={onClose} className="relative z-50">
@@ -150,10 +152,10 @@ export default function NotifyPreviewDialog({
               <button
                 type="button"
                 onClick={() => void onSend()}
-                disabled={sending || pendingCount === 0}
+                disabled={sending || pendingCount === 0 || activeBatch !== null}
                 className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Enviar {pendingCount} correos
+                Enviar {pendingCount} {pendingCount === 1 ? "correo" : "correos"}
               </button>
             </div>
           </DialogPanel>

@@ -8,6 +8,7 @@ import { colSlotIndex } from "../types";
 import { cellClass, cellDomId } from "../cellIds";
 import type { CellProps } from "../cellIds";
 import CellCorner from "./CellCorner";
+import CellMessage from "./CellMessage";
 import AulaEditor from "./AulaEditor";
 
 export default function AulaCell({
@@ -54,6 +55,7 @@ export default function AulaCell({
         <>
           <span className={`text-xs ${muted ? "text-gray-400" : "text-gray-600"}`}>{label}</span>
           <CellCorner saveState={saveState} />
+          <CellMessage state={saveState} />
         </>
       )}
     </div>

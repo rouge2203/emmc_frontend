@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FocusEvent, KeyboardEvent } from "react";
 import { normalize } from "../filters";
+import { resolveComboboxCommit } from "../comboboxCommit";
 import type { MoveDir, Teacher } from "../types";
 
 export interface ProfessorEditorProps {
@@ -29,12 +30,19 @@ export default function ProfessorEditor({
   onCommit,
   onCancel,
 }: ProfessorEditorProps) {
-  const [text, setText] = useState<string>(seed ?? current?.name ?? "");
+  // Prefill the current professor's name when opening without a typed seed, so a
+  // plain Enter re-commits the same value (→ cancel, no request). `null` when
+  // the cell has no professor yet.
+  const prefill = current?.name ?? null;
+  const [text, setText] = useState<string>(seed ?? prefill ?? "");
   const [highlight, setHighlight] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(false);
+  // Whether the user has moved the highlight with ↑/↓ (then Enter commits the
+  // highlighted option even if the text still equals the prefill).
+  const highlightMovedRef = useRef(false);
 
   // Autofocus. No seed (Enter/F2/dblclick) → select the prefilled name so the
   // next keystroke replaces it; a seed char was already typed → caret at end.
@@ -85,26 +93,38 @@ export default function ProfessorEditor({
     onCancel(move);
   };
 
-  // Enter/Tab: empty text → clear the professor; else commit the highlighted
-  // option; else (a query with no match) stay put.
+  // Enter/Tab decision, shared with AulaEditor via resolveComboboxCommit:
+  // unchanged prefill → cancel (no request); emptied text → clear (null);
+  // arrow-navigated or matching query → select. A non-empty query with no match
+  // is a dead-end: Enter stays put, but Tab/Shift+Tab cancel + move (never a
+  // no-op with preventDefault).
   const commitFromKeyboard = (move: MoveDir): void => {
-    if (normalize(text) === "") {
-      finishCommit(null, move);
-      return;
+    const result = resolveComboboxCommit({
+      text,
+      prefill,
+      highlightMoved: highlightMovedRef.current,
+      options,
+      highlight,
+    });
+    if (!result) {
+      if (move === "tabNext" || move === "tabPrev") finishCancel(move);
+      return; // Enter on "Sin resultados" → keep editing.
     }
-    const option = options[highlight];
-    if (option) finishCommit(option, move);
-    // No match → keep editing (the "Sin resultados" row stays visible).
+    if (result.kind === "cancel") finishCancel(move);
+    else if (result.kind === "clear") finishCommit(null, move);
+    else finishCommit(result.option, move);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
+        highlightMovedRef.current = true;
         setHighlight((h) => Math.min(h + 1, Math.max(options.length - 1, 0)));
         return;
       case "ArrowUp":
         e.preventDefault();
+        highlightMovedRef.current = true;
         setHighlight((h) => Math.max(h - 1, 0));
         return;
       case "Enter":
@@ -113,7 +133,7 @@ export default function ProfessorEditor({
         return;
       case "Tab":
         e.preventDefault();
-        commitFromKeyboard(e.shiftKey ? "left" : "right");
+        commitFromKeyboard(e.shiftKey ? "tabPrev" : "tabNext");
         return;
       case "Escape":
         e.preventDefault();
@@ -129,19 +149,33 @@ export default function ProfessorEditor({
   const handleBlur = (e: FocusEvent<HTMLDivElement>): void => {
     if (rootRef.current?.contains(e.relatedTarget as Node | null)) return;
     if (doneRef.current) return;
-    const trimmed = text.trim();
-    if (trimmed === (current?.name ?? "")) {
-      finishCancel("none");
-      return;
+    const related = e.relatedTarget as HTMLElement | null;
+    const commit = (): void => {
+      if (doneRef.current) return;
+      const trimmed = text.trim();
+      if (trimmed === (current?.name ?? "")) {
+        finishCancel("none");
+        return;
+      }
+      const q = normalize(text);
+      const exact = teachers.filter(
+        (t) =>
+          normalize(`${t.last_name} ${t.first_name}`) === q ||
+          normalize(`${t.first_name} ${t.last_name}`) === q,
+      );
+      if (exact.length === 1) finishCommit(exact[0], "none");
+      else finishCancel("none");
+    };
+    // When focus leaves to a control OUTSIDE this editor and the grid (the
+    // search box, a select, the Notify button), defer the commit so the
+    // editor's synchronous unmount doesn't reparent focus back into the grid
+    // and steal it from the control the user clicked. Blurs that land back in
+    // the grid (e.g. clicking another cell) commit immediately.
+    if (related && related !== document.body && !related.contains(rootRef.current as Node)) {
+      setTimeout(commit, 0);
+    } else {
+      commit();
     }
-    const q = normalize(text);
-    const exact = teachers.filter(
-      (t) =>
-        normalize(`${t.last_name} ${t.first_name}`) === q ||
-        normalize(`${t.first_name} ${t.last_name}`) === q,
-    );
-    if (exact.length === 1) finishCommit(exact[0], "none");
-    else finishCancel("none");
   };
 
   return (
@@ -153,6 +187,7 @@ export default function ProfessorEditor({
         onChange={(e) => {
           setText(e.target.value);
           setHighlight(0);
+          highlightMovedRef.current = false;
         }}
         placeholder="Buscar profesor..."
         className="block w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"

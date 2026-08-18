@@ -9,6 +9,7 @@ import { cellClass, cellDomId } from "../cellIds";
 import type { CellProps } from "../cellIds";
 import { slotConflictLines } from "../conflictLines";
 import CellCorner from "./CellCorner";
+import CellMessage from "./CellMessage";
 import TimeRangeEditor from "./TimeRangeEditor";
 
 export default function TimeCell({
@@ -51,6 +52,7 @@ export default function TimeCell({
         <>
           <span className={`font-mono ${muted ? "text-gray-400" : "text-gray-900"}`}>{text}</span>
           <CellCorner saveState={saveState} conflictLines={conflictLines} />
+          <CellMessage state={saveState} />
         </>
       )}
     </div>

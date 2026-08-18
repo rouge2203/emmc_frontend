@@ -32,6 +32,8 @@ export interface UseAutosaveResult {
   setTransientError: (enrollmentId: number, col: ColKey, message: string) => void;
   idle: () => Promise<void>;
   pendingCount: () => number;
+  /** Reactive count of enqueued-but-unsettled saves (drives the "Guardando…" UI). */
+  pending: number;
   toast: { show: boolean; message: string; variant: ToastVariant };
   dismissToast: () => void;
   /** Reuse the page-level toast for a page-driven message (e.g. Task 12's notification send errors). */
@@ -49,6 +51,7 @@ const parseCellKey = (cellKey: string): { enrollmentId: number; col: ColKey } =>
 
 export function useAutosave(opts: { onSaved?: () => void }): UseAutosaveResult {
   const [statuses, setStatuses] = useState<Map<number, RowStatuses>>(() => new Map());
+  const [pending, setPending] = useState(0);
   const [toast, setToast] = useState<{ show: boolean; message: string; variant: ToastVariant }>({
     show: false,
     message: "",
@@ -129,6 +132,7 @@ export function useAutosave(opts: { onSaved?: () => void }): UseAutosaveResult {
       },
       onError: (message) => showToast(message),
       onSaved: () => onSavedRef.current?.(),
+      onPending: (count) => setPending(count),
     });
   }
 
@@ -183,6 +187,7 @@ export function useAutosave(opts: { onSaved?: () => void }): UseAutosaveResult {
     setTransientError,
     idle,
     pendingCount,
+    pending,
     toast,
     dismissToast,
     showToast,

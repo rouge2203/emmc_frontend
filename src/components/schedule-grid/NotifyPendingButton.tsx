@@ -95,7 +95,7 @@ export default function NotifyPendingButton({
             }`}
           >
             <EnvelopeIcon className="size-4" aria-hidden="true" />
-            Notificar a {pendingCount} estudiantes
+            Notificar a {pendingCount} {pendingCount === 1 ? "estudiante" : "estudiantes"}
           </button>
         )}
 
@@ -122,7 +122,9 @@ export default function NotifyPendingButton({
             }}
             className="absolute left-0 top-full z-20 mt-2 w-64 rounded-md border border-gray-200 bg-white p-3 shadow-lg"
           >
-            <p className="text-sm text-gray-700">¿Enviar {pendingCount} correos ahora?</p>
+            <p className="text-sm text-gray-700">
+              ¿Enviar {pendingCount} {pendingCount === 1 ? "correo" : "correos"} ahora?
+            </p>
             <div className="mt-3 flex justify-end gap-2">
               <button
                 type="button"

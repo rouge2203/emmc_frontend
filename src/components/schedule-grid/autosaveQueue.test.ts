@@ -256,6 +256,29 @@ describe("AutosaveQueue", () => {
     expect(resolved).toBe(true);
   });
 
+  it("onPending fires with the running count on every enqueue and settle", async () => {
+    const d1 = deferred<unknown>();
+    const d2 = deferred<unknown>();
+    const counts: number[] = [];
+    const queue = new AutosaveQueue({
+      onStatus: () => {},
+      onError: () => {},
+      onPending: (n) => counts.push(n),
+    });
+
+    queue.enqueue(job({ serialKey: "enr:1", cellKey: "1:t0", request: () => d1.promise }));
+    queue.enqueue(job({ serialKey: "enr:2", cellKey: "2:t0", request: () => d2.promise }));
+    expect(counts).toEqual([1, 2]);
+
+    d1.resolve(1);
+    await flush();
+    expect(counts.at(-1)).toBe(1);
+
+    d2.resolve(2);
+    await queue.idle();
+    expect(counts.at(-1)).toBe(0);
+  });
+
   it("pendingCount() tracks enqueued-but-unsettled jobs", async () => {
     const d1 = deferred<unknown>();
     const d2 = deferred<unknown>();
