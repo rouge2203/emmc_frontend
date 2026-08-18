@@ -19,6 +19,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FocusEvent, KeyboardEvent } from "react";
 import { SELECT_CLASS, SelectShell } from "./selectChrome";
+import { stepFocusedSelect } from "../selectStep";
 import type { MoveDir } from "../types";
 
 export interface SelectOption {
@@ -108,9 +109,18 @@ export default function SingleSelectEditor({
         e.preventDefault();
         cancel("none");
         return;
+      case "ArrowUp":
+      case "ArrowDown":
+        // Step the value ourselves so macOS Chrome does not open the picker
+        // (Alt+↓ / Space still do). Fires change() → keyboard mode, no commit.
+        if (e.altKey) return;
+        e.preventDefault();
+        mouseRef.current = false;
+        stepFocusedSelect(e.currentTarget, e.key === "ArrowDown" ? 1 : -1);
+        return;
       default:
-        // Arrows / letters / digits: native value change + typeahead. Switch to
-        // keyboard mode so the resulting change() does not auto-commit.
+        // Letters / digits: native typeahead. Switch to keyboard mode so the
+        // resulting change() does not auto-commit.
         mouseRef.current = false;
         return;
     }

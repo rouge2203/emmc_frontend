@@ -21,6 +21,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FocusEvent, KeyboardEvent } from "react";
 import TimeSelect from "../../TimeSelect";
 import { SELECT_CLASS, SelectShell } from "./selectChrome";
+import { stepFocusedSelect } from "../selectStep";
 import {
   defaultPeriodForHour,
   from12h,
@@ -216,9 +217,22 @@ export default function TimeRangeSelects({
         mouseRef.current = false;
         moveFocus(1);
         return;
+      case "ArrowUp":
+      case "ArrowDown": {
+        // Step the focused select ourselves so macOS Chrome does not open the
+        // picker (Alt+↓ / Space still do). The dispatched change() runs the Día
+        // / TimeSelect onChange exactly like a keyboard change — no commit.
+        if (e.altKey) return;
+        const el = e.target as HTMLElement;
+        if (el instanceof HTMLSelectElement) {
+          e.preventDefault();
+          mouseRef.current = false;
+          stepFocusedSelect(el, e.key === "ArrowDown" ? 1 : -1);
+        }
+        return;
+      }
       default:
-        // ArrowUp/Down (native value change), digits and letters (native
-        // typeahead) all stay keyboard-driven and never auto-commit.
+        // Digits and letters (native typeahead) stay keyboard-driven, no commit.
         mouseRef.current = false;
         return;
     }
