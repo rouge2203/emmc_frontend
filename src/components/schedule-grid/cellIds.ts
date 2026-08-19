@@ -16,6 +16,7 @@ import type {
 } from "./types";
 import type { SlotConflicts } from "./conflicts";
 import type { GridRefData } from "./useGridData";
+import type { HorarioEditorTarget } from "./horarioEditorTarget";
 
 /** Stable DOM id for one addressable sub-cell, e.g. `sg-42-t0`. */
 export const cellDomId = (a: CellAddress): string => `sg-${a.enrollmentId}-${a.col}`;
@@ -30,21 +31,39 @@ export interface CellVisual {
 }
 
 /**
- * Shared className for a sub-cell wrapper. Owns the selection ring (focused vs
- * inactive) and the transient save styling; an error ring wins over the active
- * ring so a failed save is always visible. `relative` anchors the CellStatus
- * overlay; `scroll-mt-10` keeps the sticky header from covering it on scroll.
+ * Shared className for a sub-cell wrapper. Selection is painted on the inner
+ * control's own outline (see `controlBorder`), not as a second ring around the
+ * cell. `relative` anchors CellMessage; `scroll-mt-10` keeps the sticky header
+ * from covering the cell on scroll.
  */
 export const cellClass = (v: CellVisual): string => {
-  const parts = ["relative rounded-sm px-2 py-1 cursor-default select-none scroll-mt-10"];
-  if (v.status === "error") {
-    parts.push("ring-2 ring-red-500 ring-inset");
-  } else if (v.active) {
-    parts.push("ring-2 ring-inset", v.focused ? "ring-primary bg-primary/5" : "ring-gray-400");
-  }
+  const parts = ["relative rounded-sm px-1 py-1 cursor-default select-none scroll-mt-10"];
   if (v.status === "saved") parts.push("bg-green-50 transition-colors");
   return parts.join(" ");
 };
+
+/** Outline sitting on the control's border (no outer ring). */
+export const controlBorder = (v: {
+  active?: boolean;
+  focused?: boolean;
+  error?: boolean;
+}): string => {
+  if (v.error) return "outline-2 -outline-offset-1 outline-red-500";
+  if (v.active && v.focused) return "outline-2 -outline-offset-1 outline-primary";
+  if (v.active) return "outline-2 -outline-offset-1 outline-gray-400";
+  return "outline-1 -outline-offset-1 outline-gray-300";
+};
+
+/**
+ * A settled cell shows text instead of controls, so there is no control border
+ * to carry the selection. Paint it on the cell itself — but only when there is
+ * something to say (selected, or a failed save); at rest it stays unadorned.
+ */
+export const settledCellOutline = (v: {
+  active?: boolean;
+  focused?: boolean;
+  error?: boolean;
+}): string => (v.error || v.active ? `rounded-md ${controlBorder(v)}` : "");
 
 /**
  * Props shared by every leaf cell component (ProfessorCell/TimeCell/AulaCell).
@@ -62,11 +81,13 @@ export interface CellProps {
   seed?: string | null;
   /** Edit mode was entered by a mouse click → the editor opens its dropdown (showPicker). */
   viaMouse?: boolean;
+  /** Nested horario control requested by a mouse click. */
+  editTarget?: HorarioEditorTarget | null;
   /** This cell's autosave status (spinner/check/error dot). */
   saveState?: CellSaveState;
   onMouseDown: (address: CellAddress) => void;
   /** A click selects the cell and opens its editor (single-click-to-edit). */
-  onClick?: (address: CellAddress) => void;
+  onClick?: (address: CellAddress, target?: HorarioEditorTarget) => void;
   /** Commit a new professor for this row (professor cell only). */
   onCommitProfessor?: (enrollmentId: number, teacherId: number | null, move: MoveDir) => void;
   /** Commit a new day/time range for a horario slot (time cell only). */

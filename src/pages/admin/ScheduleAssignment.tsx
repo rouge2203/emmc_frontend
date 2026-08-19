@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FocusEvent } from "react";
+import { flushSync } from "react-dom";
 import {
   TableCellsIcon,
   ArrowPathIcon,
@@ -18,6 +19,7 @@ import GridToast from "../../components/schedule-grid/GridToast";
 import KeyboardLegend from "../../components/schedule-grid/KeyboardLegend";
 import NotifyPendingButton from "../../components/schedule-grid/NotifyPendingButton";
 import NotifyPreviewDialog from "../../components/schedule-grid/NotifyPreviewDialog";
+import HorarioDeleteDialog from "../../components/schedule-grid/HorarioDeleteDialog";
 import { computeConflicts } from "../../components/schedule-grid/conflicts";
 import { useGridData } from "../../components/schedule-grid/useGridData";
 import { useGridNavigation } from "../../components/schedule-grid/useGridNavigation";
@@ -26,7 +28,14 @@ import { useGridCommits } from "../../components/schedule-grid/useGridCommits";
 import { useNotificationSummary } from "../../components/schedule-grid/useNotificationSummary";
 import { filterRows, liveCounts } from "../../components/schedule-grid/filters";
 import type { GridFilters } from "../../components/schedule-grid/filters";
-import type { CellAddress } from "../../components/schedule-grid/types";
+import { cellDomId } from "../../components/schedule-grid/cellIds";
+import { openNativeSelectPicker } from "../../components/schedule-grid/pickerOpening";
+import type { CellAddress, ColKey, SlotIndex } from "../../components/schedule-grid/types";
+import {
+  findHorarioTargetSelect,
+  resolveHorarioEditorTarget,
+  type HorarioEditorTarget,
+} from "../../components/schedule-grid/horarioEditorTarget";
 
 // The grid always shows one academic year; it opens on the current one. Year
 // and period are the main view selectors — they are NOT reset by "Limpiar
@@ -65,11 +74,21 @@ export default function ScheduleAssignment() {
   // without every keystroke hammering the endpoint.
   const notif = useNotificationSummary();
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [deleteSlot, setDeleteSlot] = useState<{
+    enrollmentId: number;
+    slotIndex: SlotIndex;
+  } | null>(null);
 
   // Autosave (per-cell status + error toast). Declared before useGridData so its
   // `idle` awaiter can gate every (re)fetch behind a drained save queue.
   const { save, rowStatuses, setHint, setTransientError, idle, pending, toast, dismissToast, showToast } =
     useAutosave({ onSaved: notif.refresh });
+
+  // Deleting (or editing) a horario changes who is pending a notification, so
+  // the send stays closed — "Actualizando…" — until the queue has drained AND
+  // the summary behind the count has been refetched. Sending in between would
+  // mail the list as it stood before the edit.
+  const updatingNotifications = pending > 0 || notif.refreshPending;
 
   const { rows, setRows, rowsRef, snapshot, loading, error, truncated, reload, ref, refError } =
     useGridData({
@@ -232,12 +251,37 @@ export default function ScheduleAssignment() {
   // blur has already committed, so clicking straight from one cell to another
   // commits the first and opens the second. viaMouse → the editor showPicker()s.
   const onCellClick = useCallback(
-    (address: CellAddress) => {
-      setActive(address);
+    (address: CellAddress, target?: HorarioEditorTarget) => {
       // canEdit shows the aula "add a schedule first" hint when appropriate.
-      if (canEdit(address)) startEdit(null, true);
+      if (!canEdit(address)) {
+        setActive(address);
+        return;
+      }
+
+      openNativeSelectPicker(
+        () => {
+          flushSync(() => {
+            setActive(address);
+            startEdit(null, true, target ?? null);
+          });
+        },
+        () => {
+          const cell = document.getElementById(cellDomId(address));
+          if (!cell) return null;
+          if (address.col === "prof") {
+            return cell.querySelector<HTMLSelectElement>('select[aria-label="Profesor"]');
+          }
+
+          const slotIndex = Number(address.col.slice(1)) as SlotIndex;
+          const row = rowsRef.current.find((item) => item.enrollmentId === address.enrollmentId);
+          return findHorarioTargetSelect(
+            cell,
+            resolveHorarioEditorTarget(row?.slots[slotIndex]?.day ?? null, target ?? "day"),
+          );
+        },
+      );
     },
-    [setActive, canEdit, startEdit],
+    [setActive, canEdit, startEdit, rowsRef],
   );
 
   useEffect(() => {
@@ -295,13 +339,6 @@ export default function ScheduleAssignment() {
           <span className="mt-2 text-xs text-gray-500">
             {visibleRows.length} de {rows.length} matrículas
           </span>
-          <NotifyPendingButton
-            summary={notif.summary}
-            sending={notif.sending}
-            justFinished={notif.justFinished}
-            onSend={notif.send}
-            onOpenPreview={() => setPreviewOpen(true)}
-          />
           {pending > 0 && (
             <span className="mt-2 text-xs text-amber-600">
               Guardando {pending} {pending === 1 ? "cambio" : "cambios"}…
@@ -334,7 +371,7 @@ export default function ScheduleAssignment() {
               id="scheduleYear"
               value={yearFilter}
               onChange={(e) => setYearFilter(parseInt(e.target.value, 10))}
-              className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-2.5 pr-10 pl-4 text-lg font-semibold text-gray-900 shadow-xs outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900"
+              className="col-start-1 row-start-1 w-full cursor-pointer appearance-none rounded-md bg-white py-2.5 pr-10 pl-4 text-lg font-semibold text-gray-900 shadow-xs outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 disabled:cursor-not-allowed"
             >
               {yearOptions.map((year) => (
                 <option key={year} value={year}>
@@ -463,7 +500,7 @@ export default function ScheduleAssignment() {
                     const value = e.target.value;
                     setCareerId(value ? parseInt(value, 10) : null);
                   }}
-                  className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                  className="col-start-1 row-start-1 w-full cursor-pointer appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 disabled:cursor-not-allowed sm:text-sm/6"
                 >
                   <option value="">Todas las carreras</option>
                   {ref.careers.map((career) => (
@@ -505,7 +542,7 @@ export default function ScheduleAssignment() {
                     const value = e.target.value;
                     setProfessorId(value ? parseInt(value, 10) : null);
                   }}
-                  className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                  className="col-start-1 row-start-1 w-full cursor-pointer appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 disabled:cursor-not-allowed sm:text-sm/6"
                 >
                   <option value="">Todos los profesores</option>
                   {ref.teachers.map((teacher) => (
@@ -595,8 +632,20 @@ export default function ScheduleAssignment() {
         </div>
       </div>
 
-      {/* Keyboard shortcuts legend (collapsible) */}
-      <KeyboardLegend />
+      {/* Keyboard shortcuts + notify pending on one row */}
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <KeyboardLegend />
+        </div>
+        <NotifyPendingButton
+          summary={notif.summary}
+          sending={notif.sending}
+          updating={updatingNotifications}
+          justFinished={notif.justFinished}
+          onSend={notif.send}
+          onOpenPreview={() => setPreviewOpen(true)}
+        />
+      </div>
 
       {/* Truncated banner */}
       {truncated && (
@@ -655,6 +704,10 @@ export default function ScheduleAssignment() {
             onCancelTime={cancelTime}
             onCommitAula={commitAula}
             onCancelEdit={cancelEdit}
+            onRequestDeleteSlot={(enrollmentId, slotIndex) => {
+              stopEdit();
+              setDeleteSlot({ enrollmentId, slotIndex });
+            }}
             gridRef={gridRef}
           />
         )}
@@ -678,7 +731,21 @@ export default function ScheduleAssignment() {
         onClose={() => setPreviewOpen(false)}
         summary={notif.summary}
         sending={notif.sending}
+        updating={updatingNotifications}
         onSend={notif.send}
+      />
+      <HorarioDeleteDialog
+        open={deleteSlot !== null}
+        onClose={() => setDeleteSlot(null)}
+        onConfirm={() => {
+          if (deleteSlot) {
+            onDeleteCell({
+              enrollmentId: deleteSlot.enrollmentId,
+              col: `t${deleteSlot.slotIndex}` as ColKey,
+            });
+          }
+          setDeleteSlot(null);
+        }}
       />
     </div>
   );

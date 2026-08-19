@@ -59,6 +59,8 @@ export interface UseNotificationSummaryResult {
   loading: boolean;
   error: string | null;
   refresh: () => void;
+  /** A save asked for a resync and the summary has not caught up yet. */
+  refreshPending: boolean;
   refreshNow: () => Promise<void>;
   send: () => Promise<void>;
   sending: boolean;
@@ -90,6 +92,12 @@ export function useNotificationSummary(): UseNotificationSummaryResult {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [justFinished, setJustFinished] = useState<NotificationBatch | null>(null);
+  // True from the moment a save asks for a resync until a GET has actually
+  // landed. Callers gate "send" on it: between a delete finishing and the
+  // debounced refresh returning, `summary` still describes the old grid, and
+  // sending from that snapshot mails the wrong students.
+  const [refreshPending, setRefreshPending] = useState(false);
+  const refreshPendingRef = useRef(false);
 
   // Discards a response from a stale in-flight GET (superseded by a newer one,
   // or the hook has unmounted — unmount bumps this past every in-flight id).
@@ -143,6 +151,11 @@ export function useNotificationSummary(): UseNotificationSummaryResult {
     } finally {
       if (requestId === latestRequestId.current) {
         setLoading(false);
+        // Only settled once no further resync is already queued behind us.
+        if (refreshPendingRef.current && debounceTimer.current === null) {
+          refreshPendingRef.current = false;
+          setRefreshPending(false);
+        }
         scheduleNextPoll(nextActiveBatch);
       }
     }
@@ -170,6 +183,8 @@ export function useNotificationSummary(): UseNotificationSummaryResult {
   // Debounced (trailing) refresh — safe to call after every save without
   // flooding the backend when several cells save in quick succession.
   const refresh = useCallback(() => {
+    refreshPendingRef.current = true;
+    setRefreshPending(true);
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
       debounceTimer.current = null;
@@ -220,5 +235,15 @@ export function useNotificationSummary(): UseNotificationSummaryResult {
     }
   }, [axiosPrivate, refreshNow, scheduleNextPoll]);
 
-  return { summary, loading, error, refresh, refreshNow, send, sending, justFinished };
+  return {
+    summary,
+    loading,
+    error,
+    refresh,
+    refreshPending,
+    refreshNow,
+    send,
+    sending,
+    justFinished,
+  };
 }

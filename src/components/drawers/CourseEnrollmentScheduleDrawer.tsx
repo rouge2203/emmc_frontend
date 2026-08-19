@@ -11,14 +11,14 @@ import {
   XMarkIcon,
   CheckCircleIcon,
   PlusIcon,
-  TrashIcon,
   XCircleIcon,
   InformationCircleIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
-import TimeSelect from "../TimeSelect";
+import HorarioItemCard from "./HorarioItemCard";
+import { canSaveHorario } from "./horarioTime";
 
 interface Classroom {
   id: number;
@@ -89,16 +89,6 @@ interface CourseEnrollmentScheduleDrawerProps {
   onClose: () => void;
   onScheduleUpdated?: () => void;
 }
-
-const DAY_OPTIONS = [
-  { value: "L", label: "Lunes" },
-  { value: "K", label: "Martes" },
-  { value: "M", label: "Miércoles" },
-  { value: "J", label: "Jueves" },
-  { value: "V", label: "Viernes" },
-  { value: "S", label: "Sábado" },
-  { value: "D", label: "Domingo" },
-];
 
 const CourseEnrollmentScheduleDrawer: React.FC<
   CourseEnrollmentScheduleDrawerProps
@@ -305,12 +295,23 @@ const CourseEnrollmentScheduleDrawer: React.FC<
     }));
   };
 
+  const patchEditingSchedule = (
+    id: number,
+    patch: Partial<Pick<CourseEnrollmentSchedule, "day" | "hour" | "end_hour" | "classroom_id">>,
+  ) => {
+    setEditingSchedules((prev) => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        ...patch,
+      },
+    }));
+  };
+
   const handleAddNewSchedule = () => {
-    if (
-      !newSchedules[newSchedules.length - 1]?.day &&
-      newSchedules.length > 0
-    ) {
-      return; // Don't add empty schedule if there's already one
+    const last = newSchedules[newSchedules.length - 1];
+    if (last && !canSaveHorario(last.day, last.hour) && newSchedules.length > 0) {
+      return; // Don't add another row until the last has day + hora inicio
     }
     setNewSchedules((prev) => [
       ...prev,
@@ -332,6 +333,20 @@ const CourseEnrollmentScheduleDrawer: React.FC<
   ) => {
     setNewSchedules((prev) =>
       prev.map((s) => (s.tempId === tempId ? { ...s, [field]: value } : s)),
+    );
+  };
+
+  const patchNewSchedule = (
+    tempId: number,
+    patch: Partial<{
+      day: string;
+      hour: string;
+      end_hour: string;
+      classroom_id: number | null;
+    }>,
+  ) => {
+    setNewSchedules((prev) =>
+      prev.map((s) => (s.tempId === tempId ? { ...s, ...patch } : s)),
     );
   };
 
@@ -426,7 +441,7 @@ const CourseEnrollmentScheduleDrawer: React.FC<
       }
 
       // Finally, create all new schedules
-      const schedulesToCreate = newSchedules.filter((s) => s.day);
+      const schedulesToCreate = newSchedules.filter((s) => canSaveHorario(s.day, s.hour));
       for (const newSchedule of schedulesToCreate) {
         try {
           const createData: any = {
@@ -621,169 +636,45 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                                   if (!editingSchedule) return null;
 
                                   return (
-                                    <div
+                                    <HorarioItemCard
                                       key={schedule.id}
-                                      className="border border-gray-200 rounded-lg p-4"
-                                    >
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="w-full min-w-0">
-                                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                                            Día
-                                          </label>
-                                          <div className="grid grid-cols-1">
-                                            <select
-                                              value={editingSchedule.day}
-                                              onChange={(e) =>
-                                                handleEditScheduleChange(
-                                                  schedule.id,
-                                                  "day",
-                                                  e.target.value,
-                                                )
-                                              }
-                                              disabled={isReadOnly}
-                                              className={`col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 ${
-                                                isReadOnly
-                                                  ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                                  : ""
-                                              }`}
-                                            >
-                                              {DAY_OPTIONS.map((option) => (
-                                                <option
-                                                  key={option.value}
-                                                  value={option.value}
-                                                >
-                                                  {option.label}
-                                                </option>
-                                              ))}
-                                            </select>
-                                            <svg
-                                              viewBox="0 0 16 16"
-                                              fill="currentColor"
-                                              data-slot="icon"
-                                              aria-hidden="true"
-                                              className={`pointer-events-none col-start-1 row-start-1 mr-2 size-4 self-center justify-self-end text-gray-500 ${
-                                                isReadOnly
-                                                  ? "text-gray-400"
-                                                  : ""
-                                              }`}
-                                            >
-                                              <path
-                                                d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
-                                                clipRule="evenodd"
-                                                fillRule="evenodd"
-                                              />
-                                            </svg>
-                                          </div>
-                                        </div>
-                                        <div className="flex items-end gap-2 min-w-0">
-                                          <div className="w-full min-w-0 flex-1">
-                                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                                              Aula
-                                            </label>
-                                            <div className="grid grid-cols-1">
-                                              <select
-                                                value={
-                                                  editingSchedule.classroom_id ??
-                                                  ""
-                                                }
-                                                onChange={(e) =>
-                                                  handleClassroomSelectForExisting(
-                                                    schedule.id,
-                                                    e.target.value
-                                                      ? Number(e.target.value)
-                                                      : null,
-                                                    editingSchedule.day,
-                                                  )
-                                                }
-                                                disabled={isReadOnly}
-                                                className={`col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 ${
-                                                  isReadOnly
-                                                    ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                                    : ""
-                                                }`}
-                                              >
-                                                <option value="">
-                                                  Sin aula
-                                                </option>
-                                                {classrooms.map((classroom) => (
-                                                  <option
-                                                    key={classroom.id}
-                                                    value={classroom.id}
-                                                  >
-                                                    Aula {classroom.number}
-                                                  </option>
-                                                ))}
-                                              </select>
-                                              <svg
-                                                viewBox="0 0 16 16"
-                                                fill="currentColor"
-                                                data-slot="icon"
-                                                aria-hidden="true"
-                                                className={`pointer-events-none col-start-1 row-start-1 mr-2 size-4 self-center justify-self-end text-gray-500 ${
-                                                  isReadOnly
-                                                    ? "text-gray-400"
-                                                    : ""
-                                                }`}
-                                              >
-                                                <path
-                                                  d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
-                                                  clipRule="evenodd"
-                                                  fillRule="evenodd"
-                                                />
-                                              </svg>
-                                            </div>
-                                          </div>
-                                          {!isReadOnly && (
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                handleMarkForDeletion(
-                                                  schedule.id,
-                                                )
-                                              }
-                                              className="shrink-0 rounded-md bg-red-800 px-3 py-1.5 text-sm font-semibold text-white shadow-xs hover:bg-red-900"
-                                              title="Eliminar horario"
-                                            >
-                                              <TrashIcon className="size-5" />
-                                            </button>
-                                          )}
-                                        </div>
-                                        <div className="w-full min-w-0">
-                                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                                            Hora
-                                          </label>
-                                          <TimeSelect
-                                            ariaLabel="Hora de inicio"
-                                            value={editingSchedule.hour}
-                                            onChange={(val) =>
-                                              handleEditScheduleChange(
-                                                schedule.id,
-                                                "hour",
-                                                val,
-                                              )
-                                            }
-                                            disabled={isReadOnly}
-                                          />
-                                        </div>
-                                        <div className="w-full min-w-0">
-                                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                                            Hora Fin
-                                          </label>
-                                          <TimeSelect
-                                            ariaLabel="Hora de fin"
-                                            value={editingSchedule.end_hour}
-                                            onChange={(val) =>
-                                              handleEditScheduleChange(
-                                                schedule.id,
-                                                "end_hour",
-                                                val,
-                                              )
-                                            }
-                                            disabled={isReadOnly}
-                                          />
-                                        </div>
-                                      </div>
-                                    </div>
+                                      day={editingSchedule.day}
+                                      hour={editingSchedule.hour}
+                                      endHour={editingSchedule.end_hour}
+                                      classroomId={editingSchedule.classroom_id}
+                                      classrooms={classrooms}
+                                      readOnly={isReadOnly}
+                                      onDayChange={(day) =>
+                                        handleEditScheduleChange(schedule.id, "day", day)
+                                      }
+                                      onStartChange={(start, autoEnd) =>
+                                        patchEditingSchedule(schedule.id, {
+                                          hour: start || null,
+                                          ...(autoEnd !== undefined
+                                            ? { end_hour: autoEnd || null }
+                                            : {}),
+                                        })
+                                      }
+                                      onEndChange={(end) =>
+                                        handleEditScheduleChange(
+                                          schedule.id,
+                                          "end_hour",
+                                          end || null,
+                                        )
+                                      }
+                                      onClassroomChange={(classroomId) =>
+                                        void handleClassroomSelectForExisting(
+                                          schedule.id,
+                                          classroomId,
+                                          editingSchedule.day,
+                                        )
+                                      }
+                                      onDelete={
+                                        isReadOnly
+                                          ? undefined
+                                          : () => handleMarkForDeletion(schedule.id)
+                                      }
+                                    />
                                   );
                                 })}
                             </div>
@@ -814,161 +705,45 @@ const CourseEnrollmentScheduleDrawer: React.FC<
                             ) : (
                               <div className="space-y-3">
                                 {newSchedules.map((newSchedule) => (
-                                  <div
+                                  <HorarioItemCard
                                     key={newSchedule.tempId}
-                                    className="border border-gray-200 rounded-lg p-4"
-                                  >
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                      <div className="w-full min-w-0">
-                                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                                          Día{" "}
-                                          <span className="text-red-500">
-                                            *
-                                          </span>
-                                        </label>
-                                        <div className="grid grid-cols-1">
-                                          <select
-                                            value={newSchedule.day}
-                                            onChange={(e) =>
-                                              handleNewScheduleChange(
-                                                newSchedule.tempId,
-                                                "day",
-                                                e.target.value,
-                                              )
-                                            }
-                                            className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900"
-                                          >
-                                            <option value="">
-                                              Seleccionar día
-                                            </option>
-                                            {DAY_OPTIONS.map((option) => (
-                                              <option
-                                                key={option.value}
-                                                value={option.value}
-                                              >
-                                                {option.label}
-                                              </option>
-                                            ))}
-                                          </select>
-                                          <svg
-                                            viewBox="0 0 16 16"
-                                            fill="currentColor"
-                                            data-slot="icon"
-                                            aria-hidden="true"
-                                            className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
-                                          >
-                                            <path
-                                              d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
-                                              clipRule="evenodd"
-                                              fillRule="evenodd"
-                                            />
-                                          </svg>
-                                        </div>
-                                      </div>
-                                      <div className="flex items-end gap-2 min-w-0">
-                                        <div className="w-full min-w-0 flex-1">
-                                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                                            Aula
-                                          </label>
-                                          <div className="grid grid-cols-1">
-                                            <select
-                                              value={
-                                                newSchedule.classroom_id ?? ""
-                                              }
-                                              onChange={(e) =>
-                                                handleClassroomSelectForNew(
-                                                  newSchedule.tempId,
-                                                  e.target.value
-                                                    ? Number(e.target.value)
-                                                    : null,
-                                                  newSchedule.day,
-                                                )
-                                              }
-                                              disabled={isReadOnly}
-                                              className={`col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 ${
-                                                isReadOnly
-                                                  ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                                  : ""
-                                              }`}
-                                            >
-                                              <option value="">Sin aula</option>
-                                              {classrooms.map((classroom) => (
-                                                <option
-                                                  key={classroom.id}
-                                                  value={classroom.id}
-                                                >
-                                                  Aula {classroom.number}
-                                                </option>
-                                              ))}
-                                            </select>
-                                            <svg
-                                              viewBox="0 0 16 16"
-                                              fill="currentColor"
-                                              data-slot="icon"
-                                              aria-hidden="true"
-                                              className={`pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4 ${
-                                                isReadOnly ? "text-gray-400" : ""
-                                              }`}
-                                            >
-                                              <path
-                                                d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
-                                                clipRule="evenodd"
-                                                fillRule="evenodd"
-                                              />
-                                            </svg>
-                                          </div>
-                                        </div>
-                                        {!isReadOnly && (
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              handleRemoveNewSchedule(
-                                                newSchedule.tempId,
-                                              )
-                                            }
-                                            className="shrink-0 rounded-md bg-red-800 px-3 py-1.5 text-sm font-semibold text-white shadow-xs hover:bg-red-900"
-                                            title="Quitar horario"
-                                          >
-                                            <TrashIcon className="size-5" />
-                                          </button>
-                                        )}
-                                      </div>
-                                      <div className="w-full min-w-0">
-                                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                                          Hora
-                                        </label>
-                                        <TimeSelect
-                                          ariaLabel="Hora de inicio"
-                                          value={newSchedule.hour}
-                                          onChange={(val) =>
-                                            handleNewScheduleChange(
-                                              newSchedule.tempId,
-                                              "hour",
-                                              val,
-                                            )
-                                          }
-                                          disabled={isReadOnly}
-                                        />
-                                      </div>
-                                      <div className="w-full min-w-0">
-                                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                                          Hora Fin
-                                        </label>
-                                        <TimeSelect
-                                          ariaLabel="Hora de fin"
-                                          value={newSchedule.end_hour}
-                                          onChange={(val) =>
-                                            handleNewScheduleChange(
-                                              newSchedule.tempId,
-                                              "end_hour",
-                                              val,
-                                            )
-                                          }
-                                          disabled={isReadOnly}
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
+                                    day={newSchedule.day}
+                                    hour={newSchedule.hour}
+                                    endHour={newSchedule.end_hour}
+                                    classroomId={newSchedule.classroom_id}
+                                    classrooms={classrooms}
+                                    allowEmptyDay
+                                    onDayChange={(day) =>
+                                      handleNewScheduleChange(
+                                        newSchedule.tempId,
+                                        "day",
+                                        day,
+                                      )
+                                    }
+                                    onStartChange={(start, autoEnd) =>
+                                      patchNewSchedule(newSchedule.tempId, {
+                                        hour: start,
+                                        ...(autoEnd !== undefined
+                                          ? { end_hour: autoEnd ?? "" }
+                                          : {}),
+                                      })
+                                    }
+                                    onEndChange={(end) =>
+                                      handleNewScheduleChange(
+                                        newSchedule.tempId,
+                                        "end_hour",
+                                        end,
+                                      )
+                                    }
+                                    onClassroomChange={(classroomId) =>
+                                      void handleClassroomSelectForNew(
+                                        newSchedule.tempId,
+                                        classroomId,
+                                        newSchedule.day,
+                                      )
+                                    }
+                                    onDelete={() => handleRemoveNewSchedule(newSchedule.tempId)}
+                                  />
                                 ))}
                               </div>
                             )}

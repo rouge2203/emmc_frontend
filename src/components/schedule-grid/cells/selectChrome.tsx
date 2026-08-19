@@ -26,7 +26,7 @@ export function SelectChevron() {
 
 /** Compact select styling shared by the professor/aula/día selects (matches the drawer + TimeSelect). */
 export const SELECT_CLASS =
-  "col-start-1 row-start-1 w-full min-w-0 appearance-none rounded-md bg-white py-1.5 pl-2 pr-6 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900";
+  "col-start-1 row-start-1 w-full min-w-0 cursor-pointer appearance-none rounded-md bg-white py-1.5 pl-2 pr-6 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-primary disabled:cursor-not-allowed";
 
 /** Wraps a <select> so the SelectChevron overlays its right edge. */
 export function SelectShell({ children }: { children: ReactNode }) {

@@ -24,7 +24,7 @@ describe("colIndexOf / rowIndexOf", () => {
   it("maps columns to their COL_ORDER index", () => {
     expect(colIndexOf("prof")).toBe(0);
     expect(colIndexOf("t0")).toBe(1);
-    expect(colIndexOf("a2")).toBe(6);
+    expect(colIndexOf("t2")).toBe(3);
   });
   it("finds row indices and reports -1 when missing", () => {
     const rows = makeRows([10, 20, 30]);
@@ -40,7 +40,7 @@ describe("arrowTarget", () => {
     expect(arrowTarget(at(2, "prof"), "right", rows)).toEqual(at(2, "t0"));
     expect(arrowTarget(at(2, "t0"), "left", rows)).toEqual(at(2, "prof"));
     expect(arrowTarget(at(2, "prof"), "left", rows)).toEqual(at(2, "prof")); // clamp left
-    expect(arrowTarget(at(2, "a2"), "right", rows)).toEqual(at(2, "a2")); // clamp right
+    expect(arrowTarget(at(2, "t2"), "right", rows)).toEqual(at(2, "t2")); // clamp right
   });
 
   it("moves down/up across rows keeping the col, clamping at top/bottom", () => {
@@ -61,16 +61,16 @@ describe("tabTarget", () => {
 
   it("advances through the columns then wraps to the next row's first col", () => {
     expect(tabTarget(at(1, "prof"), false, rows)).toEqual(at(1, "t0"));
-    expect(tabTarget(at(1, "a2"), false, rows)).toEqual(at(2, "prof"));
+    expect(tabTarget(at(1, "t2"), false, rows)).toEqual(at(2, "prof"));
   });
 
   it("retreats through the columns then wraps to the previous row's last col", () => {
     expect(tabTarget(at(2, "t0"), true, rows)).toEqual(at(2, "prof"));
-    expect(tabTarget(at(2, "prof"), true, rows)).toEqual(at(1, "a2"));
+    expect(tabTarget(at(2, "prof"), true, rows)).toEqual(at(1, "t2"));
   });
 
   it("returns null at the very last cell (fwd) and very first cell (back)", () => {
-    expect(tabTarget(at(3, "a2"), false, rows)).toBeNull();
+    expect(tabTarget(at(3, "t2"), false, rows)).toBeNull();
     expect(tabTarget(at(1, "prof"), true, rows)).toBeNull();
   });
 });
@@ -79,7 +79,7 @@ describe("rowEdgeTarget / gridEdgeTarget", () => {
   const rows = makeRows([1, 2, 3]);
   it("jumps to the first/last col of the same row", () => {
     expect(rowEdgeTarget(at(2, "t1"), false)).toEqual(at(2, "prof"));
-    expect(rowEdgeTarget(at(2, "t1"), true)).toEqual(at(2, "a2"));
+    expect(rowEdgeTarget(at(2, "t1"), true)).toEqual(at(2, "t2"));
   });
   it("jumps to the first/last visible row keeping the col", () => {
     expect(gridEdgeTarget(at(2, "t1"), false, rows)).toEqual(at(1, "t1"));

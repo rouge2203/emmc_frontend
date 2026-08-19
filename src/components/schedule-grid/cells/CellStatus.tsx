@@ -3,7 +3,8 @@
 // possible ConflictBadge so the two never overlap):
 //   saving → spinner · saved → green check · error → red dot (title=message)
 //   hint   → amber dot (title=message)
-// The cell's error ring / saved flash still come from cellClass.
+// The control's error/selection outline and the saved flash come from
+// SelectBox / cellClass.
 import { CheckIcon } from "@heroicons/react/16/solid";
 import type { CellSaveState } from "../types";
 

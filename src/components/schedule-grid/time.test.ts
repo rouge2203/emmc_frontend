@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   defaultEndPeriod,
+  formatSlotRange,
   defaultPeriodForHour,
   dayIndex,
   format12h,
@@ -95,6 +96,10 @@ describe("formatSlotBox", () => {
     const slot: Slot = { scheduleId: 1, day: "L", start: 540, end: 600, classroomId: null };
     expect(formatSlotBox(slot)).toEqual({ text: "L · 9:00 AM – 10:00 AM", muted: false });
   });
+  it("formats an open-ended slot as 'L · 9:00 AM'", () => {
+    const slot: Slot = { scheduleId: 1, day: "L", start: 540, end: null, classroomId: null };
+    expect(formatSlotBox(slot)).toEqual({ text: "L · 9:00 AM", muted: false });
+  });
   it("shows the muted 'Día · hora' placeholder for null/incomplete slots", () => {
     expect(formatSlotBox(null)).toEqual({ text: "Día · hora", muted: true });
     const dayOnly: Slot = { scheduleId: 1, day: "L", start: null, end: null, classroomId: null };
@@ -167,9 +172,9 @@ describe("validateRange", () => {
     const result = validateRange({ day: "L", start: null, end: null });
     expect(result).toEqual({ ok: false, error: "Falta hora de inicio" });
   });
-  it("reports a missing end when day and start are present", () => {
+  it("accepts day and start without an end (open-ended horario)", () => {
     const result = validateRange({ day: "L", start: 540, end: null });
-    expect(result).toEqual({ ok: false, error: "Falta hora de fin" });
+    expect(result).toEqual({ ok: true, value: { day: "L", start: 540, end: null } });
   });
   it("reports the end must be later when end is before start", () => {
     const result = validateRange({ day: "L", start: 660, end: 600 });
@@ -214,5 +219,23 @@ describe("dayIndex", () => {
 describe("formatConflictRange", () => {
   it("formats a 24h range with an en dash and no spaces", () => {
     expect(formatConflictRange("L", 540, 600)).toBe("L 09:00–10:00");
+  });
+});
+
+describe("formatSlotRange", () => {
+  it("states the meridiem once when both ends share it", () => {
+    expect(formatSlotRange(9 * 60, 9 * 60 + 40)).toBe("9:00 – 9:40 am");
+  });
+
+  it("states both when the range crosses noon", () => {
+    expect(formatSlotRange(11 * 60 + 30, 12 * 60 + 10)).toBe("11:30 am – 12:10 pm");
+  });
+
+  it("falls back to the start alone when there is no end", () => {
+    expect(formatSlotRange(15 * 60 + 5, null)).toBe("3:05 pm");
+  });
+
+  it("has nothing to state without a start", () => {
+    expect(formatSlotRange(null, 10 * 60)).toBeNull();
   });
 });

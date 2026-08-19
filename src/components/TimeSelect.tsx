@@ -131,7 +131,7 @@ const TimeSelect: React.FC<TimeSelectProps> = ({
   };
 
   const selectClass = (isDisabled: boolean) =>
-    `col-start-1 row-start-1 w-full min-w-0 appearance-none rounded-md py-1.5 pr-6 pl-2 text-sm outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 ${
+    `col-start-1 row-start-1 w-full min-w-0 appearance-none rounded-md py-1.5 pr-6 pl-2 text-sm outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-primary ${
       isDisabled
         ? "bg-gray-100 text-gray-500 cursor-not-allowed"
         : "bg-white text-gray-900"

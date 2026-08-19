@@ -13,6 +13,8 @@ export interface NotifyPreviewDialogProps {
   onClose: () => void;
   summary: NotificationSummary | null;
   sending: boolean;
+  /** A grid save is still settling — the pending list below may be stale. */
+  updating?: boolean;
   onSend: () => Promise<void>;
 }
 
@@ -53,6 +55,7 @@ export default function NotifyPreviewDialog({
   onClose,
   summary,
   sending,
+  updating = false,
   onSend,
 }: NotifyPreviewDialogProps) {
   const pending = summary?.pending ?? [];
@@ -152,10 +155,12 @@ export default function NotifyPreviewDialog({
               <button
                 type="button"
                 onClick={() => void onSend()}
-                disabled={sending || pendingCount === 0 || activeBatch !== null}
+                disabled={updating || sending || pendingCount === 0 || activeBatch !== null}
                 className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Enviar {pendingCount} {pendingCount === 1 ? "correo" : "correos"}
+                {updating
+                  ? "Actualizando…"
+                  : `Enviar ${pendingCount} ${pendingCount === 1 ? "correo" : "correos"}`}
               </button>
             </div>
           </DialogPanel>

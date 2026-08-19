@@ -238,7 +238,11 @@ export function useGridCommits({
           // PUT whenever an id exists (live row's, or the one captured at commit
           // time if a reload dropped the row); POST only for a genuinely new slot.
           const currentId = findRow(enrollmentId)?.slots[slotIndex]?.scheduleId ?? capturedId;
-          const body = { day, hour: toApiTime(start), end_hour: toApiTime(end) };
+          const body = {
+            day,
+            hour: toApiTime(start),
+            end_hour: end !== null ? toApiTime(end) : null,
+          };
           return currentId
             ? axiosPrivate.put<ScheduleResponse>(SCHEDULE_URL, {
                 schedule_id: currentId,
@@ -427,7 +431,7 @@ export function useGridCommits({
         // gone), followed — same serialKey, so strictly after — by an aula PUT
         // when the removed slot had a classroom.
         showUndoToast("Horario eliminado", () => {
-          if (removed.day !== null && removed.start !== null && removed.end !== null) {
+          if (removed.day !== null && removed.start !== null) {
             commitTime(
               a.enrollmentId,
               i,
@@ -448,19 +452,9 @@ export function useGridCommits({
     [findRow, applyRows, save, axiosPrivate, showUndoToast, commitProfessor, commitTime, commitAula],
   );
 
-  // canEdit gates edit-mode entry: prof/time always editable; an aula cell only
-  // once its slot exists — otherwise show the "add a schedule first" hint.
-  const canEdit = useCallback(
-    (a: CellAddress): boolean => {
-      if (a.col === "prof" || a.col === "t0" || a.col === "t1" || a.col === "t2") return true;
-      const i = colSlotIndex(a.col);
-      const slot = findRow(a.enrollmentId)?.slots[i];
-      if (slot) return true;
-      setHint(a.enrollmentId, a.col, "Primero asigne día y hora");
-      return false;
-    },
-    [findRow, setHint],
-  );
+  // canEdit: every addressable col is editable. Aula lives inside the horario
+  // card and stays disabled until day + hora inicio are set (no hint toast).
+  const canEdit = useCallback((_a: CellAddress): boolean => true, []);
 
   return {
     commitProfessor,

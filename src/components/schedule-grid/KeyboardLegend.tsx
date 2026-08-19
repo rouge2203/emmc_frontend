@@ -33,12 +33,16 @@ const CELL_SHORTCUTS: Shortcut[] = [
 export default function KeyboardLegend() {
   const [open, setOpen] = useState(false);
   return (
-    <div className="mb-4">
+    <div
+      className={open ? "rounded-md border border-gray-200 bg-gray-50" : undefined}
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900"
+        className={`flex h-9 items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900 ${
+          open ? "w-full px-3" : ""
+        }`}
       >
         <ChevronDownIcon
           className={`size-4 transition-transform ${open ? "" : "-rotate-90"}`}
@@ -47,7 +51,7 @@ export default function KeyboardLegend() {
         Atajos de teclado
       </button>
       {open && (
-        <div className="mt-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-600">
+        <div className="px-3 pb-2.5 text-xs text-gray-600">
           <div className="flex flex-wrap gap-x-4 gap-y-1.5">
             {SHORTCUTS.map((shortcut, i) => (
               <span key={i} className="inline-flex items-center gap-1">

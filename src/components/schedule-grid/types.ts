@@ -40,7 +40,7 @@ export interface GridRow {
   notificationPending: boolean;
 }
 export type ColKey = "prof" | "t0" | "a0" | "t1" | "a1" | "t2" | "a2";
-export const COL_ORDER: ColKey[] = ["prof", "t0", "a0", "t1", "a1", "t2", "a2"];
+export const COL_ORDER: ColKey[] = ["prof", "t0", "t1", "t2"];
 export type SlotIndex = 0 | 1 | 2;
 /** Only meaningful for the t0/t1/t2 and a0/a1/a2 columns. */
 export const colSlotIndex = (c: ColKey): SlotIndex => Number(c[1]) as SlotIndex;
@@ -71,7 +71,7 @@ export interface Classroom {
 export interface TimeRangeValue {
   day: DayCode;
   start: number;
-  end: number;
+  end: number | null;
 }
 
 // API DTOs (subset actually used by the grid; new backend fields are OPTIONAL so an older backend still works)

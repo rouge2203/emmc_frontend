@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
 import {
   Dialog,
@@ -24,7 +24,11 @@ import {
   BanknotesIcon,
   TableCellsIcon,
 } from "@heroicons/react/24/outline";
-import { ChevronRightIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
+import {
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "@heroicons/react/20/solid";
 import { HomeIcon as HomeIconSolid } from "@heroicons/react/20/solid";
 import { PiStudent } from "react-icons/pi";
 import { LiaChalkboardTeacherSolid } from "react-icons/lia";
@@ -45,6 +49,11 @@ import { LuListChecks, LuBadgePercent } from "react-icons/lu";
 
 import useAuth from "../hooks/useAuth";
 import useLogout from "../hooks/useLogout";
+import {
+  createSidebarRouteChangeUpdater,
+  initialDesktopSidebarState,
+  sidebarStateAfterToggle,
+} from "./adminSidebarState";
 
 const navigation = [
   {
@@ -163,10 +172,40 @@ function classNames(...classes: (string | boolean | undefined)[]): string {
 }
 
 export default function AdminLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopSidebar, setDesktopSidebar] = useState(() =>
+    initialDesktopSidebarState(location.pathname),
+  );
+  const [desktopGroupToOpen, setDesktopGroupToOpen] = useState<string | null>(null);
+  const previousPath = useRef(location.pathname);
   const { auth } = useAuth();
   const logout = useLogout();
+
+  useEffect(() => {
+    const nextPath = location.pathname;
+    const updateSidebar = createSidebarRouteChangeUpdater(
+      previousPath.current,
+      nextPath,
+    );
+    previousPath.current = nextPath;
+    setDesktopSidebar(updateSidebar);
+  }, [location.pathname]);
+
+  const toggleDesktopSidebar = () => {
+    setDesktopSidebar((current) =>
+      sidebarStateAfterToggle({ path: location.pathname, ...current }),
+    );
+  };
+
+  const expandDesktopGroup = (name: string) => {
+    setDesktopGroupToOpen(name);
+    setDesktopSidebar((current) =>
+      current.expanded
+        ? current
+        : sidebarStateAfterToggle({ path: location.pathname, ...current }),
+    );
+  };
 
   // Update navigation with current route
   const navigationWithCurrent = navigation.map((item) => {
@@ -285,18 +324,26 @@ export default function AdminLayout() {
     { name: "Cerrar sesión", onClick: logout },
   ];
 
-  const renderNavigationItem = (item: (typeof navigation)[0]) => {
+  const renderNavigationItem = (
+    item: (typeof navigation)[0],
+    {
+      collapsed = false,
+      mobile = false,
+    }: { collapsed?: boolean; mobile?: boolean } = {},
+  ) => {
     if (!item.children) {
       return (
         <li key={item.name}>
           <Link
             to={item.href}
             onClick={() => setSidebarOpen(false)}
+            title={collapsed ? item.name : undefined}
             className={classNames(
               item.current
                 ? "bg-gray-50 text-primary"
                 : "text-gray-600 hover:bg-gray-50 hover:text-primary",
-              "group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold"
+              collapsed ? "justify-center gap-x-0" : "gap-x-3",
+              "group flex overflow-hidden rounded-md p-2 text-sm/6 font-semibold transition-[gap] duration-300",
             )}
           >
             {item.icon && (
@@ -310,7 +357,14 @@ export default function AdminLayout() {
                 )}
               />
             )}
-            {item.name}
+            <span
+              className={classNames(
+                collapsed ? "max-w-0 opacity-0" : "max-w-48 opacity-100",
+                "overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-200",
+              )}
+            >
+              {item.name}
+            </span>
           </Link>
         </li>
       );
@@ -319,43 +373,62 @@ export default function AdminLayout() {
     return (
       <li key={item.name}>
         <Disclosure
+          key={
+            mobile
+              ? item.name
+              : `${item.name}-${desktopGroupToOpen === item.name ? "requested" : "normal"}`
+          }
           as="div"
           defaultOpen={
+            (!mobile && desktopGroupToOpen === item.name) ||
             item.name === "Usuarios" ||
             (item.name === "Instrumentos" &&
               item.children?.some((child) => location.pathname === child.href))
           }
         >
           <DisclosureButton
+            onClick={() => {
+              if (collapsed) expandDesktopGroup(item.name);
+            }}
+            title={collapsed ? item.name : undefined}
             className={classNames(
               item.current ? "bg-gray-50 text-primary" : "hover:bg-gray-50",
-              "group  flex w-full items-center gap-x-3 rounded-md p-2 text-left text-sm/6 font-semibold text-gray-700 hover:text-primary"
+              collapsed ? "justify-center gap-x-0" : "gap-x-3",
+              "group flex w-full items-center overflow-hidden rounded-md p-2 text-left text-sm/6 font-semibold text-gray-700 transition-[gap] duration-300 hover:text-primary",
             )}
           >
             <ChevronRightIcon
               aria-hidden="true"
-              className="size-5 shrink-0 text-gray-400 group-data-[open]:rotate-90 group-data-[open]:text-gray-500 transition-transform"
+              className={classNames(
+                collapsed ? "w-0 opacity-0" : "w-5 opacity-100",
+                "h-5 shrink-0 text-gray-400 transition-[width,opacity,transform] duration-300 group-data-open:rotate-90 group-data-open:text-gray-500",
+              )}
             />
             {item.icon && (
               <item.icon
                 aria-hidden="true"
                 className={classNames(
                   item.current
-                    ? "text-primary group-data-[open]:text-gray-600"
+                    ? "text-primary group-data-open:text-gray-600"
                     : "text-gray-600 group-hover:text-primary",
                   "size-6 shrink-0"
                 )}
               />
             )}
-            <div
+            <span
               className={classNames(
-                item.current ? "group-data-[open]:text-gray-600" : ""
+                item.current ? "group-data-open:text-gray-600" : "",
+                collapsed ? "max-w-0 opacity-0" : "max-w-48 opacity-100",
+                "overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-200",
               )}
             >
               {item.name}
-            </div>
+            </span>
           </DisclosureButton>
-          <DisclosurePanel as="ul" className="mt-1 px-2">
+          <DisclosurePanel
+            as="ul"
+            className={classNames(collapsed ? "hidden" : "block", "mt-1 px-2")}
+          >
             {item.children.map((subItem) => {
               const isActive = location.pathname === subItem.href;
               return (
@@ -391,28 +464,59 @@ export default function AdminLayout() {
     );
   };
 
-  const SidebarContent = () => (
-    <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6">
-      <div className="flex h-16 shrink-0 items-center">
+  const SidebarContent = ({
+    collapsed = false,
+    mobile = false,
+  }: {
+    collapsed?: boolean;
+    mobile?: boolean;
+  }) => (
+    <div
+      className={classNames(
+        collapsed ? "px-3" : "px-6",
+        "flex grow flex-col gap-y-5 overflow-x-hidden overflow-y-auto border-r border-gray-200 bg-white transition-[padding] duration-300 ease-in-out",
+      )}
+    >
+      <div
+        className={classNames(
+          collapsed ? "justify-center" : "justify-start",
+          "flex h-16 shrink-0 items-center",
+        )}
+      >
         <img
           alt="EMMC Logo"
           src="/emmc_logo.png"
-          className="h-16 mt-6 w-auto"
+          className={classNames(
+            collapsed ? "mt-0 h-11" : "mt-6 h-16",
+            "w-auto transition-all duration-300",
+          )}
         />
       </div>
       <nav className="flex flex-1 flex-col">
         <ul role="list" className="flex flex-1 flex-col gap-y-7">
           <li>
             <ul role="list" className="-mx-2 space-y-1">
-              {navigationWithCurrent.map((item) => renderNavigationItem(item))}
+              {navigationWithCurrent.map((item) =>
+                renderNavigationItem(item, { collapsed, mobile }),
+              )}
             </ul>
           </li>
-          <li className="-mx-6 mt-auto">
-            <div className="flex items-center gap-x-4 px-6 py-3">
+          <li className={classNames(collapsed ? "-mx-3" : "-mx-6", "mt-auto")}>
+            <div
+              className={classNames(
+                collapsed ? "flex-col gap-y-2 px-3" : "gap-x-4 px-6",
+                "flex items-center py-3 transition-all duration-300",
+              )}
+            >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white text-sm font-bold">
                 {getUserInitials()}
               </div>
-              <div className="flex-1 min-w-0">
+              <div
+                className={classNames(
+                  collapsed ? "max-w-0 opacity-0" : "max-w-48 opacity-100",
+                  "min-w-0 flex-1 overflow-hidden transition-[max-width,opacity] duration-200",
+                )}
+              >
                 <p className="text-sm/6 font-semibold text-gray-900 truncate">
                   {auth?.user?.first_name + " " + auth?.user?.last_name ||
                     "User"}
@@ -421,13 +525,21 @@ export default function AdminLayout() {
                   {auth?.user?.email || ""}
                 </p>
               </div>
-              <button
-                onClick={logout}
-                className="ml-2 text-sm text-gray-500 hover:text-gray-700"
-                title="Logout"
-              >
-                <XMarkIcon className="size-5" />
-              </button>
+              {!mobile && (
+                <button
+                  type="button"
+                  onClick={toggleDesktopSidebar}
+                  className="flex size-8 shrink-0 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-50 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  title={collapsed ? "Mostrar menú" : "Ocultar menú"}
+                  aria-label={collapsed ? "Mostrar menú" : "Ocultar menú"}
+                >
+                  {collapsed ? (
+                    <ChevronRightIcon className="size-5" aria-hidden="true" />
+                  ) : (
+                    <ChevronLeftIcon className="size-5" aria-hidden="true" />
+                  )}
+                </button>
+              )}
             </div>
           </li>
         </ul>
@@ -444,15 +556,15 @@ export default function AdminLayout() {
       >
         <DialogBackdrop
           transition
-          className="fixed inset-0 bg-gray-900/80 transition-opacity duration-300 ease-linear data-[closed]:opacity-0"
+          className="fixed inset-0 bg-gray-900/80 transition-opacity duration-300 ease-linear data-closed:opacity-0"
         />
         <div className="fixed inset-0 flex">
           <DialogPanel
             transition
-            className="relative mr-16 flex w-full max-w-xs flex-1 transform transition duration-300 ease-in-out data-[closed]:-translate-x-full"
+            className="relative mr-16 flex w-full max-w-xs flex-1 transform transition duration-300 ease-in-out data-closed:-translate-x-full"
           >
             <TransitionChild>
-              <div className="absolute top-0 left-full flex w-16 justify-center pt-5 duration-300 ease-in-out data-[closed]:opacity-0">
+              <div className="absolute top-0 left-full flex w-16 justify-center pt-5 duration-300 ease-in-out data-closed:opacity-0">
                 <button
                   type="button"
                   onClick={() => setSidebarOpen(false)}
@@ -463,18 +575,28 @@ export default function AdminLayout() {
                 </button>
               </div>
             </TransitionChild>
-            <SidebarContent />
+            <SidebarContent mobile />
           </DialogPanel>
         </div>
       </Dialog>
 
       {/* Static sidebar for desktop */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-        <SidebarContent />
+      <div
+        className={classNames(
+          desktopSidebar.expanded ? "lg:w-72" : "lg:w-20",
+          "hidden transition-[width] duration-300 ease-in-out lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:flex-col",
+        )}
+      >
+        <SidebarContent collapsed={!desktopSidebar.expanded} />
       </div>
 
       {/* Main content area with header */}
-      <div className="lg:pl-72">
+      <div
+        className={classNames(
+          desktopSidebar.expanded ? "lg:pl-72" : "lg:pl-20",
+          "transition-[padding] duration-300 ease-in-out",
+        )}
+      >
         {/* Header */}
         <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-xs sm:gap-x-6 sm:px-6 lg:px-8">
           <button
@@ -588,21 +710,21 @@ export default function AdminLayout() {
                 </MenuButton>
                 <MenuItems
                   transition
-                  className="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg outline-1 outline-gray-900/5 transition data-[closed]:scale-95 data-[closed]:transform data-[closed]:opacity-0 data-[enter]:duration-100 data-[enter]:ease-out data-[leave]:duration-75 data-[leave]:ease-in"
+                  className="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg outline-1 outline-gray-900/5 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
                 >
                   {userNavigation.map((item) => (
                     <MenuItem key={item.name}>
                       {item.onClick ? (
                         <button
                           onClick={item.onClick}
-                          className="block w-full px-3 py-1 text-left text-sm/6 text-gray-900 data-[focus]:bg-gray-50 data-[focus]:outline-hidden"
+                          className="block w-full px-3 py-1 text-left text-sm/6 text-gray-900 data-focus:bg-gray-50 data-focus:outline-hidden"
                         >
                           {item.name}
                         </button>
                       ) : (
                         <a
                           href={item.href}
-                          className={`px-3 py-1 text-sm/6 text-gray-900 data-[focus]:bg-gray-50 data-[focus]:outline-hidden ${
+                          className={`px-3 py-1 text-sm/6 text-gray-900 data-focus:bg-gray-50 data-focus:outline-hidden ${
                             item.mobileHidden ? "hidden lg:block" : "block"
                           }`}
                         >

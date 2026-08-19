@@ -1,10 +1,11 @@
-// Professor sub-cell. Nav mode: a select-styled box with the assigned
-// professor's name (or a muted "Sin profesor") plus the autosave status. Edit
+// Professor sub-cell. Nav mode: the assigned professor's name as plain text, or
+// — when nobody is assigned yet — a select-styled box reading "Sin profesor",
+// so the gaps are what stand out. Edit
 // mode: a native <select> (Sin profesor + every teacher as "Apellido Nombre"),
 // pre-selected to the current value; navigation and autosave stay in the
 // page/hooks via the row's commit/cancel callbacks.
 import { useMemo } from "react";
-import { cellClass, cellDomId } from "../cellIds";
+import { cellClass, cellDomId, settledCellOutline } from "../cellIds";
 import type { CellProps } from "../cellIds";
 import SelectBox from "./SelectBox";
 import CellMessage from "./CellMessage";
@@ -27,6 +28,7 @@ export default function ProfessorCell({
   refData,
 }: CellProps) {
   const address = { enrollmentId: row.enrollmentId, col };
+  const settled = !!row.professorName;
 
   const options = useMemo<SelectOption[]>(
     () => [
@@ -46,7 +48,11 @@ export default function ProfessorCell({
       data-col={col}
       onMouseDown={editing ? undefined : () => onMouseDown(address)}
       onClick={editing ? undefined : () => onClick?.(address)}
-      className={cellClass({ active, focused, status: saveState?.status })}
+      className={`${cellClass({ active, focused, status: saveState?.status })} ${
+        settled && !editing
+          ? settledCellOutline({ active, focused, error: saveState?.status === "error" })
+          : ""
+      }`}
     >
       {editing && refData ? (
         <SingleSelectEditor
@@ -62,7 +68,14 @@ export default function ProfessorCell({
         />
       ) : (
         <>
-          <SelectBox text={row.professorName ?? "Sin profesor"} muted={!row.professorName} saveState={saveState} />
+          <SelectBox
+            text={row.professorName ?? "Sin profesor"}
+            muted={!settled}
+            settled={settled}
+            saveState={saveState}
+            active={active}
+            focused={focused}
+          />
           <CellMessage state={saveState} />
         </>
       )}

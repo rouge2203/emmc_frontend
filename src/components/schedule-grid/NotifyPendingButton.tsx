@@ -1,4 +1,5 @@
-// Header control for the "notify pending students" flow. Three mutually
+// Control for the "notify pending students" flow (same row as the keyboard
+// legend, right-aligned). Three mutually
 // exclusive visual states, driven entirely by props from useNotificationSummary:
 //   - idle: primary "Notificar a N estudiantes" (click opens an inline confirm
 //     popover, no native confirm()) + a small "Ver" button opening the preview.
@@ -19,6 +20,7 @@ import type { NotificationBatch, NotificationSummary } from "./useNotificationSu
 export interface NotifyPendingButtonProps {
   summary: NotificationSummary | null;
   sending: boolean;
+  updating: boolean;
   justFinished: NotificationBatch | null;
   onSend: () => Promise<void>;
   onOpenPreview: () => void;
@@ -27,6 +29,7 @@ export interface NotifyPendingButtonProps {
 export default function NotifyPendingButton({
   summary,
   sending,
+  updating,
   justFinished,
   onSend,
   onOpenPreview,
@@ -52,6 +55,10 @@ export default function NotifyPendingButton({
     if (confirmOpen) confirmButtonRef.current?.focus();
   }, [confirmOpen]);
 
+  useEffect(() => {
+    if (updating) setConfirmOpen(false);
+  }, [updating]);
+
   // Close the popover on an outside click (Esc is handled inline below).
   useEffect(() => {
     if (!confirmOpen) return;
@@ -68,6 +75,19 @@ export default function NotifyPendingButton({
     setConfirmOpen(false);
     void onSend();
   }, [onSend]);
+
+  if (updating) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm font-semibold text-primary"
+      >
+        <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" />
+        Actualizando…
+      </div>
+    );
+  }
 
   return (
     <div ref={wrapperRef} className="relative flex flex-col gap-1">

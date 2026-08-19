@@ -69,6 +69,23 @@ export const format12hShort = (min: number): string => {
   return `${hour12}:${String(minute).padStart(2, "0")} ${period}`;
 };
 
+/**
+ * A settled horario reads as a sentence, not as controls: "9:00 – 9:40 am",
+ * with the meridiem stated once when both ends share it. Returns null when the
+ * slot has no start, i.e. there is nothing settled to state.
+ */
+export const formatSlotRange = (start: number | null, end: number | null): string | null => {
+  if (start === null) return null;
+  const from = to12h(start);
+  const clock = (p: TimeParts): string => `${p.hour12}:${String(p.minute).padStart(2, "0")}`;
+  const meridiem = (p: TimeParts): string => p.period.toLowerCase();
+  if (end === null) return `${clock(from)} ${meridiem(from)}`;
+  const to = to12h(end);
+  return from.period === to.period
+    ? `${clock(from)} – ${clock(to)} ${meridiem(to)}`
+    : `${clock(from)} ${meridiem(from)} – ${clock(to)} ${meridiem(to)}`;
+};
+
 /** "00:00 – 00:00" is the placeholder used for unassigned horarios. */
 const PLACEHOLDER_RANGE = "00:00 – 00:00";
 
@@ -95,6 +112,9 @@ export const formatSlotBox = (slot: Slot | null): { text: string; muted: boolean
       text: `${slot.day} · ${format12hShort(slot.start)} – ${format12hShort(slot.end)}`,
       muted: false,
     };
+  }
+  if (slot && slot.day && slot.start !== null) {
+    return { text: `${slot.day} · ${format12hShort(slot.start)}`, muted: false };
   }
   return { text: "Día · hora", muted: true };
 };
@@ -134,7 +154,7 @@ export const validateRange = (d: {
 }): { ok: true; value: TimeRangeValue } | { ok: false; error: string } => {
   if (d.day === null) return { ok: false, error: "Falta el día" };
   if (d.start === null) return { ok: false, error: "Falta hora de inicio" };
-  if (d.end === null) return { ok: false, error: "Falta hora de fin" };
+  if (d.end === null) return { ok: true, value: { day: d.day, start: d.start, end: null } };
   if (d.end <= d.start) return { ok: false, error: "La hora de fin debe ser mayor" };
   if (d.end - d.start < MIN_DURATION_MINUTES) {
     return { ok: false, error: "Duración mínima 30 min" };

@@ -15,7 +15,7 @@ import type { CellAddress, ColKey, GridRow, MoveDir } from "./types";
 /** PageUp/PageDown jump size, in rows. */
 export const PAGE_SIZE = 15;
 
-/** Index of a column within COL_ORDER (0..6). */
+/** Index of a column within COL_ORDER (0..3). */
 export const colIndexOf = (col: ColKey): number => COL_ORDER.indexOf(col);
 
 /** Row index of an enrollmentId within the visible rows, or -1 when absent. */
@@ -53,9 +53,9 @@ export function arrowTarget(
 }
 
 /**
- * Tab / Shift+Tab target. Walks COL_ORDER; at the last col ('a2') wraps to the
+ * Tab / Shift+Tab target. Walks COL_ORDER; at the last col ('t2') wraps to the
  * next row's first col ('prof'), at the first col ('prof') wraps to the
- * previous row's last col ('a2'). Returns null when it would leave the grid
+ * previous row's last col ('t2'). Returns null when it would leave the grid
  * (Tab on the very last cell, Shift+Tab on the very first) so focus can escape.
  */
 export function tabTarget(
@@ -83,7 +83,7 @@ export function tabTarget(
   return null; // first cell of the first row → leave the grid
 }
 
-/** Home/End within a row: first ('prof') or last ('a2') col, same row. */
+/** Home/End within a row: first ('prof') or last ('t2') col, same row. */
 export function rowEdgeTarget(active: CellAddress, end: boolean): CellAddress {
   return {
     enrollmentId: active.enrollmentId,

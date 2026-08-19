@@ -22,6 +22,7 @@ import {
   tabTarget,
 } from "./navigation";
 import type { CellAddress, ColKey, GridRow, MoveDir } from "./types";
+import type { HorarioEditorTarget } from "./horarioEditorTarget";
 
 /** seed = the first typed char (Excel replace-typing), or null (Enter/F2/click keep the cell's content). */
 export interface EditingState {
@@ -29,6 +30,8 @@ export interface EditingState {
   seed: string | null;
   /** Entered by a mouse click → the cell's editor opens its dropdown (showPicker). */
   viaMouse: boolean;
+  /** Nested horario control that was clicked; null for keyboard-driven editing. */
+  target: HorarioEditorTarget | null;
 }
 
 export interface NavActions {
@@ -42,7 +45,11 @@ export interface UseGridNavigationResult {
   active: CellAddress | null;
   setActive: (a: CellAddress | null) => void;
   editing: EditingState | null;
-  startEdit: (seed: string | null, viaMouse?: boolean) => void;
+  startEdit: (
+    seed: string | null,
+    viaMouse?: boolean,
+    target?: HorarioEditorTarget | null,
+  ) => void;
   stopEdit: () => void;
   move: (dir: MoveDir) => void;
   moveTab: (backwards: boolean) => boolean;
@@ -122,10 +129,14 @@ export function useGridNavigation(visibleRows: GridRow[]): UseGridNavigationResu
     prevEditing.current = editing;
   }, [editing]);
 
-  const startEdit = useCallback((seed: string | null, viaMouse = false) => {
+  const startEdit = useCallback((
+    seed: string | null,
+    viaMouse = false,
+    target: HorarioEditorTarget | null = null,
+  ) => {
     const a = activeRef.current;
     if (!a) return;
-    setEditing({ col: a.col, seed, viaMouse });
+    setEditing({ col: a.col, seed, viaMouse, target });
   }, []);
 
   const stopEdit = useCallback(() => {

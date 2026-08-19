@@ -71,13 +71,6 @@ export default function SingleSelectEditor({
     const select = selectRef.current;
     if (!select) return;
     select.focus({ preventScroll: true });
-    if (viaMouse) {
-      try {
-        select.showPicker?.();
-      } catch {
-        /* not supported / not allowed — the select is still focused */
-      }
-    }
     // Mount-only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
