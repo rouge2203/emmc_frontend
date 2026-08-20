@@ -13,6 +13,8 @@ const RecoverPassword = lazy(() => import("./pages/RecoverPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Unauthorized = lazy(() => import("./pages/Unauthorized"));
 const CreatePassword = lazy(() => import("./pages/CreatePassword"));
+const AccessLink = lazy(() => import("./pages/AccessLink"));
+const SetPassword = lazy(() => import("./pages/SetPassword"));
 
 const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
 const TeacherLayout = lazy(() => import("./layouts/TeacherLayout"));
@@ -71,6 +73,10 @@ export const router = createBrowserRouter([
           {
             path: "/recuperar-contrasena",
             element: <RecoverPassword />,
+          },
+          {
+            path: "/acceso",
+            element: <AccessLink />,
           },
           {
             path: "/restablecer-contrasena",
@@ -250,6 +256,21 @@ export const router = createBrowserRouter([
                     element: <InstrumentsPage />,
                   },
                 ],
+              },
+            ],
+          },
+
+          // Protected route - any authenticated role, standalone step (not
+          // inside a portal layout): the optional password-setup page a
+          // user lands on right after activating via email login.
+          {
+            element: (
+              <RequireAuth allowedRoles={["admin", "teacher", "student"]} />
+            ),
+            children: [
+              {
+                path: "/establecer-contrasena",
+                element: <SetPassword />,
               },
             ],
           },

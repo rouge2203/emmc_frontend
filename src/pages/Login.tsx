@@ -5,6 +5,9 @@ import useAuth from "../hooks/useAuth";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { ImCancelCircle } from "react-icons/im";
 import { CgPiano } from "react-icons/cg";
+import CedulaLoginForm from "../components/login/CedulaLoginForm";
+import { broadcastLogin } from "../utils/authBroadcast";
+import type { EmailLoginVerifyResponse } from "../types/emailLogin";
 
 const LOGIN_URL = "auth/login";
 const instruments_images = [
@@ -73,16 +76,20 @@ const Login = () => {
   const [errMsg, setErrMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [method, setMethod] = useState<"cedula" | "password">("cedula");
 
   const [heroImage] = useState(
     () =>
       instruments_images[Math.floor(Math.random() * instruments_images.length)],
   );
 
-  // Focus on username input on mount
+  // Focus the active form's first field. CedulaLoginForm already autofocuses
+  // its own cédula input (including on mount, since it's the default
+  // method), so this effect only needs to handle the password form — on
+  // mount when it's the default, and whenever the user toggles into it.
   useEffect(() => {
-    userRef.current?.focus();
-  }, []);
+    if (method === "password") userRef.current?.focus();
+  }, [method]);
 
   // Clear error message when user types
   useEffect(() => {
@@ -321,6 +328,22 @@ const Login = () => {
     }
   };
 
+  const handleEmailLoggedIn = (data: EmailLoginVerifyResponse) => {
+    broadcastLogin(); // harmless to self, wakes any other waiting tab
+    if (data.password_setup_required) {
+      isLoggingIn.current = true; // suppress the role-ladder effect
+      setAuth({ access: data.access, user: data.user });
+      navigate("/establecer-contrasena", { replace: true });
+    } else {
+      setAuth({ access: data.access, user: data.user }); // existing effect navigates by role
+    }
+  };
+
+  const handleToggleMethod = () => {
+    setMethod((prev) => (prev === "cedula" ? "password" : "cedula"));
+    setErrMsg("");
+  };
+
   return (
     <div className="sm:h-screen bg-white flex items-center justify-center sm:py-4 lg:py-16">
       <div className="lg:max-w-5xl sm:max-w-xl  h-full w-full flex items-center justify-center ">
@@ -353,6 +376,7 @@ const Login = () => {
                 className=" h-22 sm:h-26 mx-auto mb-8"
               />
 
+              {method === "password" && (
               <form className="space-y-6" onSubmit={handleSubmit}>
                 <p
                   ref={errRef}
@@ -442,6 +466,23 @@ const Login = () => {
                   {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
                 </button>
               </form>
+              )}
+
+              {method === "cedula" && (
+                <CedulaLoginForm onLoggedIn={handleEmailLoggedIn} />
+              )}
+
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={handleToggleMethod}
+                  className="text-sm text-primary hover:underline"
+                >
+                  {method === "cedula"
+                    ? "Prefiero iniciar sesión con correo y contraseña"
+                    : "Iniciar sesión con cédula"}
+                </button>
+              </div>
 
               <div className="mt-8">
                 <div className="relative">
