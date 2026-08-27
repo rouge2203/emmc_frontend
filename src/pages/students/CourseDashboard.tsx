@@ -27,6 +27,9 @@ import {
 import { GiMusicalNotes, GiMusicalScore } from "react-icons/gi";
 import { BiCalendarEdit } from "react-icons/bi";
 import ContentPreviewDrawer from "../../components/drawers/student_drawers/ContentPreviewDrawer";
+import CourseProgram, {
+  COURSE_PROGRAM_WEEK,
+} from "../../components/CourseProgram";
 
 interface Schedule {
   id: number;
@@ -103,6 +106,9 @@ interface CourseData {
     status: string;
     grade: number | null;
     professor_observation: string | null;
+    // Optional: a backend that predates the "Programa del curso" field simply
+    // omits it, and this page must still render (see CLAUDE.md deploy order).
+    course_program?: string | null;
     schedules: Schedule[];
   };
   assignments: Assignment[];
@@ -290,8 +296,16 @@ export default function CourseDashboard() {
   // Regular assignments (not exam or concert) for weekly content
   const getAssignmentsForWeek = (week: number) =>
     assignments.filter((a) => a.week === week && !a.is_exam && !a.is_concert);
+  // `weeks` is 1..week_duration, so this strict `=== week` is also what keeps
+  // the programme's week-0 files out of every numbered week and its
+  // "N recursos" count.
   const getResourcesForWeek = (week: number) =>
     resources.filter((r) => r.week === week);
+
+  // "Programa del curso" attachments, selected with an explicit `=== 0`:
+  // `resources.filter((r) => !r.week)` would swallow `null` too, and
+  // `r.week &&` would hide every one of them.
+  const programFiles = resources.filter((r) => r.week === COURSE_PROGRAM_WEEK);
 
   // Exam and concert assignments for "Evaluaciones del curso" section
   const evaluationAssignments = assignments.filter(
@@ -402,6 +416,17 @@ export default function CourseDashboard() {
               Expande cada semana para ver tareas y recursos
             </span>
           </div>
+
+          {/* Programa del curso — week 0, above "Semana 1" and outside the
+              numbered weeks below. El estudiante solo lee y descarga. */}
+          <div className="border-b border-gray-200">
+            <CourseProgram
+              text={enrollment.course_program ?? null}
+              files={programFiles}
+              readOnly
+            />
+          </div>
+
           <ul role="list" className="divide-y divide-gray-100">
             {weeks.map((week) => {
               const weekAssignments = getAssignmentsForWeek(week);

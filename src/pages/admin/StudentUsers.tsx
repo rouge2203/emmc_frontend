@@ -688,10 +688,14 @@ const StudentUsers = () => {
                               {user.profile?.carnet || "—"}
                             </td> */}
                             <td className="py-3 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
-                              {/* Mobile: one scrollable row. sm+: two rows of
-                                  3 — kept shorter than the name cell so the
-                                  row height does not grow. */}
-                              <div className="ml-auto flex w-max gap-1 sm:grid sm:w-fit sm:grid-cols-3">
+                              {/* Mobile: one row. sm+: two rows of 3.
+                                  The tracks are max-content, not `1fr`: equal
+                                  fractions under-report the cell's intrinsic
+                                  width, so the table never grew and the labels
+                                  overflowed their track onto the next button.
+                                  Sized to content, the table grows instead and
+                                  the wrapper's overflow-x-auto scrolls. */}
+                              <div className="ml-auto flex w-max gap-1 sm:grid sm:w-max sm:grid-cols-[repeat(3,max-content)]">
                                 <button
                                   onClick={() => handleEdit(user)}
                                   className={ACTION_BUTTON_CLASS}

@@ -51,6 +51,17 @@ const ResourceDrawer: React.FC<ResourceDrawerProps> = ({
   studentName,
 }) => {
   const axiosPrivate = useAxiosPrivate();
+  // Week 0 is the "Programa del curso", not a numbered week. Compared with ===
+  // because 0 is falsy: `week ? ... : ...` would label the programme as a week
+  // and every real week correctly, i.e. it would get exactly this case wrong.
+  const weekLabel =
+    week === 0 ? "Programa del curso" : week === null ? "Sin semana" : `Semana ${week}`;
+  const weekPhrase =
+    week === 0
+      ? "el programa del curso"
+      : week === null
+        ? "sin semana asignada"
+        : `la semana ${week}`;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -278,7 +289,7 @@ const ResourceDrawer: React.FC<ResourceDrawerProps> = ({
                           </div>
                           <div className="ml-3">
                             <p className="text-sm font-medium text-amber-800">
-                              Semana {week}
+                              {weekLabel}
                             </p>
                             {courseName && (
                               <p className="mt-1 text-xs text-amber-700">
@@ -517,7 +528,7 @@ const ResourceDrawer: React.FC<ResourceDrawerProps> = ({
                     <p className="text-sm text-gray-500">
                       {editingResource
                         ? `¿Estás seguro de que deseas guardar los cambios en el recurso "${formTitle}"?`
-                        : `¿Estás seguro de que deseas crear el recurso "${formTitle}" para la semana ${week}?`}
+                        : `¿Estás seguro de que deseas crear el recurso "${formTitle}" para ${weekPhrase}?`}
                     </p>
                     {selectedFile && (
                       <p className="mt-2 text-sm text-gray-500">

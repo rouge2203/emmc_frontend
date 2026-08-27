@@ -16,6 +16,7 @@ import {
   PlusIcon,
   CheckCircleIcon,
   XMarkIcon,
+  ChevronDownIcon,
   DocumentArrowDownIcon,
   PencilSquareIcon,
   TrashIcon,
@@ -24,12 +25,20 @@ import {
   ExclamationTriangleIcon,
   ClipboardDocumentCheckIcon,
   InformationCircleIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import { GiMusicalNotes, GiMusicalScore } from "react-icons/gi";
 import { BiCalendarEdit } from "react-icons/bi";
 import AssignmentDrawer from "../../components/drawers/teacher_drawers/AssignmentDrawer";
 import ResourceDrawer from "../../components/drawers/teacher_drawers/ResourceDrawer";
+import EvaluationDetails, {
+  type EvaluationDraft,
+} from "../../components/EvaluationDetails";
+import CourseProgram, {
+  COURSE_PROGRAM_MAX_FILE_BYTES,
+  COURSE_PROGRAM_WEEK,
+} from "../../components/CourseProgram";
 import { FaExclamation } from "react-icons/fa";
 import {
   formatGrade,
@@ -107,6 +116,9 @@ interface CourseData {
     status: string;
     grade: number | null;
     professor_observation: string | null;
+    // Optional: a backend that predates the "Programa del curso" field simply
+    // omits it, and this page must still render (see CLAUDE.md deploy order).
+    course_program?: string | null;
     schedules: Schedule[];
   };
   assignments: Assignment[];
@@ -175,6 +187,14 @@ export default function CourseDashboard() {
     null,
   );
   const [dailyWorkInfoDialogOpen, setDailyWorkInfoDialogOpen] = useState(false);
+
+  // "Programa del curso" (week 0). `programSaving` keeps its own flag so the
+  // block's buttons disable without touching the page-wide `submitting`.
+  const [programSaving, setProgramSaving] = useState(false);
+  // Which evaluación has its details open. One at a time: the panel is tall,
+  // and collapsed rows already show the grade.
+  const [openEvaluationId, setOpenEvaluationId] = useState<number | null>(null);
+  const [evaluationSaving, setEvaluationSaving] = useState(false);
 
   // Form states
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
@@ -324,6 +344,8 @@ export default function CourseDashboard() {
     setAssignmentDrawerOpen(true);
   };
 
+  // `week` is assigned straight through, never coerced: week 0 is the
+  // "Programa del curso" and `week || something` would turn it into "sin semana".
   const openResourceDrawer = (week: number, resource?: Resource) => {
     if (isReadOnly) return;
     setSelectedWeek(week);
@@ -340,6 +362,101 @@ export default function CourseDashboard() {
     setFormCommentGrade(assignment.comment_grade || "");
     setFormGradeError(null);
     setGradeDialogOpen(true);
+  };
+
+  const handleSaveProgram = async (programText: string) => {
+    if (isReadOnly) return;
+    setProgramSaving(true);
+
+    try {
+      const response = await axiosPrivate.put(
+        `courses/teacher-course-program/${enrollmentId}`,
+        { course_program: programText },
+      );
+      // The API normalises an empty programme to null; mirror what it stored.
+      const savedProgram: string | null =
+        response.data?.enrollment?.course_program ?? null;
+
+      // Update local state instead of refetching, so the page never blanks.
+      setCourseData((current) =>
+        current
+          ? {
+              ...current,
+              enrollment: {
+                ...current.enrollment,
+                course_program: savedProgram,
+              },
+            }
+          : current,
+      );
+
+      setNotificationMessage("Programa del curso guardado correctamente");
+      showSuccessToast();
+    } catch (err: unknown) {
+      console.error("Error saving course program:", err);
+      setNotificationMessage(
+        apiErrorMessage(err, "Error al guardar el programa del curso"),
+      );
+      showErrorToast();
+      // Rethrown so CourseProgram keeps its editor — and the teacher's text —
+      // open instead of closing it over a save that never landed.
+      throw err;
+    } finally {
+      setProgramSaving(false);
+    }
+  };
+
+  /**
+   * Attaches a file to the programme: a Resources row filed under week 0, then
+   * the upload itself. `COURSE_PROGRAM_WEEK` is passed as-is — a falsy 0 that
+   * must survive all the way to the request body.
+   */
+  const handleAddProgramFile = async (file: File) => {
+    if (isReadOnly) return;
+
+    // The server rejects this too; refusing here saves the teacher the upload.
+    if (file.size > COURSE_PROGRAM_MAX_FILE_BYTES) {
+      setNotificationMessage(
+        "El archivo supera el límite de 10 MB. Elige un archivo más liviano.",
+      );
+      showErrorToast();
+      return;
+    }
+
+    setProgramSaving(true);
+
+    try {
+      const response = await axiosPrivate.post("courses/teacher-resources", {
+        enrollment_id: enrollmentId,
+        week: COURSE_PROGRAM_WEEK,
+        title: file.name,
+      });
+
+      const resourceId: number | undefined = response.data?.resource?.id;
+      if (resourceId === undefined) {
+        throw new Error("La respuesta del servidor no incluyó el recurso.");
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("resource_id", String(resourceId));
+      await axiosPrivate.post("courses/teacher-resource-file", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      await fetchCourseData(true);
+
+      setNotificationMessage(`"${file.name}" se adjuntó al programa del curso`);
+      showSuccessToast();
+    } catch (err: unknown) {
+      console.error("Error attaching program file:", err);
+      setNotificationMessage(
+        apiErrorMessage(err, "No se pudo adjuntar el archivo al programa"),
+      );
+      showErrorToast();
+    } finally {
+      setProgramSaving(false);
+    }
   };
 
   const openFinalizeDialog = () => {
@@ -503,6 +620,110 @@ export default function CourseDashboard() {
       showErrorToast();
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const toggleEvaluation = (assignmentId: number) =>
+    setOpenEvaluationId((current) =>
+      current === assignmentId ? null : assignmentId,
+    );
+
+  /** Saves every field of one evaluación in a single request. */
+  const handleSaveEvaluation = async (
+    assignment: Assignment,
+    draft: EvaluationDraft,
+  ) => {
+    if (isReadOnly) return;
+    setEvaluationSaving(true);
+
+    try {
+      const payload = {
+        assignment_id: assignment.id,
+        title: draft.title.trim(),
+        // "" clears the field; 0 is a real week, so compare explicitly.
+        week: draft.week.trim() === "" ? null : Number(draft.week),
+        date: draft.date || null,
+        // `points` is deliberately absent: the panel shows it read-only, so
+        // sending it back would be the UI asserting a value it cannot change.
+        // grade / comment_grade are absent on purpose: they are edited through
+        // the "Calificar" dialog, not this panel.
+        description: draft.description,
+      };
+      await axiosPrivate.put("courses/teacher-assignments", payload);
+
+      // Local state only — the page must not blank while a panel is open.
+      if (courseData) {
+        setCourseData({
+          ...courseData,
+          assignments: courseData.assignments.map((a) =>
+            a.id === assignment.id
+              ? {
+                  ...a,
+                  title: payload.title,
+                  week: payload.week,
+                  date: payload.date,
+                  description: payload.description,
+                }
+              : a,
+          ),
+        });
+      }
+
+      setNotificationMessage(`"${payload.title}" se guardó correctamente`);
+      showSuccessToast();
+    } catch (err: unknown) {
+      console.error("Error saving evaluation:", err);
+      setNotificationMessage(
+        apiErrorMessage(err, "No se pudo guardar la evaluación"),
+      );
+      showErrorToast();
+      throw err;
+    } finally {
+      setEvaluationSaving(false);
+    }
+  };
+
+  const handleAttachEvaluationFile = async (
+    assignment: Assignment,
+    file: File,
+  ) => {
+    if (isReadOnly) return;
+    setEvaluationSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("assignment_id", String(assignment.id));
+      await axiosPrivate.post("courses/teacher-assignment-file", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      await fetchCourseData(true);
+      setNotificationMessage(`"${file.name}" se adjuntó a la evaluación`);
+      showSuccessToast();
+    } catch (err: unknown) {
+      console.error("Error attaching evaluation file:", err);
+      setNotificationMessage(apiErrorMessage(err, "No se pudo adjuntar el archivo"));
+      showErrorToast();
+    } finally {
+      setEvaluationSaving(false);
+    }
+  };
+
+  const handleRemoveEvaluationFile = async (assignment: Assignment) => {
+    if (isReadOnly) return;
+    setEvaluationSaving(true);
+    try {
+      await axiosPrivate.delete("courses/teacher-assignment-file", {
+        data: { assignment_id: assignment.id },
+      });
+      await fetchCourseData(true);
+      setNotificationMessage("Se quitó el archivo de la evaluación");
+      showSuccessToast();
+    } catch (err: unknown) {
+      console.error("Error removing evaluation file:", err);
+      setNotificationMessage(apiErrorMessage(err, "No se pudo quitar el archivo"));
+      showErrorToast();
+    } finally {
+      setEvaluationSaving(false);
     }
   };
 
@@ -768,8 +989,17 @@ export default function CourseDashboard() {
   // Regular assignments (not exam or concert) for weekly content
   const getAssignmentsForWeek = (week: number) =>
     assignments.filter((a) => a.week === week && !a.is_exam && !a.is_concert);
+  // `weeks` above is 1..week_duration, so the strict `=== week` here is also what
+  // keeps the programme's week-0 resources out of every numbered week.
   const getResourcesForWeek = (week: number) =>
     resources.filter((r) => r.week === week);
+
+  // "Programa del curso" attachments, selected with an explicit `=== 0`:
+  // `resources.filter((r) => !r.week)` would swallow `null` too, and
+  // `r.week &&` would hide every one of them.
+  const programFiles = resources.filter(
+    (r) => r.week === COURSE_PROGRAM_WEEK,
+  );
 
   // Exam and concert assignments for "Evaluaciones del curso" section
   const evaluationAssignments = assignments.filter(
@@ -970,6 +1200,27 @@ export default function CourseDashboard() {
               Cotidiano" junto a cada semana.
             </p>
           </div>
+
+          {/* Programa del curso — week 0, above "Semana 1" and outside the
+              numbered weeks below. */}
+          <div className="border-b border-gray-200">
+            <CourseProgram
+              text={enrollment.course_program ?? null}
+              files={programFiles}
+              readOnly={isReadOnly}
+              saving={programSaving}
+              onSaveText={handleSaveProgram}
+              onAddFile={handleAddProgramFile}
+              onEditFile={(file) => {
+                const resource = resources.find((r) => r.id === file.id);
+                if (resource) openResourceDrawer(COURSE_PROGRAM_WEEK, resource);
+              }}
+              onDeleteFile={(file) =>
+                openDeleteDialog("resource", file.id, file.title)
+              }
+            />
+          </div>
+
           <ul role="list" className="divide-y divide-gray-100">
             {weeks.map((week) => {
               const weekAssignments = getAssignmentsForWeek(week);
@@ -1322,14 +1573,44 @@ export default function CourseDashboard() {
                           </span>
                         </button>
                       )}
-                      <Link
-                        to={`/teacher/assignment/${assignment.id}`}
+                      <button
+                        type="button"
+                        onClick={() => toggleEvaluation(assignment.id)}
+                        aria-expanded={openEvaluationId === assignment.id}
+                        aria-controls={`evaluacion-${assignment.id}`}
                         className={rowAction}
                       >
-                        Detalles
-                      </Link>
+                        <DocumentTextIcon className="h-4 w-4" />
+                        <span className="sr-only sm:not-sr-only">
+                          Instrucciones
+                        </span>
+                        <ChevronDownIcon
+                          aria-hidden="true"
+                          className={`h-4 w-4 transition-transform ${
+                            openEvaluationId === assignment.id
+                              ? "rotate-180"
+                              : ""
+                          }`}
+                        />
+                      </button>
                     </div>
                   </div>
+                  {openEvaluationId === assignment.id && (
+                    <div id={`evaluacion-${assignment.id}`}>
+                      <EvaluationDetails
+                        assignment={assignment}
+                        readOnly={isReadOnly}
+                        saving={evaluationSaving}
+                        onSave={(draft) => handleSaveEvaluation(assignment, draft)}
+                        onAttachFile={(file) =>
+                          handleAttachEvaluationFile(assignment, file)
+                        }
+                        onRemoveFile={() =>
+                          handleRemoveEvaluationFile(assignment)
+                        }
+                      />
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -1571,6 +1852,7 @@ export default function CourseDashboard() {
           </div>
         </div>
       </Dialog>
+
 
       {/* Finalize Dialog */}
       <Dialog

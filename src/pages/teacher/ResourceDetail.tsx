@@ -370,7 +370,9 @@ export default function ResourceDetail() {
               <dt className="text-sm/6 font-medium text-gray-900">Semana</dt>
               <dd className="mt-1 flex text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
                 <span className="grow">
-                  {resource.week ?? "No especificada"}
+                  {resource.week === 0
+                    ? "Programa del curso"
+                    : (resource.week ?? "No especificada")}
                 </span>
                 <span className="ml-4 shrink-0">
                   <button
@@ -594,7 +596,7 @@ export default function ResourceDetail() {
                       onChange={(e) => setEditValue(e.target.value)}
                       className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
                       placeholder={`Ingrese ${getFieldLabel(editField || "").toLowerCase()}`}
-                      min={editField === "week" ? 1 : undefined}
+                      min={editField === "week" ? 0 : undefined}
                     />
                   )}
                 </div>
