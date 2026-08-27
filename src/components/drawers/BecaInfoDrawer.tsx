@@ -16,6 +16,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
+import { formatGrade } from "../../utils/grades";
 
 interface StudentUser {
   id: number;
@@ -475,7 +476,7 @@ const BecaInfoDrawer: React.FC<BecaInfoDrawerProps> = ({
                                         </span>
                                       </td>
                                       <td className="py-2 px-2 text-right whitespace-nowrap text-gray-500">
-                                        {e.grade ?? "—"}
+                                        {formatGrade(e.grade, "—")}
                                       </td>
                                       <td className="py-2 px-2 text-right whitespace-nowrap text-gray-900">
                                         {formatCurrency(e.price)}

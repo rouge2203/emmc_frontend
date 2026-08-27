@@ -1,7 +1,11 @@
 <!doctype html>
-<html lang="en" class="bg-white scheme-light h-full">
+<html lang="es" translate="no" class="bg-white scheme-light h-full">
   <head>
     <meta charset="UTF-8" />
+    <!-- The portal is Spanish-only. Machine translation rewrites React-owned text
+         nodes into <font> wrappers, which makes React's removeChild fail mid-render
+         and crashes the page (it hit teachers on the grading screen). -->
+    <meta name="google" content="notranslate" />
     <link rel="icon" type="image/svg+xml" href="/emmc_logo.png" />
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

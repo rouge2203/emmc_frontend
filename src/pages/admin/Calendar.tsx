@@ -944,24 +944,32 @@ const Calendar = () => {
       {/* Calendar */}
       <div className="mt-2 sm:mt-4 flow-root">
         <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-          <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+          <div className="inline-block min-w-full py-2 align-middle max-sm:block sm:px-6 lg:px-8">
             <div className="sm:border sm:border-gray-300 sm:rounded-lg overflow-hidden bg-white">
               <div className="flex flex-auto flex-col">
                 <div className="flex flex-auto">
                   {/* Day columns */}
-                  <div className="grid grid-cols-1 sm:grid-cols-7 divide-x divide-gray-200 flex-1 w-full">
+                  <div className="grid grid-cols-1 sm:grid-cols-7 divide-gray-200 max-sm:divide-y sm:divide-x flex-1 w-full">
                     {dayEvents.map((dayData) => {
                       return (
                         <div key={dayData.day} className="flex flex-col">
-                          {/* Day header */}
-                          <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3">
+                          {/* Day header — below sm it also carries the class count */}
+                          <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3 max-sm:flex max-sm:items-center max-sm:justify-between max-sm:gap-3">
                             <h3 className="text-sm font-semibold text-gray-900">
                               {dayData.dayDisplay}
                             </h3>
+                            {dayData.events.length > 0 && (
+                              <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 sm:hidden">
+                                {dayData.events.length}{" "}
+                                {dayData.events.length === 1
+                                  ? "clase"
+                                  : "clases"}
+                              </span>
+                            )}
                           </div>
 
                           {/* Events for this day */}
-                          <div className="flex-1 p-2 space-y-2">
+                          <div className="flex-1 p-2 space-y-2 max-sm:px-4 max-sm:py-3">
                             {dayData.events.length === 0 ? (
                               <p className="text-xs text-gray-400 text-center py-4 sm:hidden">
                                 Sin horarios
@@ -1046,7 +1054,7 @@ const Calendar = () => {
                                         className={`h-4 w-4 ${eventColors_.textLight}`}
                                       />
                                       <span
-                                        className={`text-xs ${eventColors_.textLight} truncate`}
+                                        className={`text-xs ${eventColors_.textLight} sm:truncate`}
                                       >
                                         {event.student_name}
                                       </span>
@@ -1061,9 +1069,7 @@ const Calendar = () => {
                                           `}
                                       />
                                       <span
-                                        className={`text-xs ${eventColors_.textLight}
-                                              
-                                         truncate`}
+                                        className={`text-xs ${eventColors_.textLight} sm:truncate`}
                                       >
                                         {event.professor_name ||
                                           "Falta asignar profesor"}

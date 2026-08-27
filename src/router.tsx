@@ -5,6 +5,9 @@ import Login from "./pages/Login";
 import RequireAuth from "./components/RequireAuth";
 import PersistLogin from "./components/PersistLogin";
 import SuspenseBoundary from "./components/SuspenseBoundary";
+// Eager, not lazy: once a route has thrown, fetching another chunk to render
+// the error screen is exactly the thing most likely to fail again.
+import RouteErrorBoundary from "./components/RouteErrorBoundary";
 
 // Route-level code splitting: each portal only downloads its own pages.
 const NotFound404 = lazy(() => import("./pages/NotFound404"));
@@ -57,6 +60,7 @@ const InstrumentsPage = lazy(() => import("./pages/instruments/InstrumentsPage")
 export const router = createBrowserRouter([
   {
     element: <SuspenseBoundary />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       {
         element: <PersistLogin />,

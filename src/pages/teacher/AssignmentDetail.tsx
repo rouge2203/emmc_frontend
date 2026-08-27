@@ -20,6 +20,12 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { XMarkIcon as XMarkIconSolid } from "@heroicons/react/20/solid";
+import {
+  formatGrade,
+  isPartialGradeInput,
+  parseGradeInput,
+  validateGrade,
+} from "../../utils/grades";
 
 interface Assignment {
   id: number;
@@ -63,6 +69,7 @@ export default function AssignmentDetail() {
   // Grade dialog state
   const [gradeDialogOpen, setGradeDialogOpen] = useState(false);
   const [formGrade, setFormGrade] = useState<string>("");
+  const [formGradeError, setFormGradeError] = useState<string | null>(null);
   const [formCommentGrade, setFormCommentGrade] = useState<string>("");
 
   // File upload state
@@ -113,8 +120,9 @@ export default function AssignmentDetail() {
 
   const openGradeDialog = () => {
     if (!assignment) return;
-    setFormGrade(assignment.grade?.toString() || "");
+    setFormGrade(formatGrade(assignment.grade, ""));
     setFormCommentGrade(assignment.comment_grade || "");
+    setFormGradeError(null);
     setGradeDialogOpen(true);
   };
 
@@ -157,15 +165,32 @@ export default function AssignmentDetail() {
 
   const handleSaveGrade = async () => {
     if (!assignment) return;
+
+    const kind = assignment.is_concert
+      ? "el recital"
+      : assignment.is_exam
+        ? "el examen"
+        : "la tarea";
+    const validationError = validateGrade(
+      formGrade,
+      assignment.points ?? 100,
+      `${kind} "${assignment.title}"`
+    );
+    if (validationError) {
+      setFormGradeError(validationError);
+      return;
+    }
+
     setSubmitting(true);
 
     try {
       await axiosPrivate.put("courses/teacher-assignments", {
         assignment_id: assignment.id,
-        grade: formGrade === "" ? null : Number(formGrade),
+        grade: parseGradeInput(formGrade),
         comment_grade: formCommentGrade,
       });
       setGradeDialogOpen(false);
+      setFormGradeError(null);
       setSuccessNotificationMessage("Calificación guardada exitosamente");
       setShowSuccessNotification(true);
       setTimeout(() => setShowSuccessNotification(false), 3000);
@@ -441,7 +466,7 @@ export default function AssignmentDetail() {
               </dt>
               <dd className="mt-1 flex text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
                 <span className="grow">
-                  {assignment.points ?? "No especificados"}
+                  {formatGrade(assignment.points, "No especificados")}
                 </span>
                 <span className="ml-4 shrink-0">
                   <button
@@ -598,7 +623,11 @@ export default function AssignmentDetail() {
                 <span className="grow">
                   {assignment.grade !== null ? (
                     <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-lg font-semibold text-green-700 ring-1 ring-inset ring-green-600/20">
-                      {assignment.grade}{assignment.points !== null && ` / ${assignment.points}`}
+                      {`${formatGrade(assignment.grade)}${
+                        assignment.points !== null
+                          ? ` / ${formatGrade(assignment.points)}`
+                          : ""
+                      }`}
                     </span>
                   ) : (
                     <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-sm font-medium text-yellow-700 ring-1 ring-inset ring-yellow-600/20">
@@ -782,17 +811,35 @@ export default function AssignmentDetail() {
                   <div className="mt-4 space-y-4">
                     <div>
                       <label className="block text-start text-sm/6 font-medium text-gray-900">
-                        Puntos Obtenidos{assignment.points !== null && ` (máx. ${assignment.points})`}
+                        {assignment.points !== null
+                          ? `Puntos obtenidos (máximo ${formatGrade(assignment.points)})`
+                          : "Puntos obtenidos"}
                       </label>
+                      {/* text, not number: a number input drops the comma. */}
                       <input
-                        type="number"
-                        min="0"
-                        max={assignment.points ?? undefined}
+                        type="text"
+                        inputMode="decimal"
+                        autoComplete="off"
                         value={formGrade}
-                        onChange={(e) => setFormGrade(e.target.value)}
-                        className="mt-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
-                        placeholder={assignment.points !== null ? `0-${assignment.points}` : "Puntos obtenidos"}
+                        onChange={(e) => {
+                          const next = e.target.value.replace(".", ",");
+                          if (!isPartialGradeInput(next)) return;
+                          setFormGrade(next);
+                          setFormGradeError(null);
+                        }}
+                        aria-invalid={formGradeError ? true : undefined}
+                        className={`mt-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
+                          formGradeError
+                            ? "outline-red-400 focus-visible:outline-red-500"
+                            : "outline-gray-300 focus-visible:outline-gray-900"
+                        }`}
+                        placeholder="Por ejemplo: 7,5"
                       />
+                      {formGradeError && (
+                        <p className="mt-1.5 text-start text-sm text-red-600">
+                          {formGradeError}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-start text-sm/6 font-medium text-gray-900">

@@ -25,6 +25,7 @@ import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import { IoMdBook } from "react-icons/io";
 import { PiStudent } from "react-icons/pi";
 import { useNavigate } from "react-router-dom";
+import { parseGradeInput } from "../../utils/grades";
 
 interface Course {
   id: number;
@@ -117,6 +118,25 @@ interface EnrollmentsResponse {
 
 interface UsersResponse {
   users: User[];
+}
+
+/**
+ * Only the fields that actually changed are sent. The nullable ones must be able
+ * to carry an explicit `null` (quitar profesor, quitar asignatura, borrar nota):
+ * `undefined` would be dropped from the JSON body and the API would keep the old
+ * value.
+ */
+interface EnrollmentUpdatePayload {
+  enrollment_id: number;
+  professor_id?: number | null;
+  year?: number;
+  period?: number;
+  price?: number;
+  week_duration?: number;
+  status?: string;
+  grade?: number | null;
+  professor_observation?: string | null;
+  assigned_course_id?: number | null;
 }
 
 const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
@@ -336,13 +356,17 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
     setError(null);
 
     try {
-      const updateData: any = {
+      const updateData: EnrollmentUpdatePayload = {
         enrollment_id: enrollmentId,
       };
 
       // Course and Student are not editable, so we don't update them
-      if (selectedProfessor?.id !== enrollment?.professor?.id) {
-        updateData.professor_id = selectedProfessor?.id || null;
+      // Both sides are normalized to null so that "se quitó el profesor" counts as a
+      // change and travels as an explicit null — undefined would be dropped from the
+      // JSON body and the clear would be silently lost.
+      const professorId = selectedProfessor?.id ?? null;
+      if (professorId !== (enrollment?.professor?.id ?? null)) {
+        updateData.professor_id = professorId;
       }
       if (year !== enrollment?.year) {
         updateData.year = year;
@@ -360,7 +384,8 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
         updateData.status = status;
       }
       if (grade !== (enrollment?.grade?.toString() || "")) {
-        updateData.grade = grade ? parseInt(grade) : null;
+        // parseInt would truncate 87,5 to 87 now that grades carry a decimal.
+        updateData.grade = grade ? parseGradeInput(grade) : null;
       }
       if (professorObservation !== (enrollment?.professor_observation || "")) {
         updateData.professor_observation = professorObservation.trim() || null;
@@ -433,8 +458,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
 
         // Update counts if professor was added or removed
         const professorChanged =
-          (selectedProfessor?.id || null) !==
-          (enrollment?.professor?.id || null);
+          professorId !== (enrollment?.professor?.id ?? null);
         if (professorChanged && onCountsUpdate) {
           onCountsUpdate();
         }
@@ -541,6 +565,15 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
     setProfessorSearch("");
     setProfessorDropdownActive(true);
     setShowProfessorDropdown(true);
+  };
+
+  // Handle clear professor button click - leaves the enrollment without professor
+  // until it is saved, without opening the search dropdown.
+  const handleClearProfessor = () => {
+    setSelectedProfessor(null);
+    setProfessorSearch("");
+    setShowProfessorDropdown(false);
+    setProfessorDropdownActive(false);
   };
 
   // Handle create new professor navigation
@@ -779,9 +812,30 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                                     <button
                                       type="button"
                                       onClick={handleChangeProfessor}
-                                      className="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                                      title="Cambiar profesor"
+                                      className="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
                                     >
-                                      <ArrowPathIcon className="size-5" />
+                                      <span className="sr-only">
+                                        Cambiar profesor
+                                      </span>
+                                      <ArrowPathIcon
+                                        className="size-5"
+                                        aria-hidden="true"
+                                      />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleClearProfessor}
+                                      title="Quitar profesor"
+                                      className="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-gray-500 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-red-50 hover:text-red-600 hover:ring-red-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+                                    >
+                                      <span className="sr-only">
+                                        Quitar profesor
+                                      </span>
+                                      <XMarkIcon
+                                        className="size-5"
+                                        aria-hidden="true"
+                                      />
                                     </button>
                                   </div>
                                 ) : (
@@ -864,7 +918,7 @@ const CourseEnrollmentEditDrawer: React.FC<CourseEnrollmentEditDrawerProps> = ({
                                 htmlFor="assigned_course"
                                 className="block text-sm/6 font-medium text-gray-900"
                               >
-                                Asignatura asignada
+                                Asignatura del estudiante
                               </label>
                               <div className="mt-2 relative searchable-select-container">
                                 <div className="relative">

@@ -8,9 +8,9 @@ import {
   ExclamationCircleIcon,
   CalendarDaysIcon,
   ClockIcon,
-  CalendarIcon,
   PlusIcon,
 } from "@heroicons/react/24/outline";
+import PeriodSelector from "../../components/PeriodSelector";
 import PaymentViewEditDrawer from "../../components/drawers/PaymentViewEditDrawer";
 import PaymentRegisterDrawer from "../../components/drawers/PaymentRegisterDrawer";
 import BulkCustomPaymentDrawer from "../../components/drawers/BulkCustomPaymentDrawer";
@@ -884,92 +884,27 @@ const Payments = () => {
             </div>
           </div>
 
-          {/* Second Row: Year and Period Filters */}
-          <div className="flex flex-col sm:flex-row gap-4 mt-4">
-            {/* Year Filter */}
-            <div className="sm:w-48">
-              <label
-                htmlFor="yearFilter"
-                className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1"
-              >
-                <CalendarIcon className="h-4 w-4" />
-                Año (Matrícula)
-              </label>
-              <div className="mt-2 grid grid-cols-1">
-                <select
-                  id="yearFilter"
-                  value={yearFilter}
-                  onChange={(e) => {
-                    setYearFilter(e.target.value);
-                    setPage(1);
-                  }}
-                  className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
-                >
-                  <option value="">Todos</option>
-                  {availableYears.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-                <svg
-                  viewBox="0 0 16 16"
-                  fill="currentColor"
-                  data-slot="icon"
-                  aria-hidden="true"
-                  className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
-                >
-                  <path
-                    d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
-                    clipRule="evenodd"
-                    fillRule="evenodd"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            {/* Period Filter */}
-            <div className="sm:w-48">
-              <label
-                htmlFor="periodFilter"
-                className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1"
-              >
-                <CalendarDaysIcon className="h-4 w-4" />
-                Período (Matrícula)
-              </label>
-              <div className="mt-2 grid grid-cols-1">
-                <select
-                  id="periodFilter"
-                  value={periodFilter}
-                  onChange={(e) => {
-                    setPeriodFilter(e.target.value);
-                    setPage(1);
-                  }}
-                  className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
-                >
-                  <option value="">Todos</option>
-                  <option value="1">I</option>
-                  <option value="2">II</option>
-                  <option value="3">III</option>
-                </select>
-                <svg
-                  viewBox="0 0 16 16"
-                  fill="currentColor"
-                  data-slot="icon"
-                  aria-hidden="true"
-                  className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
-                >
-                  <path
-                    d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
-                    clipRule="evenodd"
-                    fillRule="evenodd"
-                  />
-                </svg>
-              </div>
-            </div>
+          {/* Second row: the enrollment's year + period, in the same style as
+              "Asignación de horarios". Both keep a "Todos" option, since this
+              page shows every payment when nothing is filtered. */}
+          <div className="mt-4 flex flex-col gap-4 border-t border-gray-100 pt-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+            <PeriodSelector
+              idPrefix="paymentsFilter"
+              allowAll
+              years={availableYears}
+              year={yearFilter === "" ? null : parseInt(yearFilter, 10)}
+              period={periodFilter === "" ? null : parseInt(periodFilter, 10)}
+              yearLabel="Año (matrícula)"
+              periodLabel="Período (matrícula)"
+              onChange={({ year, period }) => {
+                setYearFilter(year === null ? "" : String(year));
+                setPeriodFilter(period === null ? "" : String(period));
+                setPage(1);
+              }}
+            />
 
             {/* Payment Creation Buttons */}
-            <div className="sm:w-auto flex items-end gap-2">
+            <div className="flex flex-wrap items-end gap-2">
               {selectedStudent ? (
                 <button
                   type="button"

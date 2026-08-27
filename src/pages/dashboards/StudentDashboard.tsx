@@ -4,10 +4,14 @@ import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import {
   AcademicCapIcon,
   ArrowRightIcon,
-  CalendarDaysIcon,
   NewspaperIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/16/solid";
+import PeriodSelector from "../../components/PeriodSelector";
+import TeacherWeekCalendar, {
+  type WeekCalendarEvent,
+} from "../../components/dashboard/TeacherWeekCalendar";
+import { formatGrade } from "../../utils/grades";
 
 interface NewsItem {
   id: number;
@@ -116,8 +120,9 @@ const StudentDashboard = () => {
 
   // Local state for period selections in each section
   const [selectedActivePeriod, setSelectedActivePeriod] = useState<string>("");
-  const [selectedSchedulePeriod, setSelectedSchedulePeriod] =
-    useState<string>("");
+  const [schedulePeriod, setSchedulePeriod] = useState<AvailablePeriod | null>(
+    null,
+  );
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -133,9 +138,15 @@ const StudentDashboard = () => {
       // Set default selected periods to the first available period
       if (dashboardResponse.data.available_periods?.length > 0) {
         const firstPeriod = dashboardResponse.data.available_periods[0];
-        const periodKey = `${firstPeriod.period}-${firstPeriod.year}`;
-        setSelectedActivePeriod(periodKey);
-        setSelectedSchedulePeriod(periodKey);
+        setSelectedActivePeriod(`${firstPeriod.period}-${firstPeriod.year}`);
+
+        // The week opens on the most recent period, not the oldest one.
+        const periods: AvailablePeriod[] =
+          dashboardResponse.data.available_periods;
+        const latest = [...periods].sort(
+          (a, b) => a.year - b.year || a.period - b.period,
+        )[periods.length - 1];
+        setSchedulePeriod(latest);
       }
     } catch (err: unknown) {
       console.error("Error fetching student dashboard data:", err);
@@ -160,12 +171,30 @@ const StudentDashboard = () => {
 
   // Filter schedule table by selected period
   const filteredSchedule = useMemo(() => {
-    if (!dashboardData?.schedule_table || !selectedSchedulePeriod) return [];
-    const [period, year] = selectedSchedulePeriod.split("-").map(Number);
+    if (!dashboardData?.schedule_table || !schedulePeriod) return [];
     return dashboardData.schedule_table.filter(
-      (s) => s.period === period && s.year === year,
+      (s) => s.period === schedulePeriod.period && s.year === schedulePeriod.year,
     );
-  }, [dashboardData?.schedule_table, selectedSchedulePeriod]);
+  }, [dashboardData?.schedule_table, schedulePeriod]);
+
+  // The week board only needs the professor here: the student is the viewer.
+  const scheduleEvents = useMemo<WeekCalendarEvent[]>(
+    () =>
+      filteredSchedule.map((s) => ({
+        id: s.id,
+        day: s.day,
+        day_name: s.day_name,
+        day_order: s.day_order,
+        hour: s.hour,
+        end_hour: s.end_hour,
+        classroom: s.classroom,
+        course_name: s.course_name,
+        course_code: s.course_code,
+        professor_name: s.professor_name,
+        enrollment_id: s.enrollment_id,
+      })),
+    [filteredSchedule],
+  );
 
   // Get all past enrollments (not cursando)
   const allPastEnrollments = useMemo(() => {
@@ -175,17 +204,10 @@ const StudentDashboard = () => {
     );
   }, [dashboardData?.past_enrollments]);
 
-  const groupedSchedule = useMemo(() => {
-    const grouped: Record<string, ScheduleTableItem[]> = {};
-    if (!filteredSchedule) return grouped;
-    filteredSchedule.forEach((schedule) => {
-      if (!grouped[schedule.day_name]) {
-        grouped[schedule.day_name] = [];
-      }
-      grouped[schedule.day_name].push(schedule);
-    });
-    return grouped;
-  }, [filteredSchedule]);
+  const availablePeriods = useMemo(
+    () => dashboardData?.available_periods ?? [],
+    [dashboardData?.available_periods],
+  );
 
   // Get period options for selects
   const periodOptions = useMemo(() => {
@@ -338,7 +360,10 @@ const StudentDashboard = () => {
                     className="group overflow-hidden rounded-xl border border-gray-200 bg-white transition duration-300 hover:-translate-y-1 hover:shadow-lg"
                   >
                     <div className="flex items-center gap-x-4 border-b border-gray-900/5 bg-gray-50 p-6">
-                      <div className="flex size-12 flex-none items-center justify-center rounded-lg bg-primary text-white font-semibold text-lg">
+                      <div
+                        translate="no"
+                        className="flex size-12 flex-none items-center justify-center rounded-lg bg-primary text-white font-semibold text-lg"
+                      >
                         {displayName
                           ?.split(" ")
                           .map((n) => n[0])
@@ -421,113 +446,25 @@ const StudentDashboard = () => {
               Horario semanal
             </h2>
 
-            {periodOptions.length > 0 && (
-              <div className="mt-6 max-w-xs">
-                <label
-                  htmlFor="schedule-period-select"
-                  className="block text-sm/6 font-medium text-gray-900"
-                >
-                  Periodo
-                </label>
-                <div className="mt-2 grid grid-cols-1">
-                  <select
-                    id="schedule-period-select"
-                    value={selectedSchedulePeriod}
-                    onChange={(e) => setSelectedSchedulePeriod(e.target.value)}
-                    className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary sm:text-sm/6"
-                  >
-                    {periodOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDownIcon
-                    aria-hidden="true"
-                    className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
-                  />
-                </div>
+            {availablePeriods.length > 0 && schedulePeriod && (
+              <div className="mt-6">
+                <PeriodSelector
+                  idPrefix="schedule"
+                  available={availablePeriods}
+                  year={schedulePeriod.year}
+                  period={schedulePeriod.period}
+                  onChange={setSchedulePeriod}
+                />
               </div>
             )}
           </div>
           <div className="mt-6 overflow-hidden border-t border-gray-100">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-none">
-                {Object.keys(groupedSchedule).length === 0 ? (
-                  <div className="py-12 text-center text-gray-500">
-                    No hay clases programadas para este periodo
-                  </div>
-                ) : (
-                  <table className="w-full text-left">
-                    <thead className="sr-only">
-                      <tr>
-                        <th>Hora</th>
-                        <th className="hidden sm:table-cell">Curso</th>
-                        <th>Detalles</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(groupedSchedule).map(
-                        ([dayName, schedules]) => (
-                          <>
-                            <tr
-                              key={dayName}
-                              className="text-sm/6 text-gray-900"
-                            >
-                              <th
-                                scope="colgroup"
-                                colSpan={3}
-                                className="relative isolate py-2 font-semibold"
-                              >
-                                {dayName}
-                                <div className="absolute inset-y-0 right-full -z-10 w-screen border-b border-gray-200 bg-gray-50"></div>
-                                <div className="absolute inset-y-0 left-0 -z-10 w-screen border-b border-gray-200 bg-gray-50"></div>
-                              </th>
-                            </tr>
-                            {schedules.map((schedule) => (
-                              <tr key={schedule.id}>
-                                <td className="relative py-5 pr-6">
-                                  <div className="flex gap-x-6">
-                                    <CalendarDaysIcon className="hidden h-6 w-5 flex-none text-gray-400 sm:block" />
-                                    <div className="flex-auto">
-                                      <div className="flex items-start gap-x-3">
-                                        <div className="text-sm/6 font-medium text-gray-900">
-                                          {schedule.hour || "Sin hora"}{" "}
-                                          {schedule.end_hour &&
-                                            `- ${schedule.end_hour}`}
-                                        </div>
-                                        {schedule.classroom && (
-                                          <div className="rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
-                                            {schedule.classroom}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="absolute right-full bottom-0 h-px w-screen bg-gray-100"></div>
-                                  <div className="absolute bottom-0 left-0 h-px w-screen bg-gray-100"></div>
-                                </td>
-                                <td className="hidden py-5 pr-6 sm:table-cell">
-                                  <div className="text-sm/6 text-gray-900">
-                                    {schedule.course_name}
-                                  </div>
-                                  <div className="mt-1 text-xs/5 text-gray-500">
-                                    {schedule.course_code}
-                                  </div>
-                                </td>
-                                <td className="py-5 text-right">
-                                  <div className="text-sm/6 text-gray-900">
-                                    {schedule.professor_name || "Profesor"}
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </>
-                        ),
-                      )}
-                    </tbody>
-                  </table>
-                )}
+            <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+                <TeacherWeekCalendar
+                  events={scheduleEvents}
+                  audience="student"
+                />
               </div>
             </div>
           </div>
@@ -560,7 +497,10 @@ const StudentDashboard = () => {
                     className="overflow-hidden rounded-xl border border-gray-200 bg-white"
                   >
                     <div className="flex items-center gap-x-4 border-b border-gray-900/5 bg-gray-50 p-6">
-                      <div className="flex size-12 flex-none items-center justify-center rounded-lg bg-gray-900 text-white font-semibold text-lg">
+                      <div
+                        translate="no"
+                        className="flex size-12 flex-none items-center justify-center rounded-lg bg-gray-900 text-white font-semibold text-lg"
+                      >
                         {enrollment.course_name
                           ?.split(" ")
                           .map((n) => n[0])
@@ -572,7 +512,10 @@ const StudentDashboard = () => {
                         <div className="text-sm/6 font-medium text-gray-900 truncate">
                           {enrollment.course_name || "Curso sin nombre"}
                         </div>
-                        <div className="text-xs text-gray-500 truncate">
+                        <div
+                          translate="no"
+                          className="text-xs text-gray-500 truncate"
+                        >
                           {enrollment.course_code}
                         </div>
                       </div>
@@ -609,7 +552,7 @@ const StudentDashboard = () => {
                         <div className="flex justify-between gap-x-4 py-3">
                           <dt className="text-gray-500">Nota Final</dt>
                           <dd className="text-gray-700 text-right font-medium">
-                            {enrollment.grade}
+                            {formatGrade(enrollment.grade)}
                           </dd>
                         </div>
                       )}

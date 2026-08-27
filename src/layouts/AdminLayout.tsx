@@ -508,7 +508,10 @@ export default function AdminLayout() {
                 "flex items-center py-3 transition-all duration-300",
               )}
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white text-sm font-bold">
+              <div
+                translate="no"
+                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white text-sm font-bold"
+              >
                 {getUserInitials()}
               </div>
               <div
@@ -692,7 +695,10 @@ export default function AdminLayout() {
                 <MenuButton className="relative flex items-center">
                   <span className="absolute -inset-1.5" />
                   <span className="sr-only">Open user menu</span>
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white text-sm font-semibold outline -outline-offset-1 outline-black/5">
+                  <div
+                    translate="no"
+                    className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white text-sm font-semibold outline -outline-offset-1 outline-black/5"
+                  >
                     {getUserInitials()}
                   </div>
                   <span className="hidden lg:flex lg:items-center">

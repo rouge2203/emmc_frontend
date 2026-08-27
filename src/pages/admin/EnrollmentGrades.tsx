@@ -31,6 +31,12 @@ import { GiMusicalNotes, GiMusicalScore } from "react-icons/gi";
 import AssignmentDrawer from "../../components/drawers/teacher_drawers/AssignmentDrawer";
 import ResourceDrawer from "../../components/drawers/teacher_drawers/ResourceDrawer";
 import { FaExclamation } from "react-icons/fa";
+import {
+  formatGrade,
+  isPartialGradeInput,
+  parseGradeInput,
+  validateGrade,
+} from "../../utils/grades";
 
 interface Schedule {
   id: number;
@@ -159,6 +165,9 @@ export default function EnrollmentGrades() {
     number | null
   >(null);
   const [formDailyWorkGrade, setFormDailyWorkGrade] = useState<string>("");
+  const [formDailyWorkError, setFormDailyWorkError] = useState<string | null>(
+    null,
+  );
   const [dailyWorkInfoDialogOpen, setDailyWorkInfoDialogOpen] = useState(false);
 
   // Form states
@@ -173,6 +182,7 @@ export default function EnrollmentGrades() {
 
   // Form fields for dialogs
   const [formGrade, setFormGrade] = useState<number | string>("");
+  const [formGradeError, setFormGradeError] = useState<string | null>(null);
   const [formCommentGrade, setFormCommentGrade] = useState("");
   const [formFinalGrade, setFormFinalGrade] = useState<number | string>("");
   const [formObservation, setFormObservation] = useState("");
@@ -304,8 +314,9 @@ export default function EnrollmentGrades() {
   const openGradeDialog = (assignment: Assignment) => {
     if (isReadOnly) return;
     setGradingAssignment(assignment);
-    setFormGrade(assignment.grade ?? "");
+    setFormGrade(formatGrade(assignment.grade, ""));
     setFormCommentGrade(assignment.comment_grade || "");
+    setFormGradeError(null);
     setGradeDialogOpen(true);
   };
 
@@ -323,23 +334,35 @@ export default function EnrollmentGrades() {
     const currentValue = dailyWork?.[weekKey];
     setFormDailyWorkGrade(
       currentValue !== null && currentValue !== undefined
-        ? String(currentValue)
+        ? formatGrade(currentValue, "")
         : "",
     );
+    setFormDailyWorkError(null);
     setDailyWorkDialogOpen(true);
   };
 
   const handleSaveDailyWork = async () => {
     if (selectedDailyWorkWeek === null || isReadOnly) return;
+
+    const validationError = validateGrade(
+      formDailyWorkGrade,
+      10,
+      `la semana ${selectedDailyWorkWeek}`,
+    );
+    if (validationError) {
+      setFormDailyWorkError(validationError);
+      return;
+    }
+
     setSubmitting(true);
 
     try {
       const weekKey = `week${selectedDailyWorkWeek}_points`;
       await axiosPrivate.put(`courses/daily-work/${enrollmentId}`, {
-        [weekKey]:
-          formDailyWorkGrade === "" ? null : Number(formDailyWorkGrade),
+        [weekKey]: parseGradeInput(formDailyWorkGrade),
       });
       setDailyWorkDialogOpen(false);
+      setFormDailyWorkError(null);
       const response = await axiosPrivate.get(
         `courses/daily-work/${enrollmentId}`,
       );
@@ -419,15 +442,32 @@ export default function EnrollmentGrades() {
 
   const handleSaveGrade = async () => {
     if (!gradingAssignment || isReadOnly) return;
+
+    const kind = gradingAssignment.is_concert
+      ? "el recital"
+      : gradingAssignment.is_exam
+        ? "el examen"
+        : "la tarea";
+    const validationError = validateGrade(
+      String(formGrade),
+      gradingAssignment.points ?? 100,
+      `${kind} "${gradingAssignment.title}"`,
+    );
+    if (validationError) {
+      setFormGradeError(validationError);
+      return;
+    }
+
     setSubmitting(true);
 
     try {
       await axiosPrivate.put("courses/teacher-assignments", {
         assignment_id: gradingAssignment.id,
-        grade: formGrade === "" ? null : Number(formGrade),
+        grade: parseGradeInput(String(formGrade)),
         comment_grade: formCommentGrade,
       });
       setGradeDialogOpen(false);
+      setFormGradeError(null);
       fetchCourseData();
     } catch (err) {
       console.error("Error saving grade:", err);
@@ -786,9 +826,9 @@ export default function EnrollmentGrades() {
 
               return (
                 <li key={week} className="px-6 py-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white text-sm font-semibold">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                      <span className="flex shrink-0 items-center justify-center w-8 h-8 rounded-full bg-primary text-white text-sm font-semibold">
                         {week}
                       </span>
                       <h3 className="text-sm font-semibold text-gray-900">
@@ -812,18 +852,18 @@ export default function EnrollmentGrades() {
                         />
                         {getDailyWorkGrade(week) !== null ? (
                           <span className="text-green-700">
-                            {getDailyWorkGrade(week)}/10
+                            {`${formatGrade(getDailyWorkGrade(week))}/10`}
                           </span>
                         ) : (
                           <span className="text-black">Calificar semana</span>
                         )}
                       </button>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex w-full gap-2 sm:w-auto sm:shrink-0">
                       <button
                         onClick={() => openAssignmentDrawer(week)}
                         disabled={isReadOnly}
-                        className={`inline-flex items-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 ${
+                        className={`inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 sm:flex-none ${
                           isReadOnly
                             ? "opacity-50 cursor-not-allowed"
                             : "hover:bg-gray-50"
@@ -835,7 +875,7 @@ export default function EnrollmentGrades() {
                       <button
                         onClick={() => openResourceDrawer(week)}
                         disabled={isReadOnly}
-                        className={`inline-flex items-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 ${
+                        className={`inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 sm:flex-none ${
                           isReadOnly
                             ? "opacity-50 cursor-not-allowed"
                             : "hover:bg-gray-50"
@@ -869,17 +909,16 @@ export default function EnrollmentGrades() {
                               </p>
                               {assignment.grade !== null ? (
                                 <p className="mt-0.5 inline-flex rounded-md px-1.5 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                                  {assignment.grade}
-                                  {assignment.points !== null &&
-                                    ` / ${assignment.points}`}{" "}
-                                  pts
+                                  {assignment.points !== null
+                                    ? `${formatGrade(assignment.grade)} / ${formatGrade(assignment.points)} pts`
+                                    : `${formatGrade(assignment.grade)} pts`}
                                 </p>
                               ) : (
                                 <p className="mt-0.5 inline-flex items-center rounded-md px-1.5 py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
                                   <FaExclamation className="size-3 mr-0" />{" "}
-                                  Pendiente calificar -{" "}
-                                  {assignment.points !== null &&
-                                    `${assignment.points} pts`}
+                                  {assignment.points !== null
+                                    ? `Pendiente calificar - ${formatGrade(assignment.points)} pts`
+                                    : "Pendiente calificar - "}
                                 </p>
                               )}
                             </div>
@@ -1077,17 +1116,16 @@ export default function EnrollmentGrades() {
                             </p>
                             {assignment.grade !== null ? (
                               <p className="mt-0.5 inline-flex rounded-md px-1.5 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                                {assignment.grade}
-                                {assignment.points !== null &&
-                                  ` / ${assignment.points}`}{" "}
-                                pts
+                                {assignment.points !== null
+                                  ? `${formatGrade(assignment.grade)} / ${formatGrade(assignment.points)} pts`
+                                  : `${formatGrade(assignment.grade)} pts`}
                               </p>
                             ) : (
                               <p className="mt-0.5 inline-flex items-center rounded-md px-1.5 py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
                                 <FaExclamation className="size-3 mr-0" />{" "}
-                                Pendiente calificar -{" "}
-                                {assignment.points !== null &&
-                                  `${assignment.points} pts`}
+                                {assignment.points !== null
+                                  ? `Pendiente calificar - ${formatGrade(assignment.points)} pts`
+                                  : "Pendiente calificar - "}
                               </p>
                             )}
                           </div>
@@ -1272,23 +1310,35 @@ export default function EnrollmentGrades() {
                   <div className="mt-4 space-y-4">
                     <div>
                       <label className="block text-start text-sm font-medium text-gray-900">
-                        Puntos Obtenidos
-                        {gradingAssignment?.points !== null &&
-                          ` (máx. ${gradingAssignment?.points})`}
+                        {gradingAssignment?.points != null
+                          ? `Puntos obtenidos (máximo ${formatGrade(gradingAssignment.points)})`
+                          : "Puntos obtenidos"}
                       </label>
+                      {/* text, not number: a number input drops the comma. */}
                       <input
-                        type="number"
-                        min="0"
-                        max={gradingAssignment?.points ?? undefined}
+                        type="text"
+                        inputMode="decimal"
+                        autoComplete="off"
                         value={formGrade}
-                        onChange={(e) => setFormGrade(e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 px-3 py-1.5 text-sm"
-                        placeholder={
-                          gradingAssignment?.points !== null
-                            ? `0-${gradingAssignment?.points}`
-                            : "Puntos obtenidos"
-                        }
+                        onChange={(e) => {
+                          const next = e.target.value.replace(".", ",");
+                          if (!isPartialGradeInput(next)) return;
+                          setFormGrade(next);
+                          setFormGradeError(null);
+                        }}
+                        aria-invalid={formGradeError ? true : undefined}
+                        className={`mt-1 block w-full rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 focus-visible:outline-2 focus-visible:-outline-offset-2 ${
+                          formGradeError
+                            ? "outline-red-400 focus-visible:outline-red-500"
+                            : "outline-gray-300 focus-visible:outline-gray-900"
+                        }`}
+                        placeholder="Por ejemplo: 7,5"
                       />
+                      {formGradeError && (
+                        <p className="mt-1.5 text-start text-sm text-red-600">
+                          {formGradeError}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-900">
@@ -1630,21 +1680,37 @@ export default function EnrollmentGrades() {
                   </DialogTitle>
                   <p className="mt-1 text-sm text-gray-500">
                     Califica el trabajo cotidiano del estudiante (máximo 10
-                    puntos)
+                    puntos, con un decimal: 7,5)
                   </p>
                   <div className="mt-4">
                     <label className="block text-start text-sm font-medium text-gray-900">
-                      Puntos (0-10)
+                      Puntos (0 a 10)
                     </label>
+                    {/* text, not number: a number input drops the comma. */}
                     <input
-                      type="number"
-                      min="0"
-                      max="10"
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
                       value={formDailyWorkGrade}
-                      onChange={(e) => setFormDailyWorkGrade(e.target.value)}
-                      className="mt-1 block w-full rounded-md border-gray-300 px-3 py-1.5 text-sm"
-                      placeholder="0-10"
+                      onChange={(e) => {
+                        const next = e.target.value.replace(".", ",");
+                        if (!isPartialGradeInput(next)) return;
+                        setFormDailyWorkGrade(next);
+                        setFormDailyWorkError(null);
+                      }}
+                      aria-invalid={formDailyWorkError ? true : undefined}
+                      className={`mt-1 block w-full rounded-md px-3 py-1.5 text-sm outline-1 -outline-offset-1 focus-visible:outline-2 focus-visible:-outline-offset-2 ${
+                        formDailyWorkError
+                          ? "outline-red-400 focus-visible:outline-red-500"
+                          : "outline-gray-300 focus-visible:outline-gray-900"
+                      }`}
+                      placeholder="Por ejemplo: 7,5"
                     />
+                    {formDailyWorkError && (
+                      <p className="mt-1.5 text-start text-sm text-red-600">
+                        {formDailyWorkError}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

@@ -7,7 +7,9 @@ import {
   CalendarDaysIcon,
   ArrowRightIcon,
 } from "@heroicons/react/24/outline";
-import { ChevronDownIcon } from "@heroicons/react/16/solid";
+import PeriodSelector from "../../components/PeriodSelector";
+import TeacherWeekCalendar from "../../components/dashboard/TeacherWeekCalendar";
+import { formatGrade } from "../../utils/grades";
 
 interface Schedule {
   day: string;
@@ -93,11 +95,13 @@ const TeacherDashboard = () => {
     null,
   );
 
-  // Local state for period selections in each section
-  const [selectedStudentsPeriod, setSelectedStudentsPeriod] =
-    useState<string>("");
-  const [selectedSchedulePeriod, setSelectedSchedulePeriod] =
-    useState<string>("");
+  // Each section remembers its own period.
+  const [studentsPeriod, setStudentsPeriod] = useState<AvailablePeriod | null>(
+    null,
+  );
+  const [schedulePeriod, setSchedulePeriod] = useState<AvailablePeriod | null>(
+    null,
+  );
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -107,12 +111,16 @@ const TeacherDashboard = () => {
         const response = await axiosPrivate.get("courses/teacher-dashboard");
         setDashboardData(response.data);
 
-        // Set default selected periods to the first available period
-        if (response.data.available_periods?.length > 0) {
-          const firstPeriod = response.data.available_periods[0];
-          const periodKey = `${firstPeriod.period}-${firstPeriod.year}`;
-          setSelectedStudentsPeriod(periodKey);
-          setSelectedSchedulePeriod(periodKey);
+        // Open on the most recent period, not the oldest one: the API sorts
+        // available_periods ascending, so the teacher's current term is last.
+        const periods: AvailablePeriod[] =
+          response.data.available_periods ?? [];
+        if (periods.length > 0) {
+          const latest = [...periods].sort(
+            (a, b) => a.year - b.year || a.period - b.period,
+          )[periods.length - 1];
+          setStudentsPeriod(latest);
+          setSchedulePeriod(latest);
         }
       } catch (err: unknown) {
         console.error("Error fetching dashboard data:", err);
@@ -127,42 +135,27 @@ const TeacherDashboard = () => {
 
   // Filter enrollments by selected period
   const filteredEnrollments = useMemo(() => {
-    if (!dashboardData?.enrollments || !selectedStudentsPeriod) return [];
-    const [period, year] = selectedStudentsPeriod.split("-").map(Number);
+    if (!dashboardData?.enrollments || !studentsPeriod) return [];
     return dashboardData.enrollments.filter(
-      (e) => e.period === period && e.year === year && e.status === "cursando",
+      (e) =>
+        e.period === studentsPeriod.period &&
+        e.year === studentsPeriod.year &&
+        e.status === "cursando",
     );
-  }, [dashboardData?.enrollments, selectedStudentsPeriod]);
+  }, [dashboardData?.enrollments, studentsPeriod]);
 
   // Filter schedule table by selected period
   const filteredSchedule = useMemo(() => {
-    if (!dashboardData?.schedule_table || !selectedSchedulePeriod) return [];
-    const [period, year] = selectedSchedulePeriod.split("-").map(Number);
+    if (!dashboardData?.schedule_table || !schedulePeriod) return [];
     return dashboardData.schedule_table.filter(
-      (s) => s.period === period && s.year === year,
+      (s) => s.period === schedulePeriod.period && s.year === schedulePeriod.year,
     );
-  }, [dashboardData?.schedule_table, selectedSchedulePeriod]);
+  }, [dashboardData?.schedule_table, schedulePeriod]);
 
-  // Get period options for selects
-  const periodOptions = useMemo(() => {
-    if (!dashboardData?.available_periods) return [];
-    return dashboardData.available_periods.map((p) => ({
-      value: `${p.period}-${p.year}`,
-      label: `Periodo ${p.period === 1 ? "I" : "II"} - ${p.year}`,
-    }));
-  }, [dashboardData?.available_periods]);
-
-  // Group schedule by day
-  const groupScheduleByDay = (schedules: ScheduleTableItem[]) => {
-    const grouped: Record<string, ScheduleTableItem[]> = {};
-    schedules.forEach((schedule) => {
-      if (!grouped[schedule.day_name]) {
-        grouped[schedule.day_name] = [];
-      }
-      grouped[schedule.day_name].push(schedule);
-    });
-    return grouped;
-  };
+  const availablePeriods = useMemo(
+    () => dashboardData?.available_periods ?? [],
+    [dashboardData?.available_periods],
+  );
 
   if (loading) {
     return (
@@ -187,10 +180,6 @@ const TeacherDashboard = () => {
       </div>
     );
   }
-
-  const groupedSchedule = filteredSchedule
-    ? groupScheduleByDay(filteredSchedule)
-    : {};
 
   return (
     <div className="relative isolate overflow-hidden">
@@ -237,32 +226,15 @@ const TeacherDashboard = () => {
               </h2>
             </div>
 
-            {periodOptions.length > 0 && (
-              <div className="mt-6 max-w-xs">
-                <label
-                  htmlFor="students-period-select"
-                  className="block text-sm/6 font-medium text-gray-900"
-                >
-                  Periodo
-                </label>
-                <div className="mt-2 grid grid-cols-1">
-                  <select
-                    id="students-period-select"
-                    value={selectedStudentsPeriod}
-                    onChange={(e) => setSelectedStudentsPeriod(e.target.value)}
-                    className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary sm:text-sm/6"
-                  >
-                    {periodOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDownIcon
-                    aria-hidden="true"
-                    className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
-                  />
-                </div>
+            {availablePeriods.length > 0 && studentsPeriod && (
+              <div className="mt-6">
+                <PeriodSelector
+                  idPrefix="students"
+                  available={availablePeriods}
+                  year={studentsPeriod.year}
+                  period={studentsPeriod.period}
+                  onChange={setStudentsPeriod}
+                />
               </div>
             )}
 
@@ -281,7 +253,10 @@ const TeacherDashboard = () => {
                     className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-md"
                   >
                     <div className="flex items-center gap-x-4 border-b border-gray-900/5 bg-gray-50 p-6">
-                      <div className="flex size-12 flex-none items-center justify-center rounded-lg bg-primary text-white font-semibold text-lg">
+                      <div
+                        translate="no"
+                        className="flex size-12 flex-none items-center justify-center rounded-lg bg-primary text-white font-semibold text-lg"
+                      >
                         {enrollment.student_name
                           ?.split(" ")
                           .map((n) => n[0])
@@ -293,7 +268,10 @@ const TeacherDashboard = () => {
                         <div className="text-sm/6 font-medium text-gray-900 truncate">
                           {enrollment.student_name || "Sin nombre"}
                         </div>
-                        <div className="text-xs text-gray-500 truncate">
+                        <div
+                          translate="no"
+                          className="text-xs text-gray-500 truncate"
+                        >
                           {enrollment.course_code}
                         </div>
                       </div>
@@ -301,7 +279,7 @@ const TeacherDashboard = () => {
                         to={`/teacher/course/${enrollment.id}`}
                         className="flex items-center gap-x-1 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
                       >
-                        Ver
+                        Notas
                         <ArrowRightIcon className="h-4 w-4" />
                       </Link>
                     </div>
@@ -351,7 +329,7 @@ const TeacherDashboard = () => {
                         <div className="flex justify-between gap-x-4 py-3">
                           <dt className="text-gray-500">Nota Final</dt>
                           <dd className="font-medium text-gray-900">
-                            {enrollment.grade}
+                            {formatGrade(enrollment.grade)}
                           </dd>
                         </div>
                       )}
@@ -369,113 +347,22 @@ const TeacherDashboard = () => {
               Horario Semanal
             </h2>
 
-            {periodOptions.length > 0 && (
-              <div className="mt-6 max-w-xs">
-                <label
-                  htmlFor="schedule-period-select"
-                  className="block text-sm/6 font-medium text-gray-900"
-                >
-                  Periodo
-                </label>
-                <div className="mt-2 grid grid-cols-1">
-                  <select
-                    id="schedule-period-select"
-                    value={selectedSchedulePeriod}
-                    onChange={(e) => setSelectedSchedulePeriod(e.target.value)}
-                    className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary sm:text-sm/6"
-                  >
-                    {periodOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDownIcon
-                    aria-hidden="true"
-                    className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
-                  />
-                </div>
+            {availablePeriods.length > 0 && schedulePeriod && (
+              <div className="mt-6">
+                <PeriodSelector
+                  idPrefix="schedule"
+                  available={availablePeriods}
+                  year={schedulePeriod.year}
+                  period={schedulePeriod.period}
+                  onChange={setSchedulePeriod}
+                />
               </div>
             )}
           </div>
           <div className="mt-6 overflow-hidden border-t border-gray-100">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-none">
-                {Object.keys(groupedSchedule).length === 0 ? (
-                  <div className="py-12 text-center text-gray-500">
-                    No hay clases programadas para este periodo
-                  </div>
-                ) : (
-                  <table className="w-full text-left">
-                    <thead className="sr-only">
-                      <tr>
-                        <th>Hora</th>
-                        <th className="hidden sm:table-cell">Curso</th>
-                        <th>Detalles</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(groupedSchedule).map(
-                        ([dayName, schedules]) => (
-                          <>
-                            <tr
-                              key={dayName}
-                              className="text-sm/6 text-gray-900"
-                            >
-                              <th
-                                scope="colgroup"
-                                colSpan={3}
-                                className="relative isolate py-2 font-semibold"
-                              >
-                                {dayName}
-                                <div className="absolute inset-y-0 right-full -z-10 w-screen border-b border-gray-200 bg-gray-50"></div>
-                                <div className="absolute inset-y-0 left-0 -z-10 w-screen border-b border-gray-200 bg-gray-50"></div>
-                              </th>
-                            </tr>
-                            {schedules.map((schedule) => (
-                              <tr key={schedule.id}>
-                                <td className="relative py-5 pr-6">
-                                  <div className="flex gap-x-6">
-                                    <CalendarDaysIcon className="hidden h-6 w-5 flex-none text-gray-400 sm:block" />
-                                    <div className="flex-auto">
-                                      <div className="flex items-start gap-x-3">
-                                        <div className="text-sm/6 font-medium text-gray-900">
-                                          {schedule.hour || "Sin hora"}{" "}
-                                          {schedule.end_hour &&
-                                            `- ${schedule.end_hour}`}
-                                        </div>
-                                        {schedule.classroom && (
-                                          <div className="rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
-                                            {schedule.classroom}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="absolute right-full bottom-0 h-px w-screen bg-gray-100"></div>
-                                  <div className="absolute bottom-0 left-0 h-px w-screen bg-gray-100"></div>
-                                </td>
-                                <td className="hidden py-5 pr-6 sm:table-cell">
-                                  <div className="text-sm/6 text-gray-900">
-                                    {schedule.course_name}
-                                  </div>
-                                  <div className="mt-1 text-xs/5 text-gray-500">
-                                    {schedule.course_code}
-                                  </div>
-                                </td>
-                                <td className="py-5 text-right">
-                                  <div className="text-sm/6 text-gray-900">
-                                    {schedule.student_name}
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </>
-                        ),
-                      )}
-                    </tbody>
-                  </table>
-                )}
+            <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+                <TeacherWeekCalendar events={filteredSchedule} />
               </div>
             </div>
           </div>

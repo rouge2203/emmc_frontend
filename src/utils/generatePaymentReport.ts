@@ -110,6 +110,10 @@ function getDisplayStatus(payment: PaymentData): string {
   return labels[payment.status] || payment.status;
 }
 
+function payerName(payment: PaymentData): string {
+  return `${payment.user.first_name} ${payment.user.last_name || ""}`.trim();
+}
+
 function getStatusKey(payment: PaymentData): string {
   if (payment.is_overdue && payment.status !== "completado") return "vencido";
   return payment.status;
@@ -239,6 +243,15 @@ export async function generatePaymentReport(
     return "—";
   };
 
+  // Listed alphabetically by student, like every other printed list. The
+  // caller's array is left alone — the summary tables below aggregate over it
+  // and a couple of them are ranked by count on purpose. Ties fall back to the
+  // payment id so the order never shifts between two runs of the same report.
+  const collator = new Intl.Collator("es", { sensitivity: "base" });
+  const sortedPayments = [...payments].sort(
+    (a, b) => collator.compare(payerName(a), payerName(b)) || a.id - b.id,
+  );
+
   if (payments.length > 0) {
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
@@ -246,9 +259,9 @@ export async function generatePaymentReport(
     doc.text(`Pagos (${payments.length})`, margin, startY);
     startY += 2;
 
-    const rows = payments.map((p, i) => [
+    const rows = sortedPayments.map((p, i) => [
       (i + 1).toString(),
-      `${p.user.first_name} ${p.user.last_name || ""}`.trim(),
+      payerName(p),
       PAYMENT_TYPE_LABELS[p.payment_type || ""] || "—",
       getDescription(p),
       formatCurrency(p.amount),

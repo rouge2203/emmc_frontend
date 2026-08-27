@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Dialog,
-  Menu,
   DialogPanel,
   DialogTitle,
   DialogBackdrop,
@@ -17,8 +16,9 @@ import {
   PlusIcon,
   CheckCircleIcon,
   XMarkIcon,
-  EllipsisVerticalIcon,
   DocumentArrowDownIcon,
+  PencilSquareIcon,
+  TrashIcon,
   XCircleIcon,
   AcademicCapIcon,
   ExclamationTriangleIcon,
@@ -31,6 +31,12 @@ import { BiCalendarEdit } from "react-icons/bi";
 import AssignmentDrawer from "../../components/drawers/teacher_drawers/AssignmentDrawer";
 import ResourceDrawer from "../../components/drawers/teacher_drawers/ResourceDrawer";
 import { FaExclamation } from "react-icons/fa";
+import {
+  formatGrade,
+  isPartialGradeInput,
+  parseGradeInput,
+  validateGrade,
+} from "../../utils/grades";
 
 interface Schedule {
   id: number;
@@ -114,6 +120,18 @@ interface CourseData {
   };
 }
 
+/**
+ * The message the API sent for a failed request, or `fallback`.
+ *
+ * Axios errors are `unknown` to TypeScript; this narrows one instead of
+ * spreading `any` through every catch block.
+ */
+function apiErrorMessage(err: unknown, fallback: string): string {
+  const detail = (err as { response?: { data?: { error?: unknown } } })
+    ?.response?.data?.error;
+  return typeof detail === "string" && detail ? detail : fallback;
+}
+
 const statusLabels: Record<string, { label: string; className: string }> = {
   cursando: {
     label: "Cursando",
@@ -153,6 +171,9 @@ export default function CourseDashboard() {
     number | null
   >(null);
   const [formDailyWorkGrade, setFormDailyWorkGrade] = useState<string>("");
+  const [formDailyWorkError, setFormDailyWorkError] = useState<string | null>(
+    null,
+  );
   const [dailyWorkInfoDialogOpen, setDailyWorkInfoDialogOpen] = useState(false);
 
   // Form states
@@ -167,6 +188,7 @@ export default function CourseDashboard() {
 
   // Form fields for dialogs
   const [formGrade, setFormGrade] = useState<number | string>("");
+  const [formGradeError, setFormGradeError] = useState<string | null>(null);
   const [formCommentGrade, setFormCommentGrade] = useState("");
   const [formFinalGrade, setFormFinalGrade] = useState<number | string>("");
   const [formObservation, setFormObservation] = useState("");
@@ -192,6 +214,10 @@ export default function CourseDashboard() {
   >([]);
 
   // Notification states
+  // Anything the teacher still has to grade before the course can be closed.
+  const [missingGrades, setMissingGrades] = useState<string[]>([]);
+
+  const notificationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [showErrorNotification, setShowErrorNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState("");
@@ -199,8 +225,41 @@ export default function CourseDashboard() {
   // Read-only mode when status is not "cursando"
   const isReadOnly = courseData?.enrollment.status !== "cursando";
 
-  const fetchCourseData = async () => {
-    setLoading(true);
+  /**
+   * One toast at a time, with a single owned dismiss timer. Two saves within
+   * five seconds used to let the first timer hide the second message.
+   */
+  const showSuccessToast = () => {
+    if (notificationTimer.current) clearTimeout(notificationTimer.current);
+    setShowErrorNotification(false);
+    setShowSuccessNotification(true);
+    notificationTimer.current = setTimeout(() => {
+      setShowSuccessNotification(false);
+    }, 5000);
+  };
+
+  const showErrorToast = () => {
+    if (notificationTimer.current) clearTimeout(notificationTimer.current);
+    setShowSuccessNotification(false);
+    setShowErrorNotification(true);
+    notificationTimer.current = setTimeout(() => {
+      setShowErrorNotification(false);
+    }, 5000);
+  };
+
+  useEffect(
+    () => () => {
+      if (notificationTimer.current) clearTimeout(notificationTimer.current);
+    },
+    [],
+  );
+
+  /**
+   * Reloads the course. `silent` keeps the page on screen instead of blanking
+   * it to a spinner — saving a grade should never make the content flash.
+   */
+  const fetchCourseData = async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const [courseResponse, dailyWorkResponse] = await Promise.all([
@@ -211,9 +270,9 @@ export default function CourseDashboard() {
       setDailyWork(dailyWorkResponse.data.daily_work);
     } catch (err: unknown) {
       console.error("Error fetching course data:", err);
-      setError("Error al cargar los datos del curso");
+      if (!silent) setError("Error al cargar los datos del curso");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -225,7 +284,7 @@ export default function CourseDashboard() {
 
   // Load the course catalog (non-matricula subjects) for the assign-subject dialog
   useEffect(() => {
-    if (!assignCourseDialogOpen) return;
+    if (!assignCourseDialogOpen && !finalizeDialogOpen) return;
     const controller = new AbortController();
     const fetchOptions = async () => {
       try {
@@ -249,7 +308,14 @@ export default function CourseDashboard() {
     };
     fetchOptions();
     return () => controller.abort();
-  }, [assignCourseDialogOpen, assignCourseSearch]);
+  }, [assignCourseDialogOpen, finalizeDialogOpen, assignCourseSearch]);
+
+  // Keep the finalize checklist honest while the dialog is open.
+  useEffect(() => {
+    if (!finalizeDialogOpen) return;
+    setMissingGrades(getMissingGrades());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finalizeDialogOpen, courseData, dailyWork]);
 
   const openAssignmentDrawer = (week: number, assignment?: Assignment) => {
     if (isReadOnly) return;
@@ -268,40 +334,59 @@ export default function CourseDashboard() {
   const openGradeDialog = (assignment: Assignment) => {
     if (isReadOnly) return;
     setGradingAssignment(assignment);
-    setFormGrade(assignment.grade ?? "");
+    setFormGrade(
+      assignment.grade === null ? "" : formatGrade(assignment.grade, ""),
+    );
     setFormCommentGrade(assignment.comment_grade || "");
+    setFormGradeError(null);
     setGradeDialogOpen(true);
   };
 
   const openFinalizeDialog = () => {
     // Calculate final grade and auto-set status
     const finalGrade = calculateFinalGrade();
+    setMissingGrades(getMissingGrades());
     setFormFinalGrade(finalGrade.toFixed(1));
     setFormObservation(courseData?.enrollment.professor_observation || "");
     setFormStatus(finalGrade >= 70 ? "aprobado" : "reprobado");
+    // The finalize dialog's subject <select> has no search box, so a term left
+    // over from the banner picker would silently shorten its list.
+    setAssignCourseSearch("");
     setFinalizeDialogOpen(true);
   };
 
   const openDailyWorkDialog = (week: number) => {
+    if (isReadOnly) return;
     setSelectedDailyWorkWeek(week);
     const weekKey = `week${week}_points` as keyof DailyWork;
     const currentValue = dailyWork?.[weekKey];
     setFormDailyWorkGrade(
       currentValue !== null && currentValue !== undefined
-        ? String(currentValue)
+        ? formatGrade(currentValue, "")
         : "",
     );
+    setFormDailyWorkError(null);
     setDailyWorkDialogOpen(true);
   };
 
   const handleSaveDailyWork = async () => {
     if (selectedDailyWorkWeek === null || isReadOnly) return;
+
+    const validationError = validateGrade(
+      formDailyWorkGrade,
+      10,
+      `la semana ${selectedDailyWorkWeek}`,
+    );
+    if (validationError) {
+      setFormDailyWorkError(validationError);
+      return;
+    }
+
     setSubmitting(true);
 
     try {
       const weekKey = `week${selectedDailyWorkWeek}_points`;
-      const gradeValue =
-        formDailyWorkGrade === "" ? null : Number(formDailyWorkGrade);
+      const gradeValue = parseGradeInput(formDailyWorkGrade);
       await axiosPrivate.put(`courses/daily-work/${enrollmentId}`, {
         [weekKey]: gradeValue,
       });
@@ -315,22 +400,22 @@ export default function CourseDashboard() {
       }
 
       setDailyWorkDialogOpen(false);
-      setFormDailyWorkGrade("");
-      setSelectedDailyWorkWeek(null);
+      setFormDailyWorkError(null);
+      // `selectedDailyWorkWeek` and `formDailyWorkGrade` are deliberately NOT
+      // cleared. The dialog stays mounted for its leave animation, so blanking
+      // them makes React delete a text node inside the still-visible title —
+      // which throws outright if a translator has reparented it. The next
+      // openDailyWorkDialog re-seeds both anyway.
 
       // Show success notification
       setNotificationMessage(
         `Trabajo cotidiano de la semana ${selectedDailyWorkWeek} actualizado correctamente`,
       );
-      setShowSuccessNotification(true);
-      setTimeout(() => setShowSuccessNotification(false), 5000);
-    } catch (err: any) {
+      showSuccessToast();
+    } catch (err: unknown) {
       console.error("Error saving daily work:", err);
-      setNotificationMessage(
-        err?.response?.data?.error || "Error al guardar el trabajo cotidiano",
-      );
-      setShowErrorNotification(true);
-      setTimeout(() => setShowErrorNotification(false), 5000);
+      setNotificationMessage(apiErrorMessage(err, "Error al guardar el trabajo cotidiano"));
+      showErrorToast();
     } finally {
       setSubmitting(false);
     }
@@ -366,15 +451,11 @@ export default function CourseDashboard() {
       setNotificationMessage(
         `Se asignaron 10 puntos a todas las semanas del trabajo cotidiano`,
       );
-      setShowSuccessNotification(true);
-      setTimeout(() => setShowSuccessNotification(false), 5000);
-    } catch (err: any) {
+      showSuccessToast();
+    } catch (err: unknown) {
       console.error("Error assigning all daily work points:", err);
-      setNotificationMessage(
-        err?.response?.data?.error || "Error al asignar los puntos",
-      );
-      setShowErrorNotification(true);
-      setTimeout(() => setShowErrorNotification(false), 5000);
+      setNotificationMessage(apiErrorMessage(err, "Error al asignar los puntos"));
+      showErrorToast();
     } finally {
       setSubmitting(false);
     }
@@ -411,10 +492,15 @@ export default function CourseDashboard() {
         });
       }
       setDeleteDialogOpen(false);
-      setDeletingItem(null);
-      fetchCourseData();
-    } catch (err) {
+      // `deletingItem` stays set while the dialog animates out.
+      await fetchCourseData(true);
+
+      setNotificationMessage(`"${deletingItem.title}" se eliminó correctamente`);
+      showSuccessToast();
+    } catch (err: unknown) {
       console.error("Error deleting item:", err);
+      setNotificationMessage(apiErrorMessage(err, "No se pudo eliminar el elemento"));
+      showErrorToast();
     } finally {
       setSubmitting(false);
     }
@@ -422,10 +508,26 @@ export default function CourseDashboard() {
 
   const handleSaveGrade = async () => {
     if (!gradingAssignment) return;
+
+    const kind = gradingAssignment.is_concert
+      ? "el recital"
+      : gradingAssignment.is_exam
+        ? "el examen"
+        : "la tarea";
+    const validationError = validateGrade(
+      String(formGrade),
+      gradingAssignment.points ?? 100,
+      `${kind} "${gradingAssignment.title}"`,
+    );
+    if (validationError) {
+      setFormGradeError(validationError);
+      return;
+    }
+
     setSubmitting(true);
 
     try {
-      const gradeValue = formGrade === "" ? null : Number(formGrade);
+      const gradeValue = parseGradeInput(String(formGrade));
       await axiosPrivate.put("courses/teacher-assignments", {
         assignment_id: gradingAssignment.id,
         grade: gradeValue,
@@ -445,23 +547,19 @@ export default function CourseDashboard() {
       }
 
       setGradeDialogOpen(false);
-      setFormGrade("");
-      setFormCommentGrade("");
-      setGradingAssignment(null);
+      setFormGradeError(null);
+      // Nothing the still-animating dialog renders is cleared here — same
+      // text-node reason as handleSaveDailyWork.
 
       // Show success notification
       setNotificationMessage(
         `Calificación de "${gradingAssignment.title}" guardada correctamente`,
       );
-      setShowSuccessNotification(true);
-      setTimeout(() => setShowSuccessNotification(false), 5000);
-    } catch (err: any) {
+      showSuccessToast();
+    } catch (err: unknown) {
       console.error("Error saving grade:", err);
-      setNotificationMessage(
-        err?.response?.data?.error || "Error al guardar la calificación",
-      );
-      setShowErrorNotification(true);
-      setTimeout(() => setShowErrorNotification(false), 5000);
+      setNotificationMessage(apiErrorMessage(err, "Error al guardar la calificación"));
+      showErrorToast();
     } finally {
       setSubmitting(false);
     }
@@ -477,14 +575,22 @@ export default function CourseDashboard() {
         status: formStatus,
       });
       setFinalizeDialogOpen(false);
-      fetchCourseData();
-    } catch (err: any) {
+      await fetchCourseData(true);
+
+      setNotificationMessage("El curso se cerró correctamente");
+      showSuccessToast();
+    } catch (err: unknown) {
       console.error("Error finalizing enrollment:", err);
-      setNotificationMessage(
-        err?.response?.data?.error || "Error al cerrar la calificación",
-      );
-      setShowErrorNotification(true);
-      setTimeout(() => setShowErrorNotification(false), 5000);
+      // The server is the last word on what is still ungraded; if it sends a
+      // list back, show it in the dialog rather than a toast that vanishes.
+      const missing = (
+        err as { response?: { data?: { missing?: unknown } } }
+      )?.response?.data?.missing;
+      if (Array.isArray(missing) && missing.length > 0) {
+        setMissingGrades(missing as string[]);
+      }
+      setNotificationMessage(apiErrorMessage(err, "Error al cerrar la calificación"));
+      showErrorToast();
     } finally {
       setSubmitting(false);
     }
@@ -499,14 +605,18 @@ export default function CourseDashboard() {
       );
       setAssignCourseDialogOpen(false);
       setAssignCourseSearch("");
-      fetchCourseData();
-    } catch (err: any) {
-      console.error("Error assigning course:", err);
+      await fetchCourseData(true);
+
       setNotificationMessage(
-        err?.response?.data?.error || "Error al asignar la asignatura",
+        assignedCourseId === null
+          ? "Se quitó la asignatura del estudiante"
+          : "Asignatura guardada correctamente",
       );
-      setShowErrorNotification(true);
-      setTimeout(() => setShowErrorNotification(false), 5000);
+      showSuccessToast();
+    } catch (err: unknown) {
+      console.error("Error assigning course:", err);
+      setNotificationMessage(apiErrorMessage(err, "Error al asignar la asignatura"));
+      showErrorToast();
     } finally {
       setSubmitting(false);
     }
@@ -577,6 +687,41 @@ export default function CourseDashboard() {
     return (grade / maxPoints) * 10;
   };
 
+  /**
+   * Everything the teacher still has to grade before the course can close.
+   * Mirrors `missing_grade_items` in the API so the finalize dialog can list
+   * it without a round trip.
+   */
+  const getMissingGrades = (): string[] => {
+    if (!courseData) return [];
+    const missing: string[] = [];
+
+    const weekCount = Math.min(courseData.enrollment.week_duration, 22);
+    for (let i = 1; i <= weekCount; i++) {
+      if (getDailyWorkGrade(i) === null) {
+        missing.push(`Trabajo cotidiano \u2014 Semana ${i}`);
+      }
+    }
+
+    for (const assignment of courseData.assignments) {
+      if (assignment.grade !== null) continue;
+      if (assignment.is_concert || assignment.is_exam) {
+        missing.push(
+          `${assignment.is_concert ? "Recital" : "Examen"} \u2014 ${assignment.title}`,
+        );
+        continue;
+      }
+      // A plain tarea only appears under its own week. One filed outside the
+      // course's weeks cannot be opened, so it must not block the close.
+      if (assignment.week === null || assignment.week < 1 || assignment.week > weekCount) {
+        continue;
+      }
+      missing.push(`Tarea \u2014 ${assignment.title}`);
+    }
+
+    return missing;
+  };
+
   const calculateFinalGrade = (): number => {
     return (
       calculateDailyWorkPercentage() +
@@ -630,6 +775,24 @@ export default function CourseDashboard() {
   const evaluationAssignments = assignments.filter(
     (a) => a.is_exam || a.is_concert,
   );
+
+  // Row actions. Labels show from `sm` up; below that the icon plus its
+  // sr-only label carries the meaning, so nothing hides behind a menu.
+  const rowAction =
+    "inline-flex items-center gap-1.5 rounded-md bg-white px-2 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:px-2.5";
+  const rowActionDanger =
+    "inline-flex items-center gap-1.5 rounded-md bg-white px-2 py-1.5 text-sm font-semibold text-red-600 shadow-sm ring-1 ring-inset ring-red-200 hover:bg-red-50 sm:px-2.5";
+  const rowActionPrimary =
+    "inline-flex items-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 sm:px-2.5";
+
+  // Why the course cannot be closed yet, or null when it can be.
+  const needsAssignedCourse =
+    enrollment.is_matricula && !enrollment.assigned_course;
+  const finalizeBlockedReason = needsAssignedCourse
+    ? "Elige la asignatura del estudiante antes de cerrar la calificación."
+    : missingGrades.length > 0
+      ? "Faltan calificaciones por registrar."
+      : null;
 
   return (
     <div className="min-h-full bg-gray-50">
@@ -700,16 +863,15 @@ export default function CourseDashboard() {
               <div className="text-sm">
                 {enrollment.assigned_course ? (
                   <p className="text-green-800">
-                    Asignatura asignada:{" "}
+                    Asignatura del estudiante:{" "}
                     <span className="font-semibold">
-                      {enrollment.assigned_course.name} (
-                      {enrollment.assigned_course.code})
+                      {`${enrollment.assigned_course.name} (${enrollment.assigned_course.code})`}
                     </span>
                   </p>
                 ) : (
                   <p className="text-yellow-800">
-                    Esta es una matrícula. Asigne la asignatura específica antes
-                    de cerrar la calificación.
+                    Esta es una matrícula. Elige la asignatura del estudiante
+                    antes de cerrar la calificación.
                   </p>
                 )}
               </div>
@@ -724,7 +886,7 @@ export default function CourseDashboard() {
                 >
                   {enrollment.assigned_course
                     ? "Cambiar asignatura"
-                    : "Asignar asignatura"}
+                    : "Elegir asignatura"}
                 </button>
               )}
             </div>
@@ -817,9 +979,9 @@ export default function CourseDashboard() {
 
               return (
                 <li key={week} className="px-6 py-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white text-sm font-semibold">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                      <span className="flex shrink-0 items-center justify-center w-8 h-8 rounded-full bg-primary text-white text-sm font-semibold">
                         {week}
                       </span>
                       <h3 className="text-sm font-semibold text-gray-900">
@@ -844,7 +1006,7 @@ export default function CourseDashboard() {
                         />
                         {getDailyWorkGrade(week) !== null ? (
                           <span className="text-green-700">
-                            {getDailyWorkGrade(week)}/10
+                            {`${formatGrade(getDailyWorkGrade(week))}/10`}
                           </span>
                         ) : (
                           <span className="text-black">Calificar semana</span>
@@ -852,17 +1014,17 @@ export default function CourseDashboard() {
                       </button>
                     </div>
                     {!isReadOnly && (
-                      <div className="flex gap-2">
+                      <div className="flex w-full gap-2 sm:w-auto sm:shrink-0">
                         <button
                           onClick={() => openAssignmentDrawer(week)}
-                          className="inline-flex items-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                          className="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:flex-none"
                         >
                           <PlusIcon className="h-4 w-4" />
                           Tarea
                         </button>
                         <button
                           onClick={() => openResourceDrawer(week)}
-                          className="inline-flex items-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                          className="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:flex-none"
                         >
                           <PlusIcon className="h-4 w-4" />
                           Recurso
@@ -899,10 +1061,11 @@ export default function CourseDashboard() {
                               </p>
                               {assignment.grade !== null ? (
                                 <p className="inline-flex rounded-md px-1.5 py-0.5 sm:py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                                  {assignment.grade}
-                                  {assignment.points !== null &&
-                                    ` / ${assignment.points}`}{" "}
-                                  pts
+                                  {`${formatGrade(assignment.grade)}${
+                                    assignment.points !== null
+                                      ? ` / ${formatGrade(assignment.points)}`
+                                      : ""
+                                  } pts`}
                                 </p>
                               ) : (
                                 <p className="inline-flex items-center rounded-md px-1.5 py-0.5 sm:py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
@@ -934,117 +1097,63 @@ export default function CourseDashboard() {
                             href={assignment.assignment_file_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hidden sm:block rounded-md bg-white p-2 text-gray-500 hover:text-gray-700 ring-1 ring-inset ring-gray-300"
+                            className={rowAction}
                           >
                             <DocumentArrowDownIcon className="h-4 w-4" />
+                            <span className="sr-only sm:not-sr-only">
+                              Descargar
+                            </span>
                           </a>
                         )}
-                        {assignment.grade === null && !isReadOnly && (
+                        {!isReadOnly && (
                           <button
                             onClick={() => openGradeDialog(assignment)}
-                            className="hidden sm:block rounded-md bg-primary px-2.5 py-1.5 text-sm font-semibold text-white hover:bg-primary/90"
+                            className={rowActionPrimary}
                           >
-                            Calificar
+                            <ClipboardDocumentCheckIcon className="h-4 w-4" />
+                            <span className="sr-only sm:not-sr-only">
+                              {assignment.grade === null
+                                ? "Calificar"
+                                : "Editar nota"}
+                            </span>
                           </button>
                         )}
                         <Link
                           to={`/teacher/assignment/${assignment.id}`}
-                          className="hidden sm:block rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                          className={rowAction}
                         >
-                          Ver
+                          Detalles
                         </Link>
-                        <Menu as="div" className="relative">
-                          <Menu.Button className="block rounded-md p-2 text-gray-500 hover:text-gray-900">
-                            <EllipsisVerticalIcon className="h-5 w-5" />
-                          </Menu.Button>
-
-                          <Menu.Items className="absolute right-0 z-10 mt-2 w-36 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  onClick={() =>
-                                    navigate(
-                                      `/teacher/assignment/${assignment.id}`,
-                                    )
-                                  }
-                                  className={`${
-                                    active ? "bg-gray-50" : ""
-                                  } block w-full px-3 py-1 text-left text-sm text-gray-900`}
-                                >
-                                  Ver
-                                </button>
-                              )}
-                            </Menu.Item>
-                            {assignment.assignment_file_url && (
-                              <Menu.Item>
-                                {({ active }) => (
-                                  <a
-                                    href={assignment.assignment_file_url!}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={`${
-                                      active ? "bg-gray-50" : ""
-                                    } block w-full px-3 py-1 text-left text-sm text-gray-900 sm:hidden`}
-                                  >
-                                    Descargar
-                                  </a>
-                                )}
-                              </Menu.Item>
-                            )}
-                            {!assignment.is_concert && !isReadOnly && (
-                              <Menu.Item>
-                                {({ active }) => (
-                                  <button
-                                    onClick={() =>
-                                      openAssignmentDrawer(week, assignment)
-                                    }
-                                    className={`${
-                                      active ? "bg-gray-50" : ""
-                                    } block w-full px-3 py-1 text-left text-sm text-gray-900`}
-                                  >
-                                    Editar
-                                  </button>
-                                )}
-                              </Menu.Item>
-                            )}
-                            {!isReadOnly && (
-                              <Menu.Item>
-                                {({ active }) => (
-                                  <button
-                                    onClick={() => openGradeDialog(assignment)}
-                                    className={`${
-                                      active ? "bg-gray-50" : ""
-                                    } block w-full px-3 py-1 text-left text-sm text-gray-900`}
-                                  >
-                                    Calificar
-                                  </button>
-                                )}
-                              </Menu.Item>
-                            )}
-                            {!assignment.is_concert &&
-                              !assignment.is_exam &&
-                              !isReadOnly && (
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <button
-                                      onClick={() =>
-                                        openDeleteDialog(
-                                          "assignment",
-                                          assignment.id,
-                                          assignment.title,
-                                        )
-                                      }
-                                      className={`${
-                                        active ? "bg-gray-50" : ""
-                                      } block w-full px-3 py-1 text-left text-sm text-red-600`}
-                                    >
-                                      Eliminar
-                                    </button>
-                                  )}
-                                </Menu.Item>
-                              )}
-                          </Menu.Items>
-                        </Menu>
+                        {!assignment.is_concert && !isReadOnly && (
+                          <button
+                            onClick={() =>
+                              openAssignmentDrawer(week, assignment)
+                            }
+                            className={rowAction}
+                            title="Editar tarea"
+                          >
+                            <PencilSquareIcon className="h-4 w-4" />
+                            <span className="sr-only">Editar</span>
+                          </button>
+                        )}
+                        {!assignment.is_concert &&
+                          !assignment.is_exam &&
+                          !isReadOnly && (
+                            <button
+                              onClick={() =>
+                                openDeleteDialog(
+                                  "assignment",
+                                  assignment.id,
+                                  assignment.title,
+                                )
+                              }
+                              className={rowActionDanger}
+                              title="Eliminar tarea"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                              <span className="sr-only">Eliminar</span>
+                            </button>
+                          )}
                       </div>
                     </div>
                   ))}
@@ -1079,90 +1188,46 @@ export default function CourseDashboard() {
                             href={resource.resource_file_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hidden sm:block rounded-md bg-white p-2 text-gray-500 hover:text-gray-700 ring-1 ring-inset ring-gray-300"
+                            className={rowAction}
                           >
                             <DocumentArrowDownIcon className="h-4 w-4" />
+                            <span className="sr-only sm:not-sr-only">
+                              Descargar
+                            </span>
                           </a>
                         )}
                         <Link
                           to={`/teacher/resource/${resource.id}`}
-                          className="hidden sm:block rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                          className={rowAction}
                         >
-                          Ver
+                          Detalles
                         </Link>
-                        <Menu as="div" className="relative">
-                          <Menu.Button className="block rounded-md p-2 text-gray-500 hover:text-gray-900">
-                            <EllipsisVerticalIcon className="h-5 w-5" />
-                          </Menu.Button>
-                          <Menu.Items className="absolute right-0 z-10 mt-2 w-36 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  onClick={() =>
-                                    navigate(`/teacher/resource/${resource.id}`)
-                                  }
-                                  className={`${
-                                    active ? "bg-gray-50" : ""
-                                  } block w-full px-3 py-1 text-left text-sm text-gray-900`}
-                                >
-                                  Ver
-                                </button>
-                              )}
-                            </Menu.Item>
-                            {resource.resource_file_url && (
-                              <Menu.Item>
-                                {({ active }) => (
-                                  <a
-                                    href={resource.resource_file_url!}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={`${
-                                      active ? "bg-gray-50" : ""
-                                    } block w-full px-3 py-1 text-left text-sm text-gray-900 sm:hidden`}
-                                  >
-                                    Descargar
-                                  </a>
-                                )}
-                              </Menu.Item>
-                            )}
-                            {!isReadOnly && (
-                              <>
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <button
-                                      onClick={() =>
-                                        openResourceDrawer(week, resource)
-                                      }
-                                      className={`${
-                                        active ? "bg-gray-50" : ""
-                                      } block w-full px-3 py-1 text-left text-sm text-gray-900`}
-                                    >
-                                      Editar
-                                    </button>
-                                  )}
-                                </Menu.Item>
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <button
-                                      onClick={() =>
-                                        openDeleteDialog(
-                                          "resource",
-                                          resource.id,
-                                          resource.title,
-                                        )
-                                      }
-                                      className={`${
-                                        active ? "bg-gray-50" : ""
-                                      } block w-full px-3 py-1 text-left text-sm text-red-600`}
-                                    >
-                                      Eliminar
-                                    </button>
-                                  )}
-                                </Menu.Item>
-                              </>
-                            )}
-                          </Menu.Items>
-                        </Menu>
+                        {!isReadOnly && (
+                          <button
+                            onClick={() => openResourceDrawer(week, resource)}
+                            className={rowAction}
+                            title="Editar recurso"
+                          >
+                            <PencilSquareIcon className="h-4 w-4" />
+                            <span className="sr-only">Editar</span>
+                          </button>
+                        )}
+                        {!isReadOnly && (
+                          <button
+                            onClick={() =>
+                              openDeleteDialog(
+                                "resource",
+                                resource.id,
+                                resource.title,
+                              )
+                            }
+                            className={rowActionDanger}
+                            title="Eliminar recurso"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                            <span className="sr-only">Eliminar</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1201,10 +1266,11 @@ export default function CourseDashboard() {
                             </p>
                             {assignment.grade !== null ? (
                               <p className="inline-flex rounded-md px-1.5 py-0.5 sm:py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                                {assignment.grade}
-                                {assignment.points !== null &&
-                                  ` / ${assignment.points}`}{" "}
-                                pts
+                                {`${formatGrade(assignment.grade)}${
+                                  assignment.points !== null
+                                    ? ` / ${formatGrade(assignment.points)}`
+                                    : ""
+                                } pts`}
                               </p>
                             ) : (
                               <p className="inline-flex items-center rounded-md px-1.5 py-0.5 sm:py-1 text-xs font-medium text-amber-600 ring-1 ring-inset ring-yellow-600/20">
@@ -1235,48 +1301,33 @@ export default function CourseDashboard() {
                           href={assignment.assignment_file_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="hidden sm:block rounded-md bg-white p-2 text-gray-500 hover:text-gray-700 ring-1 ring-inset ring-gray-300"
+                          className={rowAction}
                         >
                           <DocumentArrowDownIcon className="h-4 w-4" />
+                          <span className="sr-only sm:not-sr-only">
+                            Descargar
+                          </span>
                         </a>
                       )}
-                      {assignment.grade === null && !isReadOnly && (
+                      {!isReadOnly && (
                         <button
                           onClick={() => openGradeDialog(assignment)}
-                          className="hidden sm:block rounded-md bg-primary px-2.5 py-1.5 text-sm font-semibold text-white hover:bg-primary/90"
+                          className={rowActionPrimary}
                         >
-                          Calificar
+                          <ClipboardDocumentCheckIcon className="h-4 w-4" />
+                          <span className="sr-only sm:not-sr-only">
+                            {assignment.grade === null
+                              ? "Calificar"
+                              : "Editar nota"}
+                          </span>
                         </button>
                       )}
                       <Link
                         to={`/teacher/assignment/${assignment.id}`}
-                        className="hidden sm:block rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                        className={rowAction}
                       >
-                        Ver
+                        Detalles
                       </Link>
-                      <Menu as="div" className="relative">
-                        <Menu.Button className="block rounded-md p-2 text-gray-500 hover:text-gray-900">
-                          <EllipsisVerticalIcon className="h-5 w-5" />
-                        </Menu.Button>
-                        <Menu.Items className="absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
-                          <Menu.Item>
-                            {({ active }) => (
-                              <button
-                                onClick={() =>
-                                  navigate(
-                                    `/teacher/assignment/${assignment.id}`,
-                                  )
-                                }
-                                className={`${
-                                  active ? "bg-gray-50" : ""
-                                } block w-full px-3 py-1 text-left text-sm text-gray-900`}
-                              >
-                                Ver
-                              </button>
-                            )}
-                          </Menu.Item>
-                        </Menu.Items>
-                      </Menu>
                     </div>
                   </div>
                 </li>
@@ -1451,23 +1502,38 @@ export default function CourseDashboard() {
                   <div className="mt-4 space-y-4">
                     <div>
                       <label className=" block text-start text-sm/6 font-medium text-gray-900">
-                        Puntos Obtenidos
-                        {gradingAssignment?.points !== null &&
-                          ` (máx. ${gradingAssignment?.points})`}
+                        {gradingAssignment?.points != null
+                          ? `Puntos obtenidos (máximo ${formatGrade(gradingAssignment.points)})`
+                          : "Puntos obtenidos"}
                       </label>
+                      {/* text, not number: a number input drops the comma. */}
                       <input
-                        type="number"
-                        min="0"
-                        max={gradingAssignment?.points ?? undefined}
+                        type="text"
+                        inputMode="decimal"
+                        autoComplete="off"
                         value={formGrade}
-                        onChange={(e) => setFormGrade(e.target.value)}
-                        className="mt-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
-                        placeholder={
-                          gradingAssignment?.points !== null
-                            ? `0-${gradingAssignment?.points}`
-                            : "Puntos obtenidos"
-                        }
+                        onChange={(e) => {
+                          const next = e.target.value.replace(".", ",");
+                          if (!isPartialGradeInput(next)) return;
+                          setFormGrade(next);
+                          setFormGradeError(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveGrade();
+                        }}
+                        aria-invalid={formGradeError ? true : undefined}
+                        className={`mt-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
+                          formGradeError
+                            ? "outline-red-400 focus-visible:outline-red-500"
+                            : "outline-gray-300 focus-visible:outline-gray-900"
+                        }`}
+                        placeholder="Por ejemplo: 7,5"
                       />
+                      {formGradeError && (
+                        <p className="mt-1.5 text-start text-sm text-red-600">
+                          {formGradeError}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm/6 text-start font-medium text-gray-900">
@@ -1587,6 +1653,78 @@ export default function CourseDashboard() {
                           : "El estudiante reprueba con nota menor a 70"}
                       </p>
                     </div>
+                    {enrollment.is_matricula && (
+                      <div>
+                        <label
+                          htmlFor="finalize-assigned-course"
+                          className="block text-sm/6 font-medium text-gray-900"
+                        >
+                          Asignatura del estudiante
+                        </label>
+                        <select
+                          id="finalize-assigned-course"
+                          value={enrollment.assigned_course?.id ?? ""}
+                          disabled={submitting}
+                          onChange={(e) =>
+                            handleAssignCourse(
+                              e.target.value === ""
+                                ? null
+                                : Number(e.target.value),
+                            )
+                          }
+                          className={`mt-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 disabled:opacity-50 sm:text-sm/6 ${
+                            enrollment.assigned_course
+                              ? "outline-gray-300"
+                              : "outline-red-400"
+                          }`}
+                        >
+                          <option value="">Sin asignatura</option>
+                          {enrollment.assigned_course &&
+                            !assignCourseOptions.some(
+                              (c) => c.id === enrollment.assigned_course!.id,
+                            ) && (
+                              <option value={enrollment.assigned_course.id}>
+                                {`${enrollment.assigned_course.name} (${enrollment.assigned_course.code})`}
+                              </option>
+                            )}
+                          {assignCourseOptions.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {`${c.name} (${c.code})`}
+                            </option>
+                          ))}
+                        </select>
+                        <p
+                          className={`mt-1 text-xs ${
+                            enrollment.assigned_course
+                              ? "text-gray-500"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {enrollment.assigned_course
+                            ? "Puedes cambiarla aquí o desde el aviso al inicio de la página."
+                            : "Elige la asignatura antes de cerrar la calificación."}
+                        </p>
+                      </div>
+                    )}
+
+                    {missingGrades.length > 0 && (
+                      <div className="rounded-md border border-red-200 bg-red-50 px-3 py-3">
+                        <p className="text-sm font-semibold text-red-800">
+                          {missingGrades.length === 1
+                            ? "Falta 1 calificación por registrar"
+                            : `Faltan ${missingGrades.length} calificaciones por registrar`}
+                        </p>
+                        <ul className="mt-2 max-h-40 space-y-1 overflow-auto text-sm text-red-700">
+                          {missingGrades.map((item) => (
+                            <li key={item} className="flex items-start gap-2">
+                              <span aria-hidden="true">•</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
                     <div>
                       <label className="block text-sm/6 font-medium text-gray-900">
                         Observación del Profesor
@@ -1605,7 +1743,8 @@ export default function CourseDashboard() {
               <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"
-                  disabled={submitting}
+                  disabled={submitting || finalizeBlockedReason !== null}
+                  title={finalizeBlockedReason ?? undefined}
                   onClick={handleFinalize}
                   className={`inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-white shadow-xs disabled:opacity-50 disabled:cursor-not-allowed sm:ml-3 sm:w-auto ${
                     formStatus === "aprobado"
@@ -1661,10 +1800,10 @@ export default function CourseDashboard() {
                 as="h3"
                 className="text-base font-semibold text-gray-900"
               >
-                Asignar asignatura
+                Asignatura del estudiante
               </DialogTitle>
               <p className="mt-1 text-sm text-gray-500">
-                Seleccione la asignatura específica para esta matrícula.
+                Elige la asignatura que este estudiante cursa bajo su matrícula.
               </p>
               <div className="mt-4">
                 <input
@@ -1761,7 +1900,7 @@ export default function CourseDashboard() {
                     <p className="text-sm text-gray-500">
                       ¿Estás seguro de que deseas eliminar{" "}
                       <span className="font-medium text-gray-900">
-                        "{deletingItem?.title}"
+                        {`"${deletingItem?.title ?? ""}"`}
                       </span>
                       ? Esta acción no se puede deshacer.
                     </p>
@@ -1940,25 +2079,48 @@ export default function CourseDashboard() {
                     as="h3"
                     className="text-base font-semibold text-gray-900"
                   >
-                    Trabajo Cotidiano - Semana {selectedDailyWorkWeek}
+                    {/* One interpolated string, not two children: React then
+                        rewrites the text node in place instead of deleting
+                        one, which is what crashed under a translator. */}
+                    {`Trabajo Cotidiano - Semana ${selectedDailyWorkWeek ?? ""}`}
                   </DialogTitle>
                   <p className="mt-1 text-sm text-gray-500">
-                    Califica el trabajo cotidiano del estudiante (máximo 10
-                    puntos)
+                    Califica el trabajo cotidiano del estudiante. Máximo 10
+                    puntos, con un decimal: 7,5.
                   </p>
                   <div className="mt-4">
                     <label className="block text-start text-sm/6 font-medium text-gray-900">
-                      Puntos (0-10)
+                      Puntos (0 a 10)
                     </label>
+                    {/* type="text", not "number": a number input silently
+                        discards the comma teachers type for decimals. */}
                     <input
-                      type="number"
-                      min="0"
-                      max="10"
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
                       value={formDailyWorkGrade}
-                      onChange={(e) => setFormDailyWorkGrade(e.target.value)}
-                      className="mt-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
-                      placeholder="0-10"
+                      onChange={(e) => {
+                        const next = e.target.value.replace(".", ",");
+                        if (!isPartialGradeInput(next)) return;
+                        setFormDailyWorkGrade(next);
+                        setFormDailyWorkError(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveDailyWork();
+                      }}
+                      aria-invalid={formDailyWorkError ? true : undefined}
+                      className={`mt-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:text-sm/6 ${
+                        formDailyWorkError
+                          ? "outline-red-400 focus-visible:outline-red-500"
+                          : "outline-gray-300 focus-visible:outline-gray-900"
+                      }`}
+                      placeholder="Por ejemplo: 7,5"
                     />
+                    {formDailyWorkError && (
+                      <p className="mt-1.5 text-sm text-red-600">
+                        {formDailyWorkError}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

@@ -5,6 +5,8 @@ type AutoTableModule = typeof import("jspdf-autotable");
 let jsPDF: JsPDFModule["default"];
 let autoTable: AutoTableModule["default"];
 
+import { formatGrade } from "./grades";
+
 async function ensurePdfLibs(): Promise<void> {
   if (!jsPDF) {
     const [jspdfMod, autoTableMod] = await Promise.all([
@@ -77,7 +79,7 @@ function formatDateEs(iso: string | null | undefined): string {
 }
 
 function formatNota(grade: number | null, status: string): string {
-  if (grade != null && grade !== undefined) return String(grade);
+  if (grade != null && grade !== undefined) return formatGrade(grade);
   if (status === "cursando") return "En curso";
   return "—";
 }

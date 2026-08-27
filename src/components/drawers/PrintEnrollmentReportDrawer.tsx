@@ -44,7 +44,8 @@ const PrintEnrollmentReportDrawer: React.FC<
   const [professors, setProfessors] = useState<Professor[]>([]);
   const [isLoadingProfessors, setIsLoadingProfessors] = useState(false);
   const [professorsError, setProfessorsError] = useState<string | null>(null);
-  const [fontScale, setFontScale] = useState<string>("1");
+  // Off by default: the report prints at its usual size unless asked otherwise.
+  const [largeText, setLargeText] = useState(false);
 
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
@@ -172,7 +173,8 @@ const PrintEnrollmentReportDrawer: React.FC<
           careers.find((c) => c.id === parseInt(careerFilter))?.name || "Todas",
       };
 
-      const scale = parseFloat(fontScale) || 1;
+      // 1.5 = 50% larger type and spacing; both report types honour it.
+      const scale = largeText ? 1.5 : 1;
 
       if (isByProfessor) {
         const selectedProfessor = professors.find(
@@ -226,7 +228,7 @@ const PrintEnrollmentReportDrawer: React.FC<
     setProfessors([]);
     setIsLoadingProfessors(false);
     setProfessorsError(null);
-    setFontScale("1");
+    setLargeText(false);
     setProgress(0);
     setProgressLabel("");
     setError(null);
@@ -526,38 +528,29 @@ const PrintEnrollmentReportDrawer: React.FC<
                         </div>
                       )}
 
-                      {/* Font size */}
-                      <div>
-                        <label
-                          htmlFor="report-font-scale"
-                          className="block text-sm/6 font-medium text-gray-900"
-                        >
-                          Tamaño de letra
-                        </label>
-                        <div className="mt-2 grid grid-cols-1">
-                          <select
-                            id="report-font-scale"
-                            value={fontScale}
-                            onChange={(e) => setFontScale(e.target.value)}
+                      {/* Larger text — applies to both types of report */}
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-6 shrink-0 items-center">
+                          <input
+                            id="report-large-text"
+                            type="checkbox"
+                            checked={largeText}
+                            onChange={(e) => setLargeText(e.target.checked)}
                             disabled={isGenerating}
-                            className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
+                            className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                          />
+                        </div>
+                        <div>
+                          <label
+                            htmlFor="report-large-text"
+                            className="block text-sm/6 font-medium text-gray-900"
                           >
-                            <option value="1">Normal</option>
-                            <option value="1.15">Grande (+15%)</option>
-                            <option value="1.3">Muy grande (+30%)</option>
-                          </select>
-                          <svg
-                            viewBox="0 0 16 16"
-                            fill="currentColor"
-                            aria-hidden="true"
-                            className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
-                          >
-                            <path
-                              d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
-                              clipRule="evenodd"
-                              fillRule="evenodd"
-                            />
-                          </svg>
+                            Texto más grande
+                          </label>
+                          <p className="text-sm text-gray-500">
+                            Aumenta el tamaño del texto un 50%. El reporte puede
+                            ocupar más páginas.
+                          </p>
                         </div>
                       </div>
 

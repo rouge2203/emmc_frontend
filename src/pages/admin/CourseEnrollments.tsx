@@ -6,13 +6,13 @@ import {
   MagnifyingGlassIcon,
   XMarkIcon,
   ExclamationCircleIcon,
-  CalendarDaysIcon,
   UserIcon,
   ClockIcon,
   AcademicCapIcon,
   CheckCircleIcon,
   TableCellsIcon,
 } from "@heroicons/react/24/outline";
+import PeriodSelector from "../../components/PeriodSelector";
 import CourseEnrollmentCreateDrawer from "../../components/drawers/CourseEnrollmentCreateDrawer";
 import CourseEnrollmentEditDrawer from "../../components/drawers/CourseEnrollmentEditDrawer";
 import CourseEnrollmentScheduleDrawer from "../../components/drawers/CourseEnrollmentScheduleDrawer";
@@ -127,8 +127,8 @@ const CourseEnrollments = () => {
   const [studentSearch, setStudentSearch] = useState("");
   const [studentSearchInput, setStudentSearchInput] = useState("");
   const [yearFilter, setYearFilter] = useState<number | null>(null);
-  // null = "Todos". Only offered once a year is chosen, since a period on its
-  // own spans every year on record.
+  // null = "Todos". Always on screen, but only selectable once a year is
+  // chosen, since a period on its own spans every year on record.
   const [periodFilter, setPeriodFilter] = useState<number | null>(null);
   const [careerFilter, setCareerFilter] = useState<number | null>(null);
   const [professorFilter, setProfessorFilter] = useState<number | null>(null);
@@ -573,99 +573,6 @@ const CourseEnrollments = () => {
               </div>
             </div>
 
-            {/* Year Filter */}
-            <div className="sm:w-48">
-              <label
-                htmlFor="yearFilter"
-                className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1"
-              >
-                <CalendarDaysIcon className="h-4 w-4" />
-                Año
-              </label>
-              <div className="mt-2 grid grid-cols-1">
-                <select
-                  id="yearFilter"
-                  value={yearFilter || ""}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setYearFilter(value ? parseInt(value) : null);
-                    // The period buttons are hidden without a year, so drop the
-                    // period too rather than leave it filtering invisibly.
-                    if (!value) setPeriodFilter(null);
-                    setPage(1);
-                  }}
-                  className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gray-900 sm:text-sm/6"
-                >
-                  <option value="">Todos los años</option>
-                  {availableYears.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-                <svg
-                  viewBox="0 0 16 16"
-                  fill="currentColor"
-                  data-slot="icon"
-                  aria-hidden="true"
-                  className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
-                >
-                  <path
-                    d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
-                    clipRule="evenodd"
-                    fillRule="evenodd"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            {/* Period Filter — only meaningful once a year is chosen */}
-            {yearFilter !== null && (
-              <div className="sm:w-auto">
-                <span
-                  id="periodFilterLabel"
-                  className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1"
-                >
-                  <CalendarDaysIcon className="h-4 w-4" />
-                  Período
-                </span>
-                <div
-                  role="group"
-                  aria-labelledby="periodFilterLabel"
-                  className="mt-2 inline-flex rounded-md shadow-xs isolate"
-                >
-                  {[
-                    { value: null, label: "Todos" },
-                    { value: 1, label: "I" },
-                    { value: 2, label: "II" },
-                    { value: 3, label: "III" },
-                  ].map((option, index, all) => {
-                    const isActive = periodFilter === option.value;
-                    return (
-                      <button
-                        key={option.label}
-                        type="button"
-                        onClick={() => {
-                          setPeriodFilter(option.value);
-                          setPage(1);
-                        }}
-                        aria-pressed={isActive}
-                        className={`relative -ml-px px-4 py-1.5 text-sm font-medium ring-1 ring-inset focus:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 transition-colors ${
-                          index === 0 ? "ml-0 rounded-l-md" : ""
-                        } ${index === all.length - 1 ? "rounded-r-md" : ""} ${
-                          isActive
-                            ? "z-10 bg-primary text-white ring-primary hover:bg-primary/90"
-                            : "bg-white text-gray-700 ring-gray-300 hover:bg-gray-50"
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {/* Career Filter */}
             <div className="sm:w-48">
               <label
@@ -793,6 +700,27 @@ const CourseEnrollments = () => {
               </div>
             </div>
           </div>
+
+          {/* Año + período, in the same style as "Asignación de horarios". The
+              period is always on screen; it only turns clickable once there is
+              a year, since a trimester on its own spans every year on record. */}
+          <div className="mt-4 border-t border-gray-100 pt-4">
+            <PeriodSelector
+              idPrefix="enrollmentsFilter"
+              allowAll
+              years={availableYears}
+              year={yearFilter}
+              period={periodFilter}
+              periodDisabled={yearFilter === null}
+              periodDisabledHint="Seleccione un año para filtrar por período"
+              onChange={({ year, period }) => {
+                setYearFilter(year);
+                setPeriodFilter(year === null ? null : period);
+                setPage(1);
+              }}
+            />
+          </div>
+
           {/* Filter Buttons */}
           <div className="mt-4 flex flex-col sm:flex-row gap-2">
             <div

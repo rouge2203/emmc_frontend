@@ -5,6 +5,8 @@ type AutoTableModule = typeof import("jspdf-autotable");
 let jsPDF: JsPDFModule["default"];
 let autoTable: AutoTableModule["default"];
 
+import { formatGrade } from "./grades";
+
 async function ensurePdfLibs(): Promise<void> {
   if (!jsPDF) {
     const [jspdfMod, autoTableMod] = await Promise.all([
@@ -99,12 +101,42 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 
 /**
  * Clamps the caller-supplied scale so a bad value can never produce a blank or
- * unreadable PDF. Anything non-finite falls back to the unscaled report.
+ * unreadable PDF. 1.5 is the largest size the landscape A4 layout holds: past
+ * it the fixed columns leave the estudiante/curso columns too narrow for a word.
+ * Anything non-finite falls back to the unscaled report.
  */
 function normalizeScale(fontScale: number): number {
   return Number.isFinite(fontScale) && fontScale > 0
-    ? Math.min(Math.max(fontScale, 1), 1.3)
+    ? Math.min(Math.max(fontScale, 1), 1.5)
     : 1;
+}
+
+// Millimetres every auto-sized (i.e. not fixed-width) column has to keep.
+// autotable gives auto columns whatever width the fixed ones leave over, and
+// jsPDF then hard-breaks any word that no longer fits, so a name column below
+// this starts splitting surnames mid-word.
+const MIN_AUTO_COLUMN_WIDTH = 34;
+
+/**
+ * Growth factor for the fixed millimetre column widths of a table. They cannot
+ * simply be multiplied by the scale: the widest table (Cursos, six fixed
+ * columns totalling 116 mm) would take 174 mm of the 269 mm of content width at
+ * 1.5 and squeeze estudiante/curso/profesor to ~32 mm each. The factor is never
+ * below 1 and never above the scale, so an unscaled report is byte-for-byte
+ * what it was, and a scaled one only ever hands back width the narrow columns
+ * did not need — they are numbers, codes and short labels, which grow slower
+ * than the space a full name wants.
+ */
+function fixedWidthFactor(
+  widths: number[],
+  autoColumns: number,
+  contentWidth: number,
+  scale: number,
+): number {
+  const total = widths.reduce((sum, w) => sum + w, 0);
+  if (total <= 0) return scale;
+  const budget = contentWidth - autoColumns * MIN_AUTO_COLUMN_WIDTH;
+  return Math.max(1, Math.min(scale, budget / total));
 }
 
 // --- Career grouping -------------------------------------------------------
@@ -410,12 +442,22 @@ export async function generateEnrollmentReport(
     fixedWidths: Record<string, number>,
   ) => {
     const statusIdx = head.indexOf("Estado");
+    // Only the widths whose column is actually in this head count towards the
+    // budget the auto-sized columns are left with.
+    const applied = Object.entries(fixedWidths).filter(
+      ([label]) => head.indexOf(label) !== -1,
+    );
+    const widthFactor = fixedWidthFactor(
+      applied.map(([, width]) => width),
+      head.length - applied.length,
+      contentWidth,
+      scale,
+    );
     const columnStyles: Record<number, any> = {};
-    Object.entries(fixedWidths).forEach(([label, width]) => {
+    applied.forEach(([label, width]) => {
       const idx = head.indexOf(label);
-      if (idx === -1) return;
       columnStyles[idx] = {
-        cellWidth: sp(width),
+        cellWidth: Number((width * widthFactor).toFixed(2)),
         halign:
           label === "Estudiante" || label === "Carnet" || label === "Teléfono"
             ? "left"
@@ -777,7 +819,7 @@ export async function generateEnrollmentReport(
     if (Object.keys(professorCourses).length > 0) {
       ensureSpace(sp(15));
       const profData = Object.entries(professorCourses)
-        .sort((a, b) => a[0].localeCompare(b[0]))
+        .sort((a, b) => collator.compare(a[0], b[0]))
         .map(([prof, coursesSet]) => [prof, Array.from(coursesSet).join(", ")]);
 
       autoTable(doc, {
@@ -848,7 +890,18 @@ export async function generateProfessorReport(
   const scale = normalizeScale(fontScale);
   const fs = (n: number) => Number((n * scale).toFixed(2));
   const sp = (n: number) => Number((n * scale).toFixed(2));
+  const collator = new Intl.Collator("es", { sensitivity: "base" });
   const contentWidth = pageWidth - margin * 2;
+  // Six of the seven columns are fixed; scaled at full rate they would leave
+  // Estudiante and Asignatura too narrow, so they grow only as far as
+  // MIN_AUTO_COLUMN_WIDTH allows (see fixedWidthFactor).
+  const widthFactor = fixedWidthFactor(
+    [10, 28, 42, 22, 16],
+    2,
+    contentWidth,
+    scale,
+  );
+  const cw = (n: number) => Number((n * widthFactor).toFixed(2));
 
   // jspdf-autotable augments the doc at runtime; read the cursor through one
   // narrow accessor instead of casting at every call site.
@@ -985,7 +1038,7 @@ export async function generateProfessorReport(
   const sortedNames = Array.from(groups.keys()).sort((a, b) => {
     if (a === NO_PROF) return 1;
     if (b === NO_PROF) return -1;
-    return a.localeCompare(b, "es");
+    return collator.compare(a, b);
   });
 
   if (enrollments.length === 0) {
@@ -1018,12 +1071,22 @@ export async function generateProfessorReport(
     doc.line(margin, startY, margin + sp(40), startY);
     startY += sp(4);
 
-    const rows = group.map((e, i) => {
+    // Alphabetical by student, same collator as the general report so accents
+    // and case sort identically in both. The remaining keys only break ties, so
+    // two rows of one student keep a fixed order between runs.
+    const sortedGroup = [...group].sort(
+      (a, b) =>
+        collator.compare(a.student_full_name || "", b.student_full_name || "") ||
+        collator.compare(subjectLabel(a), subjectLabel(b)) ||
+        a.id - b.id,
+    );
+
+    const rows = sortedGroup.map((e, i) => {
       const { aula, horario } = formatSchedules(e.schedules);
       const finished = e.status === "aprobado" || e.status === "reprobado";
       const nota = finished
         ? e.grade !== null && e.grade !== undefined
-          ? String(e.grade)
+          ? formatGrade(e.grade)
           : "—"
         : "—";
       return [
@@ -1061,15 +1124,17 @@ export async function generateProfessorReport(
         fontSize: fs(7.5),
       },
       columnStyles: {
-        0: { cellWidth: sp(10), halign: "center" },
-        3: { cellWidth: sp(28) },
-        4: { cellWidth: sp(42) },
-        5: { cellWidth: sp(22), halign: "center" },
-        6: { cellWidth: sp(16), halign: "center" },
+        0: { cellWidth: cw(10), halign: "center" },
+        3: { cellWidth: cw(28) },
+        4: { cellWidth: cw(42) },
+        5: { cellWidth: cw(22), halign: "center" },
+        6: { cellWidth: cw(16), halign: "center" },
       },
       didParseCell: (data) => {
         if (data.section === "body" && data.column.index === 5) {
-          const status = group[data.row.index]?.status;
+          // Indexes the same array the body rows were built from, so the status
+          // tint still lands on the right row now that they are sorted.
+          const status = sortedGroup[data.row.index]?.status;
           const bg = status ? STATUS_COLORS[status] : undefined;
           const fg = status ? STATUS_TEXT_COLORS[status] : undefined;
           if (bg) data.cell.styles.fillColor = bg;
